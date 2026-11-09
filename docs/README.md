@@ -15,3 +15,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0004 – Results length pies and missed-word cloud](adr/0004-results-length-pies-missed-cloud.md) — Board solver at results; per-player length donuts on phone+TV; TV missed-word cloud (score-blind)
 - [0005 – TV post-game scores](adr/0005-tv-post-game-scores.md) — Results on TV show winner + points; play stays score-blind
 - [0006 – Boggle global stats](adr/0006-boggle-global-stats.md) — D1 hall of fame on `/boggle`; round-end snapshots; name + date records; no accounts
+- [0007 – Spectator room entry](adr/0007-spectator-room-entry.md) — Create for TV / Spectate on TV from entry; no name; first player remains host

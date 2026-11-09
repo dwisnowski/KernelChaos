@@ -15,6 +15,25 @@ export function BoggleEntry() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function postNewRoom(): Promise<string | null> {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/rooms", { method: "POST" });
+      const data = (await res.json()) as { code?: string; error?: string };
+      if (!res.ok || !data.code) {
+        setError(data.error ?? "Could not create room");
+        setBusy(false);
+        return null;
+      }
+      return data.code;
+    } catch {
+      setError("Network error");
+      setBusy(false);
+      return null;
+    }
+  }
+
   async function createRoom(e: FormEvent) {
     e.preventDefault();
     unlockAudio();
@@ -23,22 +42,17 @@ export function BoggleEntry() {
       setError("Enter your name");
       return;
     }
-    setBusy(true);
-    setError(null);
     localStorage.setItem("kernelchaos.name", trimmed);
-    try {
-      const res = await fetch("/api/rooms", { method: "POST" });
-      const data = (await res.json()) as { code?: string; error?: string };
-      if (!res.ok || !data.code) {
-        setError(data.error ?? "Could not create room");
-        setBusy(false);
-        return;
-      }
-      navigate(`/boggle/room/${data.code}`, { state: { name: trimmed, host: true } });
-    } catch {
-      setError("Network error");
-      setBusy(false);
-    }
+    const roomCode = await postNewRoom();
+    if (!roomCode) return;
+    navigate(`/boggle/room/${roomCode}`, { state: { name: trimmed, host: true } });
+  }
+
+  async function createRoomForTv() {
+    unlockAudio();
+    const roomCode = await postNewRoom();
+    if (!roomCode) return;
+    navigate(`/boggle/room/${roomCode}/tv`);
   }
 
   function joinRoom(e: FormEvent) {
@@ -58,6 +72,17 @@ export function BoggleEntry() {
     navigate(`/boggle/room/${room}`, { state: { name: trimmed } });
   }
 
+  function spectateRoom() {
+    unlockAudio();
+    const room = code.trim().toUpperCase();
+    if (!/^[A-Z1-9]{4}$/.test(room)) {
+      setError("Room code is 4 characters (A–Z, 1–9)");
+      return;
+    }
+    setError(null);
+    navigate(`/boggle/room/${room}/tv`);
+  }
+
   const createCard = (
     <form className="entry-card" onSubmit={createRoom}>
       <h2>Start a session</h2>
@@ -65,6 +90,12 @@ export function BoggleEntry() {
       <button className={`btn${isJoinFocus ? "" : " primary"}`} type="submit" disabled={busy}>
         {busy ? "Creating…" : "Create room"}
       </button>
+      <div className="entry-tv-actions">
+        <button className="btn" type="button" disabled={busy} onClick={() => void createRoomForTv()}>
+          {busy ? "Creating…" : "Create for TV"}
+        </button>
+        <p className="entry-tv-hint">Big screen shows the lobby QR; phones join to play.</p>
+      </div>
     </form>
   );
 
@@ -86,6 +117,12 @@ export function BoggleEntry() {
       <button className={`btn${isJoinFocus ? " primary" : ""}`} type="submit">
         Join room
       </button>
+      <div className="entry-tv-actions">
+        <button className="btn" type="button" onClick={spectateRoom}>
+          Spectate on TV
+        </button>
+        <p className="entry-tv-hint">Watch this room on the living-room display.</p>
+      </div>
     </form>
   );
 
