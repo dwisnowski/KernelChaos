@@ -19,7 +19,7 @@ Constraints that shaped the design:
 
 - **Host as a Wild Idea Zone SPA** at `kernelchaos.wildideazone.com` (Vite + React + TypeScript, Cloudflare Workers via `@cloudflare/vite-plugin` + Wrangler), with WIZ logo, footer, favicon, hub listing, ADRs under `docs/adr/`, and Music Mind–style `Makefile` / ship workflow.
 - **One Durable Object per room code** (`GameRoom`) with hibernatable WebSockets for lobby sync, countdown, play, and results. The Worker creates rooms (`POST /api/rooms`) and proxies `/api/room/:code` upgrades to the DO.
-- **Boggle rules:** host picks board size 4 / 5 / 6 in the lobby; classic dice sets (extended for 6×6); 3-minute rounds; min word length 3; classic length scoring; each player scores their own unique words independently; host starts rounds.
+- **Boggle rules:** host picks board size 4 / 5 / 6 in the lobby; classic dice sets (extended for 6×6); selectable round lengths; min word length 3; scoring is defined in [ADR 0002](./0002-chaos-scoring-badges.md) (chaos length table, path/unique multipliers, flat and round awards); host starts rounds.
 - **Client proposes paths; server validates** adjacency, dictionary membership, duplicates, and points. Dictionary is an Enable1-derived list (3–10 letters) bundled in the Worker.
 - **UX:** mobile-first drag board; responsive lobby with large code + QR for TV; Web Audio length-tiered word SFX, countdown ticks, last-5-second urgency, results flourish; persistent mute.
 - **No accounts** — display name + room code only.

@@ -11,25 +11,97 @@ import {
   type Phase,
   type PlayerPublic,
   type PlayerResult,
+  type RoundAward,
   type RoundSeconds,
   type RoomState,
   type ServerMessage,
 } from "./boggle/protocol.ts";
-import { scoreWord } from "./boggle/scoring.ts";
+import {
+  computePoints,
+  coveragePoints,
+  finalizeWordBonuses,
+  rareLetterCount,
+  scoreAtSubmit,
+  type BonusId,
+} from "./boggle/scoring.ts";
+
+interface WordRecord {
+  word: string;
+  path: number[];
+  submittedAt: number;
+  base: number;
+  bonuses: BonusId[];
+  points: number;
+}
 
 interface PlayerRecord {
   id: string;
   name: string;
   isHost: boolean;
-  words: Map<string, number>;
+  words: Map<string, WordRecord>;
+  roundAwards: RoundAward[];
 }
 
 interface Attachment {
   playerId: string;
 }
 
+interface StoredWord {
+  word: string;
+  path: number[];
+  submittedAt: number;
+  base: number;
+  bonuses: BonusId[];
+  points: number;
+}
+
+interface StoredPlayer {
+  id: string;
+  name: string;
+  isHost: boolean;
+  words: StoredWord[] | [string, number][];
+  roundAwards?: RoundAward[];
+}
+
 function isBoardSize(n: unknown): n is BoardSize {
   return n === 4 || n === 5 || n === 6;
+}
+
+function isStoredWord(entry: unknown): entry is StoredWord {
+  return (
+    typeof entry === "object" &&
+    entry !== null &&
+    "word" in entry &&
+    typeof (entry as StoredWord).word === "string" &&
+    Array.isArray((entry as StoredWord).path)
+  );
+}
+
+function loadWords(raw: StoredPlayer["words"]): Map<string, WordRecord> {
+  const map = new Map<string, WordRecord>();
+  for (const entry of raw) {
+    if (isStoredWord(entry)) {
+      map.set(entry.word, {
+        word: entry.word,
+        path: entry.path,
+        submittedAt: entry.submittedAt,
+        base: entry.base,
+        bonuses: entry.bonuses,
+        points: entry.points,
+      });
+    } else if (Array.isArray(entry) && entry.length === 2) {
+      const [word, points] = entry as [string, number];
+      map.set(word, {
+        word,
+        path: [],
+        submittedAt: 0,
+        base: points,
+        bonuses: [],
+        points,
+      });
+    }
+  }
+  return map;
 }
 
 export class GameRoom extends DurableObject<Env> {
@@ -42,6 +114,9 @@ export class GameRoom extends DurableObject<Env> {
   private endsAt: number | null = null;
   private round = 0;
   private players = new Map<string, PlayerRecord>();
+  private globalAcceptCount = 0;
+  private lastAccept: { playerId: string; word: string } | null = null;
+  private scoresFinalized = false;
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
@@ -55,12 +130,10 @@ export class GameRoom extends DurableObject<Env> {
       countdownEndsAt: number | null;
       endsAt: number | null;
       round: number;
-      players: {
-        id: string;
-        name: string;
-        isHost: boolean;
-        words: [string, number][];
-      }[];
+      players: StoredPlayer[];
+      globalAcceptCount?: number;
+      lastAccept?: { playerId: string; word: string } | null;
+      scoresFinalized?: boolean;
     }>("room");
     if (stored) {
       this.code = stored.code;
@@ -73,6 +146,9 @@ export class GameRoom extends DurableObject<Env> {
       this.countdownEndsAt = stored.countdownEndsAt;
       this.endsAt = stored.endsAt;
       this.round = stored.round;
+      this.globalAcceptCount = stored.globalAcceptCount ?? 0;
+      this.lastAccept = stored.lastAccept ?? null;
+      this.scoresFinalized = stored.scoresFinalized ?? this.phase === "results";
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -80,7 +156,8 @@ export class GameRoom extends DurableObject<Env> {
             id: p.id,
             name: p.name,
             isHost: p.isHost,
-            words: new Map(p.words),
+            words: loadWords(p.words),
+            roundAwards: p.roundAwards ?? [],
           },
         ]),
       );
@@ -98,11 +175,15 @@ export class GameRoom extends DurableObject<Env> {
       countdownEndsAt: this.countdownEndsAt,
       endsAt: this.endsAt,
       round: this.round,
+      globalAcceptCount: this.globalAcceptCount,
+      lastAccept: this.lastAccept,
+      scoresFinalized: this.scoresFinalized,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
         isHost: p.isHost,
-        words: [...p.words.entries()],
+        words: [...p.words.values()],
+        roundAwards: p.roundAwards,
       })),
     });
   }
@@ -207,6 +288,7 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase === "playing" && this.endsAt != null && now >= this.endsAt) {
       this.phase = "results";
       this.endsAt = null;
+      this.finalizeScores();
       await this.persist();
       this.broadcastState();
     }
@@ -244,6 +326,7 @@ export class GameRoom extends DurableObject<Env> {
       name,
       isHost,
       words: new Map(),
+      roundAwards: [],
     });
     ws.serializeAttachment({ playerId: id } satisfies Attachment);
     await this.persist();
@@ -281,6 +364,7 @@ export class GameRoom extends DurableObject<Env> {
 
     for (const p of this.players.values()) {
       p.words = new Map();
+      p.roundAwards = [];
     }
 
     this.round += 1;
@@ -288,6 +372,9 @@ export class GameRoom extends DurableObject<Env> {
     this.phase = "countdown";
     this.countdownEndsAt = Date.now() + COUNTDOWN_MS;
     this.endsAt = null;
+    this.globalAcceptCount = 0;
+    this.lastAccept = null;
+    this.scoresFinalized = false;
     await this.ctx.storage.setAlarm(this.countdownEndsAt);
     await this.persist();
     this.broadcastState();
@@ -300,8 +387,12 @@ export class GameRoom extends DurableObject<Env> {
     this.board = null;
     this.countdownEndsAt = null;
     this.endsAt = null;
+    this.globalAcceptCount = 0;
+    this.lastAccept = null;
+    this.scoresFinalized = false;
     for (const p of this.players.values()) {
       p.words = new Map();
+      p.roundAwards = [];
     }
     await this.ctx.storage.deleteAlarm();
     await this.persist();
@@ -349,11 +440,99 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
-    const points = scoreWord(word);
-    player.words.set(word, points);
+    const now = Date.now();
+    const secondsLeft =
+      this.endsAt != null ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0;
+
+    let foundByOther = false;
+    for (const other of this.players.values()) {
+      if (other.id === playerId) continue;
+      if (other.words.has(word)) {
+        foundByOther = true;
+        break;
+      }
+    }
+
+    this.globalAcceptCount += 1;
+    const scored = scoreAtSubmit({
+      word,
+      path,
+      boardSize: this.boardSize,
+      secondsLeft,
+      globalAcceptIndex: this.globalAcceptCount,
+      foundByOther,
+    });
+
+    const record: WordRecord = {
+      word,
+      path: [...path],
+      submittedAt: now,
+      base: scored.base,
+      bonuses: scored.bonuses,
+      points: scored.points,
+    };
+    player.words.set(word, record);
+    this.lastAccept = { playerId, word };
     await this.persist();
-    this.send(ws, { type: "wordResult", ok: true, word, points });
+    this.send(ws, {
+      type: "wordResult",
+      ok: true,
+      word,
+      points: scored.points,
+      bonuses: scored.bonuses,
+    });
     this.broadcastState();
+  }
+
+  /** Apply unique / last-word / lone-wolf / coverage once when entering results. */
+  private finalizeScores(): void {
+    if (this.scoresFinalized) return;
+    this.scoresFinalized = true;
+
+    const finders = new Map<string, string[]>();
+    for (const p of this.players.values()) {
+      for (const word of p.words.keys()) {
+        const list = finders.get(word) ?? [];
+        list.push(p.id);
+        finders.set(word, list);
+      }
+    }
+
+    const last = this.lastAccept;
+
+    for (const p of this.players.values()) {
+      for (const rec of p.words.values()) {
+        const unique = (finders.get(rec.word)?.length ?? 0) === 1;
+        const isLastWord = last != null && last.playerId === p.id && last.word === rec.word;
+        const bonuses = finalizeWordBonuses(rec.bonuses, { unique, isLastWord });
+        const rareCount = rareLetterCount(rec.word);
+        rec.bonuses = bonuses;
+        rec.points = computePoints(rec.base, bonuses, rareCount);
+      }
+    }
+
+    const longFinders = [...this.players.values()].filter((p) =>
+      [...p.words.keys()].some((w) => w.length >= 6),
+    );
+    const loneWolfId = longFinders.length === 1 ? longFinders[0]!.id : null;
+
+    for (const p of this.players.values()) {
+      const awards: RoundAward[] = [];
+      if (loneWolfId === p.id) {
+        awards.push({ id: "loneWolf", points: 5 });
+      }
+      const cov = coveragePoints([...p.words.values()].map((w) => w.path));
+      if (cov > 0) {
+        awards.push({ id: "coverage", points: cov });
+      }
+      p.roundAwards = awards;
+    }
+  }
+
+  private playerScore(p: PlayerRecord): number {
+    const wordPts = [...p.words.values()].reduce((a, w) => a + w.points, 0);
+    const awardPts = p.roundAwards.reduce((a, r) => a + r.points, 0);
+    return wordPts + awardPts;
   }
 
   private isHost(playerId: string): boolean {
@@ -361,12 +540,16 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private publicState(): RoomState {
+    if (this.phase === "results" && !this.scoresFinalized) {
+      this.finalizeScores();
+    }
+
     const players: PlayerPublic[] = [...this.players.values()].map((p) => ({
       id: p.id,
       name: p.name,
       isHost: p.isHost,
       wordCount: p.words.size,
-      score: [...p.words.values()].reduce((a, b) => a + b, 0),
+      score: this.playerScore(p),
     }));
 
     let results: PlayerResult[] | null = null;
@@ -378,10 +561,15 @@ export class GameRoom extends DurableObject<Env> {
         name: p.name,
         isHost: p.isHost,
         wordCount: p.words.size,
-        score: [...p.words.values()].reduce((a, b) => a + b, 0),
-        words: [...p.words.entries()]
-          .map(([word, points]) => ({ word, points }))
+        score: this.playerScore(p),
+        words: [...p.words.values()]
+          .map((w) => ({
+            word: w.word,
+            points: w.points,
+            bonuses: w.bonuses,
+          }))
           .sort((a, b) => b.points - a.points || a.word.localeCompare(b.word)),
+        roundAwards: p.roundAwards,
       }));
       results.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
       const top = results[0]?.score ?? 0;

@@ -669,15 +669,90 @@ input {
 }
 
 .word-chips li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
   padding: 0.35rem 0.7rem;
   border-radius: 999px;
   background: var(--card);
   border: 1px solid var(--stroke);
 }
 
-.word-chips em {
+.word-chip-main {
+  white-space: nowrap;
+}
+
+.word-chips em,
+.result-card em {
   color: var(--accent-2);
   font-style: normal;
+}
+
+.bonus-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.bonus-badge {
+  display: inline-block;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  background: rgba(240, 162, 2, 0.18);
+  color: var(--accent);
+  border: 1px solid rgba(240, 162, 2, 0.35);
+}
+
+.bonus-ladder1,
+.bonus-lastWord,
+.bonus-loneWolf {
+  background: rgba(46, 204, 113, 0.18);
+  color: #7dffa8;
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.bonus-thief,
+.bonus-clutch10 {
+  background: rgba(231, 76, 60, 0.18);
+  color: #ff9b90;
+  border-color: rgba(231, 76, 60, 0.4);
+}
+
+.bonus-unique,
+.bonus-straight,
+.bonus-span {
+  background: rgba(52, 152, 219, 0.18);
+  color: #8ecfff;
+  border-color: rgba(52, 152, 219, 0.4);
+}
+
+.results-legend {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.round-awards {
+  list-style: none;
+  margin: 0 0 0.55rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.round-awards li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.88rem;
 }
 
 .results-screen {
@@ -733,15 +808,14 @@ input {
 }
 
 .result-card li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.4rem;
   padding: 0.25rem 0.55rem;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.2);
   font-size: 0.92rem;
-}
-
-.result-card em {
-  color: var(--accent-2);
-  font-style: normal;
 }
 
 .results-actions {

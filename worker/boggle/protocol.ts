@@ -1,4 +1,5 @@
 import type { BoardSize } from "./dice.ts";
+import type { BonusId } from "./scoring.ts";
 
 export type Phase = "lobby" | "countdown" | "playing" | "results";
 
@@ -10,8 +11,20 @@ export interface PlayerPublic {
   score: number;
 }
 
+export interface WordResultEntry {
+  word: string;
+  points: number;
+  bonuses: BonusId[];
+}
+
+export interface RoundAward {
+  id: BonusId;
+  points: number;
+}
+
 export interface PlayerResult extends PlayerPublic {
-  words: { word: string; points: number }[];
+  words: WordResultEntry[];
+  roundAwards: RoundAward[];
 }
 
 /** Host-selectable round lengths (seconds). */
@@ -43,7 +56,14 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: "welcome"; playerId: string; state: RoomState }
   | { type: "state"; state: RoomState }
-  | { type: "wordResult"; ok: boolean; word?: string; points?: number; reason?: string }
+  | {
+      type: "wordResult";
+      ok: boolean;
+      word?: string;
+      points?: number;
+      bonuses?: BonusId[];
+      reason?: string;
+    }
   | { type: "error"; message: string };
 
 export const CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
@@ -55,3 +75,5 @@ export const MIN_WORD_LEN = 3;
 export function isRoundSeconds(n: unknown): n is RoundSeconds {
   return n === 60 || n === 90 || n === 120;
 }
+
+export type { BonusId };

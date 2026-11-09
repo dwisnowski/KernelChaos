@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BoardSize,
+  BonusId,
   ClientMessage,
   RoundSeconds,
   RoomState,
@@ -10,11 +11,18 @@ import type {
 export interface FoundWord {
   word: string;
   points: number;
+  bonuses: BonusId[];
 }
 
 interface UseRoomOptions {
   code: string | null;
-  onWordResult?: (ok: boolean, word?: string, points?: number, reason?: string) => void;
+  onWordResult?: (
+    ok: boolean,
+    word?: string,
+    points?: number,
+    reason?: string,
+    bonuses?: BonusId[],
+  ) => void;
   onError?: (message: string) => void;
 }
 
@@ -25,10 +33,12 @@ export function useRoom({ code, onWordResult, onError }: UseRoomOptions) {
   const [myWords, setMyWords] = useState<FoundWord[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingJoin = useRef<string | null>(null);
+  const playerIdRef = useRef<string | null>(null);
   const onWordResultRef = useRef(onWordResult);
   const onErrorRef = useRef(onError);
   onWordResultRef.current = onWordResult;
   onErrorRef.current = onError;
+  playerIdRef.current = playerId;
 
   const send = useCallback((msg: ClientMessage) => {
     const ws = wsRef.current;
@@ -61,22 +71,36 @@ export function useRoom({ code, onWordResult, onError }: UseRoomOptions) {
       }
       if (msg.type === "welcome") {
         setPlayerId(msg.playerId);
+        playerIdRef.current = msg.playerId;
         setState(msg.state);
         setMyWords([]);
       } else if (msg.type === "state") {
         setState(msg.state);
         if (msg.state.phase === "lobby" || msg.state.phase === "countdown") {
           setMyWords([]);
+        } else if (msg.state.phase === "results" && msg.state.results) {
+          const id = playerIdRef.current;
+          const mine = id ? msg.state.results.find((r) => r.id === id) : null;
+          if (mine) {
+            setMyWords(
+              mine.words.map((w) => ({
+                word: w.word,
+                points: w.points,
+                bonuses: w.bonuses,
+              })),
+            );
+          }
         }
       } else if (msg.type === "wordResult") {
         if (msg.ok && msg.word && msg.points != null) {
+          const bonuses = msg.bonuses ?? [];
           setMyWords((prev) =>
             prev.some((w) => w.word === msg.word)
               ? prev
-              : [...prev, { word: msg.word!, points: msg.points! }],
+              : [...prev, { word: msg.word!, points: msg.points!, bonuses }],
           );
         }
-        onWordResultRef.current?.(msg.ok, msg.word, msg.points, msg.reason);
+        onWordResultRef.current?.(msg.ok, msg.word, msg.points, msg.reason, msg.bonuses);
       } else if (msg.type === "error") {
         onErrorRef.current?.(msg.message);
       }

@@ -1,3 +1,5 @@
+import type { BonusId } from "../types.ts";
+
 const MUTE_KEY = "kernelchaos.mute";
 
 let ctx: AudioContext | null = null;
@@ -107,4 +109,110 @@ export function playWinner(): void {
   tone(659, t + 0.1, 0.12, "sine", 0.09);
   tone(784, t + 0.2, 0.12, "sine", 0.09);
   tone(1046, t + 0.32, 0.28, "triangle", 0.1);
+}
+
+/** Higher = more exciting; play at most top N so stacks do not mush. */
+export const BONUS_SFX_PRIORITY: BonusId[] = [
+  "ladder1",
+  "lastWord",
+  "loneWolf",
+  "thief",
+  "unique",
+  "span",
+  "straight",
+  "ladder2",
+  "ladder3",
+  "clutch10",
+  "coverage",
+  "rare",
+  "center",
+  "noVowel",
+  "snake",
+];
+
+function playBonusTone(id: BonusId, at: number): number {
+  const c = getCtx();
+  if (!c) return 0;
+  switch (id) {
+    case "straight":
+      tone(880, at, 0.08, "triangle", 0.07);
+      tone(1175, at + 0.07, 0.1, "triangle", 0.07);
+      return 0.2;
+    case "snake":
+      tone(330, at, 0.06, "sawtooth", 0.035);
+      tone(392, at + 0.05, 0.06, "sawtooth", 0.035);
+      tone(349, at + 0.1, 0.08, "sawtooth", 0.03);
+      return 0.22;
+    case "unique":
+      tone(784, at, 0.12, "sine", 0.08);
+      tone(988, at + 0.1, 0.18, "sine", 0.09);
+      return 0.3;
+    case "clutch10":
+      tone(660, at, 0.05, "square", 0.045);
+      tone(880, at + 0.06, 0.08, "square", 0.05);
+      return 0.18;
+    case "ladder1":
+      tone(523, at, 0.1, "triangle", 0.09);
+      tone(659, at + 0.09, 0.1, "triangle", 0.09);
+      tone(784, at + 0.18, 0.1, "triangle", 0.1);
+      tone(1046, at + 0.28, 0.22, "sine", 0.11);
+      return 0.52;
+    case "ladder2":
+      tone(523, at, 0.09, "triangle", 0.08);
+      tone(698, at + 0.09, 0.14, "triangle", 0.09);
+      return 0.26;
+    case "ladder3":
+      tone(587, at, 0.12, "triangle", 0.07);
+      return 0.14;
+    case "lastWord":
+      tone(196, at, 0.12, "square", 0.06);
+      tone(147, at + 0.1, 0.22, "triangle", 0.08);
+      return 0.35;
+    case "rare":
+      tone(1480, at, 0.05, "sine", 0.05);
+      tone(1760, at + 0.04, 0.08, "triangle", 0.055);
+      return 0.14;
+    case "noVowel":
+      tone(277, at, 0.05, "square", 0.035);
+      tone(311, at + 0.05, 0.08, "triangle", 0.04);
+      return 0.16;
+    case "center":
+      tone(740, at, 0.06, "sine", 0.06);
+      tone(740, at + 0.08, 0.08, "sine", 0.05);
+      return 0.18;
+    case "span":
+      tone(220, at, 0.08, "sine", 0.06);
+      tone(440, at + 0.08, 0.1, "sine", 0.07);
+      tone(880, at + 0.18, 0.14, "triangle", 0.08);
+      return 0.36;
+    case "thief":
+      tone(415, at, 0.06, "sawtooth", 0.04);
+      tone(220, at + 0.07, 0.12, "square", 0.045);
+      return 0.22;
+    case "loneWolf":
+      tone(294, at, 0.15, "sine", 0.07);
+      tone(440, at + 0.14, 0.22, "sine", 0.08);
+      return 0.4;
+    case "coverage":
+      tone(523, at, 0.05, "triangle", 0.04);
+      tone(587, at + 0.05, 0.05, "triangle", 0.04);
+      tone(659, at + 0.1, 0.05, "triangle", 0.04);
+      tone(698, at + 0.15, 0.1, "triangle", 0.05);
+      return 0.28;
+    default:
+      return 0;
+  }
+}
+
+/** Play up to `max` highest-priority bonus cues in sequence. */
+export function playBonusAwards(bonuses: BonusId[], max = 3): void {
+  if (!bonuses.length) return;
+  const c = getCtx();
+  if (!c) return;
+  const ranked = BONUS_SFX_PRIORITY.filter((id) => bonuses.includes(id)).slice(0, max);
+  let t = c.currentTime;
+  for (const id of ranked) {
+    const dur = playBonusTone(id, t);
+    t += Math.max(dur * 0.55, 0.08);
+  }
 }

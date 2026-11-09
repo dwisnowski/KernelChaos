@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
+  playBonusAwards,
   playCountdownTick,
   playLastSeconds,
   playReject,
@@ -10,9 +11,13 @@ import {
   unlockAudio,
 } from "../audio/sfx.ts";
 import { BoggleBoard } from "../components/BoggleBoard.tsx";
+import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Lobby } from "../components/Lobby.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
+import { BONUS_LABELS, type BonusId } from "../types.ts";
+
+const END_ROUND_BONUSES: BonusId[] = ["unique", "lastWord", "loneWolf", "coverage"];
 
 export function BoggleRoom() {
   const { code = "" } = useParams();
@@ -35,6 +40,7 @@ export function BoggleRoom() {
   const {
     state,
     me,
+    playerId,
     connected,
     myWords,
     join,
@@ -45,11 +51,15 @@ export function BoggleRoom() {
     submitWord,
   } = useRoom({
       code: roomCode,
-      onWordResult: (ok, word, _points, reason) => {
+      onWordResult: (ok, word, _points, reason, bonuses) => {
         outcomeSeq.current += 1;
         setWordOutcome({ ok, seq: outcomeSeq.current });
-        if (ok && word) playWordFound(word.length);
-        else if (reason === "duplicate" || reason === "not-a-word" || reason === "bad-path") {
+        if (ok && word) {
+          playWordFound(word.length);
+          if (bonuses?.length) {
+            window.setTimeout(() => playBonusAwards(bonuses, 3), 90);
+          }
+        } else if (reason === "duplicate" || reason === "not-a-word" || reason === "bad-path") {
           playReject();
         } else if (!ok) {
           playReject();
@@ -90,11 +100,22 @@ export function BoggleRoom() {
       if (state.winners?.length) {
         window.setTimeout(() => playWinner(), 280);
       }
+      const mine = state.results?.find((r) => r.id === playerId);
+      if (mine) {
+        const endBonuses: BonusId[] = [
+          ...mine.words.flatMap((w) => w.bonuses.filter((b) => END_ROUND_BONUSES.includes(b))),
+          ...mine.roundAwards.map((a) => a.id),
+        ];
+        const uniqueEnd = [...new Set(endBonuses)];
+        if (uniqueEnd.length) {
+          window.setTimeout(() => playBonusAwards(uniqueEnd, 3), 520);
+        }
+      }
     }
     if (state.phase !== "countdown") lastTick.current = null;
     if (state.phase !== "playing") lastUrgent.current = null;
     phaseRef.current = state.phase;
-  }, [now, state]);
+  }, [now, state, playerId]);
 
   const joinUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -183,7 +204,10 @@ export function BoggleRoom() {
           <ul className="word-chips">
             {[...myWords].reverse().map((w) => (
               <li key={w.word}>
-                {w.word} <em>+{w.points}</em>
+                <span className="word-chip-main">
+                  {w.word} <em>+{w.points}</em>
+                </span>
+                <BonusBadges bonuses={w.bonuses} />
               </li>
             ))}
           </ul>
@@ -204,6 +228,9 @@ export function BoggleRoom() {
           ) : (
             <p className="winner-banner">No scoring words this round</p>
           )}
+          <p className="results-legend muted">
+            Line = 2× path · Solo = 2× unique · flats stack after multipliers
+          </p>
           <div className="results-grid">
             {state.results.map((r) => (
               <article
@@ -214,10 +241,23 @@ export function BoggleRoom() {
                   <h2>{r.name}</h2>
                   <strong>{r.score} pts</strong>
                 </header>
+                {r.roundAwards.length > 0 ? (
+                  <ul className="round-awards">
+                    {r.roundAwards.map((a) => (
+                      <li key={a.id}>
+                        <span className={`bonus-badge bonus-${a.id}`}>{BONUS_LABELS[a.id]}</span>
+                        <em>+{a.points}</em>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <ul>
                   {r.words.map((w) => (
                     <li key={w.word}>
-                      {w.word} <em>+{w.points}</em>
+                      <span className="word-chip-main">
+                        {w.word} <em>+{w.points}</em>
+                      </span>
+                      <BonusBadges bonuses={w.bonuses} />
                     </li>
                   ))}
                   {r.words.length === 0 ? <li className="muted">No words</li> : null}
