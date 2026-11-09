@@ -9,52 +9,122 @@ interface Props {
   onInvalid?: () => void;
 }
 
-/** Geometry hit-test — more reliable than elementFromPoint across iOS cell boundaries. */
-function cellFromCoords(
-  boardEl: HTMLElement,
-  size: number,
-  clientX: number,
-  clientY: number,
-): number | null {
-  const rect = boardEl.getBoundingClientRect();
-  if (rect.width <= 0 || rect.height <= 0) return null;
-  const x = clientX - rect.left;
-  const y = clientY - rect.top;
-  if (x < 0 || y < 0 || x > rect.width || y > rect.height) return null;
+interface CellCenter {
+  idx: number;
+  cx: number;
+  cy: number;
+}
 
+/**
+ * Cell centers in client coordinates.
+ * Boggle letters adjoin horizontally, vertically, OR diagonally (Hasbro rules).
+ */
+function getCellCenters(boardEl: HTMLElement, size: number): CellCenter[] {
+  const rect = boardEl.getBoundingClientRect();
   const styles = getComputedStyle(boardEl);
   const gapX = parseFloat(styles.columnGap || styles.gap) || 0;
   const gapY = parseFloat(styles.rowGap || styles.gap) || 0;
   const cellW = (rect.width - gapX * (size - 1)) / size;
   const cellH = (rect.height - gapY * (size - 1)) / size;
-  if (cellW <= 0 || cellH <= 0) return null;
-
-  // Map into a cell + gap track; ignore pure gap hits by clamping to nearest cell.
-  let col = Math.floor(x / (cellW + gapX));
-  let row = Math.floor(y / (cellH + gapY));
-  col = Math.min(size - 1, Math.max(0, col));
-  row = Math.min(size - 1, Math.max(0, row));
-
-  const localX = x - col * (cellW + gapX);
-  const localY = y - row * (cellH + gapY);
-  // Still count a hit if the finger is slightly in the gap toward this cell.
-  if (localX > cellW + gapX * 0.5 || localY > cellH + gapY * 0.5) return null;
-
-  return row * size + col;
+  const centers: CellCenter[] = [];
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      centers.push({
+        idx: row * size + col,
+        cx: rect.left + col * (cellW + gapX) + cellW / 2,
+        cy: rect.top + row * (cellH + gapY) + cellH / 2,
+      });
+    }
+  }
+  return centers;
 }
 
-function nextPath(current: number[], idx: number, size: number): number[] {
-  if (current.includes(idx)) {
-    if (current.length >= 2 && current[current.length - 2] === idx) {
-      return current.slice(0, -1);
+function dist2(ax: number, ay: number, bx: number, by: number): number {
+  const dx = ax - bx;
+  const dy = ay - by;
+  return dx * dx + dy * dy;
+}
+
+/** Nearest cell under the finger (for starting a path). */
+function nearestCellAt(
+  centers: CellCenter[],
+  clientX: number,
+  clientY: number,
+  maxDist: number,
+): number | null {
+  let best: number | null = null;
+  let bestD = maxDist * maxDist;
+  for (const c of centers) {
+    const d = dist2(clientX, clientY, c.cx, c.cy);
+    if (d <= bestD) {
+      bestD = d;
+      best = c.idx;
     }
-    return current;
   }
-  const last = current[current.length - 1];
-  if (last == null || areAdjacent(size, last, idx)) {
-    return [...current, idx];
+  return best;
+}
+
+function adjacentIndices(size: number, idx: number): number[] {
+  const row = Math.floor(idx / size);
+  const col = idx % size;
+  const out: number[] = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const r = row + dr;
+      const c = col + dc;
+      if (r >= 0 && r < size && c >= 0 && c < size) {
+        out.push(r * size + c);
+      }
+    }
   }
-  return current;
+  return out;
+}
+
+/**
+ * Extend by nearest *adjacent* cell center (incl. diagonals), not raw cell-under-finger.
+ * Crossing a corner toward a diagonal letter no longer snags on the orthogonal neighbor.
+ */
+function extendPathToward(
+  path: number[],
+  size: number,
+  centers: CellCenter[],
+  clientX: number,
+  clientY: number,
+): number[] {
+  if (path.length === 0) {
+    const start = nearestCellAt(centers, clientX, clientY, Infinity);
+    return start != null ? [start] : path;
+  }
+
+  const last = path[path.length - 1]!;
+  const prev = path.length >= 2 ? path[path.length - 2]! : null;
+  const byIdx = new Map(centers.map((c) => [c.idx, c]));
+
+  const candidates = new Set<number>([last]);
+  if (prev != null) candidates.add(prev);
+  for (const n of adjacentIndices(size, last)) {
+    if (!path.includes(n) || n === prev) candidates.add(n);
+  }
+
+  let best = last;
+  let bestD = Infinity;
+  for (const idx of candidates) {
+    const c = byIdx.get(idx);
+    if (!c) continue;
+    const d = dist2(clientX, clientY, c.cx, c.cy);
+    if (d < bestD) {
+      bestD = d;
+      best = idx;
+    }
+  }
+
+  if (best === last) return path;
+  if (prev != null && best === prev) return path.slice(0, -1);
+  if (!path.includes(best) && areAdjacent(size, last, best)) {
+    return [...path, best];
+  }
+  return path;
 }
 
 export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: Props) {
@@ -63,11 +133,18 @@ export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: 
   const dragging = useRef(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const pointerIdRef = useRef<number | null>(null);
+  const centersRef = useRef<CellCenter[]>([]);
 
   const setPathBoth = useCallback((next: number[]) => {
     pathRef.current = next;
     setPath(next);
   }, []);
+
+  const refreshCenters = useCallback(() => {
+    const boardEl = boardRef.current;
+    if (!boardEl) return;
+    centersRef.current = getCellCenters(boardEl, size);
+  }, [size]);
 
   const finish = useCallback(() => {
     if (!dragging.current) return;
@@ -84,18 +161,13 @@ export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: 
 
   const extendAt = useCallback(
     (clientX: number, clientY: number) => {
-      const boardEl = boardRef.current;
-      if (!boardEl) return;
-      const idx = cellFromCoords(boardEl, size, clientX, clientY);
-      if (idx == null) return;
-      const next = nextPath(pathRef.current, idx, size);
-      if (next !== pathRef.current && next.length !== pathRef.current.length) {
-        setPathBoth(next);
-      } else if (next.join(",") !== pathRef.current.join(",")) {
+      if (!centersRef.current.length) refreshCenters();
+      const next = extendPathToward(pathRef.current, size, centersRef.current, clientX, clientY);
+      if (next.join(",") !== pathRef.current.join(",")) {
         setPathBoth(next);
       }
     },
-    [setPathBoth, size],
+    [refreshCenters, setPathBoth, size],
   );
 
   const startAt = useCallback(
@@ -104,7 +176,6 @@ export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: 
       const boardEl = boardRef.current;
       if (!boardEl) return;
 
-      // iOS implicitly captures to the touched cell; release so the board owns the gesture.
       if (target instanceof HTMLElement && target !== boardEl) {
         try {
           if (target.hasPointerCapture?.(pointerId)) {
@@ -121,12 +192,21 @@ export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: 
         /* ignore */
       }
 
+      refreshCenters();
+      const cellW =
+        centersRef.current.length > 1
+          ? Math.hypot(
+              centersRef.current[1]!.cx - centersRef.current[0]!.cx,
+              centersRef.current[1]!.cy - centersRef.current[0]!.cy,
+            )
+          : 80;
+      const start = nearestCellAt(centersRef.current, clientX, clientY, cellW * 0.75);
+
       pointerIdRef.current = pointerId;
       dragging.current = true;
-      const idx = cellFromCoords(boardEl, size, clientX, clientY);
-      setPathBoth(idx != null ? [idx] : []);
+      setPathBoth(start != null ? [start] : []);
     },
-    [disabled, setPathBoth, size],
+    [disabled, refreshCenters, setPathBoth],
   );
 
   return (
