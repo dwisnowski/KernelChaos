@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { BoggleStats } from "../components/BoggleStats.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { unlockAudio } from "../audio/sfx.ts";
 
@@ -121,6 +122,8 @@ export function BoggleEntry() {
         )}
 
         {error ? <p className="error">{error}</p> : null}
+
+        <BoggleStats />
       </section>
     </Layout>
   );

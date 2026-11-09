@@ -19,6 +19,14 @@
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
   ],
+  "d1_databases": [
+    {
+      "binding": "STATS_DB",
+      "database_name": "kernelchaos-stats",
+      "database_id": "8c03480d-b1be-4469-ac2c-2ee88fe2db95",
+      "migrations_dir": "migrations"
+    }
+  ],
   "observability": {
     "enabled": true
   },

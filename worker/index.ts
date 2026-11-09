@@ -1,4 +1,5 @@
 import { CODE_ALPHABET } from "./boggle/protocol.ts";
+import { fetchBoggleStats } from "./boggle/stats.ts";
 import { GameRoom } from "./room.ts";
 
 export { GameRoom };
@@ -18,6 +19,16 @@ export default {
 
     if (url.pathname === "/api/health") {
       return Response.json({ ok: true, app: "kernelchaos" });
+    }
+
+    if (url.pathname === "/api/boggle/stats" && request.method === "GET") {
+      try {
+        const stats = await fetchBoggleStats(env.STATS_DB);
+        return Response.json(stats);
+      } catch (err) {
+        console.error("boggle stats failed", err);
+        return Response.json({ error: "Could not load stats" }, { status: 500 });
+      }
     }
 
     if (url.pathname === "/api/rooms" && request.method === "POST") {

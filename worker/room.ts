@@ -25,6 +25,7 @@ import {
   type BonusId,
 } from "./boggle/scoring.ts";
 import { computeMissedWords } from "./boggle/solver.ts";
+import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
 
 interface WordRecord {
   word: string;
@@ -299,11 +300,36 @@ export class GameRoom extends DurableObject<Env> {
       this.phase = "results";
       this.endsAt = null;
       const endBadges = this.finalizeScores();
+      await this.recordRoundStats(now);
       await this.persist();
       this.broadcastState();
       for (const bonuses of endBadges) {
         this.broadcastBadgeEvent(bonuses);
       }
+    }
+  }
+
+  private async recordRoundStats(completedAt: number): Promise<void> {
+    if (!this.code || this.round < 1) return;
+    try {
+      await insertRoundStats(this.env.STATS_DB, {
+        roomCode: this.code,
+        round: this.round,
+        completedAt,
+        players: [...this.players.values()].map((p) => {
+          const longest = longestAcceptedWord(p.words.keys());
+          return {
+            id: p.id,
+            name: p.name,
+            score: this.playerScore(p),
+            wordCount: p.words.size,
+            longestWord: longest.word,
+            longestLen: longest.len,
+          };
+        }),
+      });
+    } catch (err) {
+      console.error("recordRoundStats failed", err);
     }
   }
 
