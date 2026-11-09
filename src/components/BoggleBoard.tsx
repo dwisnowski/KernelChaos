@@ -1,10 +1,14 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { areAdjacent, pathToWord } from "../lib/path.ts";
+
+export type WordOutcome = { ok: boolean; seq: number };
 
 interface Props {
   board: string[];
   size: number;
   disabled?: boolean;
+  /** Latest server verdict for the submitted path; `seq` must change each time. */
+  wordOutcome?: WordOutcome | null;
   onSubmitPath: (path: number[]) => void;
   onInvalid?: () => void;
 }
@@ -141,18 +145,61 @@ function extendPathToward(
   return path;
 }
 
-export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: Props) {
+const FLASH_MS = 260;
+
+export function BoggleBoard({
+  board,
+  size,
+  disabled,
+  wordOutcome = null,
+  onSubmitPath,
+  onInvalid,
+}: Props) {
   const [path, setPath] = useState<number[]>([]);
+  const [flash, setFlash] = useState<"ok" | "bad" | null>(null);
   const pathRef = useRef<number[]>([]);
   const dragging = useRef(false);
+  const awaitingResult = useRef(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const pointerIdRef = useRef<number | null>(null);
   const centersRef = useRef<CellCenter[]>([]);
+  const flashTimer = useRef<number | null>(null);
+  const lastOutcomeSeq = useRef<number | null>(null);
 
   const setPathBoth = useCallback((next: number[]) => {
     pathRef.current = next;
     setPath(next);
   }, []);
+
+  const clearFlashTimer = useCallback(() => {
+    if (flashTimer.current != null) {
+      window.clearTimeout(flashTimer.current);
+      flashTimer.current = null;
+    }
+  }, []);
+
+  const runFlash = useCallback(
+    (kind: "ok" | "bad") => {
+      clearFlashTimer();
+      awaitingResult.current = false;
+      setFlash(kind);
+      flashTimer.current = window.setTimeout(() => {
+        setFlash(null);
+        setPathBoth([]);
+        flashTimer.current = null;
+      }, FLASH_MS);
+    },
+    [clearFlashTimer, setPathBoth],
+  );
+
+  useEffect(() => {
+    if (!wordOutcome || lastOutcomeSeq.current === wordOutcome.seq) return;
+    if (!awaitingResult.current && pathRef.current.length === 0) return;
+    lastOutcomeSeq.current = wordOutcome.seq;
+    runFlash(wordOutcome.ok ? "ok" : "bad");
+  }, [runFlash, wordOutcome]);
+
+  useEffect(() => () => clearFlashTimer(), [clearFlashTimer]);
 
   const refreshCenters = useCallback(() => {
     const boardEl = boardRef.current;
@@ -166,29 +213,40 @@ export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: 
     pointerIdRef.current = null;
     const current = pathRef.current;
     if (current.length >= 3) {
+      awaitingResult.current = true;
       onSubmitPath(current);
+      // Fallback if the server never answers.
+      clearFlashTimer();
+      flashTimer.current = window.setTimeout(() => {
+        if (awaitingResult.current) runFlash("bad");
+      }, 1200);
     } else if (current.length > 0) {
       onInvalid?.();
+      runFlash("bad");
+    } else {
+      setPathBoth([]);
     }
-    setPathBoth([]);
-  }, [onInvalid, onSubmitPath, setPathBoth]);
+  }, [clearFlashTimer, onInvalid, onSubmitPath, runFlash, setPathBoth]);
 
   const extendAt = useCallback(
     (clientX: number, clientY: number) => {
+      if (awaitingResult.current || flash) return;
       if (!centersRef.current.length) refreshCenters();
       const next = extendPathToward(pathRef.current, size, centersRef.current, clientX, clientY);
       if (next.join(",") !== pathRef.current.join(",")) {
         setPathBoth(next);
       }
     },
-    [refreshCenters, setPathBoth, size],
+    [flash, refreshCenters, setPathBoth, size],
   );
 
   const startAt = useCallback(
     (clientX: number, clientY: number, pointerId: number, target: EventTarget | null) => {
-      if (disabled) return;
+      if (disabled || awaitingResult.current || flash) return;
       const boardEl = boardRef.current;
       if (!boardEl) return;
+      clearFlashTimer();
+      setFlash(null);
 
       if (target instanceof HTMLElement && target !== boardEl) {
         try {
@@ -220,22 +278,24 @@ export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: 
       dragging.current = true;
       setPathBoth(start != null ? [start] : []);
     },
-    [disabled, refreshCenters, setPathBoth],
+    [clearFlashTimer, disabled, flash, refreshCenters, setPathBoth],
   );
 
   return (
     <div className="board-wrap">
       <div
         ref={boardRef}
-        className={`boggle-board size-${size}${disabled ? " is-disabled" : ""}`}
+        className={`boggle-board size-${size}${disabled ? " is-disabled" : ""}${
+          flash ? ` is-flash-${flash}` : ""
+        }`}
         style={{ ["--n" as string]: size }}
         onPointerDown={(e) => {
-          if (disabled || e.button !== 0) return;
+          if (disabled || flash || e.button !== 0) return;
           e.preventDefault();
           startAt(e.clientX, e.clientY, e.pointerId, e.target);
         }}
         onPointerMove={(e) => {
-          if (!dragging.current || disabled) return;
+          if (!dragging.current || disabled || flash) return;
           if (pointerIdRef.current != null && e.pointerId !== pointerIdRef.current) return;
           e.preventDefault();
           extendAt(e.clientX, e.clientY);
@@ -298,6 +358,8 @@ export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: 
             data-cell={i}
             className={`board-cell${path.includes(i) ? " is-selected" : ""}${
               path[path.length - 1] === i ? " is-tip" : ""
+            }${path.includes(i) && flash === "ok" ? " is-flash-ok" : ""}${
+              path.includes(i) && flash === "bad" ? " is-flash-bad" : ""
             }`}
           >
             <span>{letter}</span>

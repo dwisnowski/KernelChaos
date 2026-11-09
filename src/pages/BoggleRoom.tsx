@@ -24,9 +24,11 @@ export function BoggleRoom() {
   const [joined, setJoined] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [wordOutcome, setWordOutcome] = useState<{ ok: boolean; seq: number } | null>(null);
   const lastTick = useRef<number | null>(null);
   const lastUrgent = useRef<number | null>(null);
   const phaseRef = useRef<string | null>(null);
+  const outcomeSeq = useRef(0);
 
   const roomCode = code.toUpperCase();
 
@@ -34,8 +36,12 @@ export function BoggleRoom() {
     useRoom({
       code: roomCode,
       onWordResult: (ok, word, _points, reason) => {
+        outcomeSeq.current += 1;
+        setWordOutcome({ ok, seq: outcomeSeq.current });
         if (ok && word) playWordFound(word.length);
         else if (reason === "duplicate" || reason === "not-a-word" || reason === "bad-path") {
+          playReject();
+        } else if (!ok) {
           playReject();
         }
       },
@@ -156,6 +162,7 @@ export function BoggleRoom() {
           <BoggleBoard
             board={state.board}
             size={state.boardSize}
+            wordOutcome={wordOutcome}
             onSubmitPath={submitWord}
             onInvalid={() => playReject()}
           />
