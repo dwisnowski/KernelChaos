@@ -1,4 +1,5 @@
 export type BoardSize = 4 | 5 | 6;
+export type RoundSeconds = 60 | 90 | 120;
 export type Phase = "lobby" | "countdown" | "playing" | "results";
 
 export interface PlayerPublic {
@@ -17,6 +18,7 @@ export interface RoomState {
   code: string;
   phase: Phase;
   boardSize: BoardSize;
+  roundSeconds: RoundSeconds;
   board: string[] | null;
   countdownEndsAt: number | null;
   endsAt: number | null;
@@ -29,6 +31,7 @@ export interface RoomState {
 export type ClientMessage =
   | { type: "join"; name: string }
   | { type: "setBoardSize"; boardSize: BoardSize }
+  | { type: "setRoundSeconds"; roundSeconds: RoundSeconds }
   | { type: "start" }
   | { type: "submitWord"; path: number[] }
   | { type: "playAgain" };
@@ -38,3 +41,5 @@ export type ServerMessage =
   | { type: "state"; state: RoomState }
   | { type: "wordResult"; ok: boolean; word?: string; points?: number; reason?: string }
   | { type: "error"; message: string };
+
+export const ROUND_SECONDS_OPTIONS: RoundSeconds[] = [60, 90, 120];

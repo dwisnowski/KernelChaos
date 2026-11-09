@@ -4,12 +4,14 @@ import { isDictionaryWord } from "./boggle/dictionary.ts";
 import { isValidPath, pathToWord } from "./boggle/path.ts";
 import {
   COUNTDOWN_MS,
+  DEFAULT_ROUND_SECONDS,
   MIN_WORD_LEN,
-  ROUND_MS,
+  isRoundSeconds,
   type ClientMessage,
   type Phase,
   type PlayerPublic,
   type PlayerResult,
+  type RoundSeconds,
   type RoomState,
   type ServerMessage,
 } from "./boggle/protocol.ts";
@@ -34,6 +36,7 @@ export class GameRoom extends DurableObject<Env> {
   private code = "";
   private phase: Phase = "lobby";
   private boardSize: BoardSize = 4;
+  private roundSeconds: RoundSeconds = DEFAULT_ROUND_SECONDS;
   private board: string[] | null = null;
   private countdownEndsAt: number | null = null;
   private endsAt: number | null = null;
@@ -47,6 +50,7 @@ export class GameRoom extends DurableObject<Env> {
       code: string;
       phase: Phase;
       boardSize: BoardSize;
+      roundSeconds?: RoundSeconds;
       board: string[] | null;
       countdownEndsAt: number | null;
       endsAt: number | null;
@@ -62,6 +66,9 @@ export class GameRoom extends DurableObject<Env> {
       this.code = stored.code;
       this.phase = stored.phase;
       this.boardSize = stored.boardSize;
+      this.roundSeconds = isRoundSeconds(stored.roundSeconds)
+        ? stored.roundSeconds
+        : DEFAULT_ROUND_SECONDS;
       this.board = stored.board;
       this.countdownEndsAt = stored.countdownEndsAt;
       this.endsAt = stored.endsAt;
@@ -86,6 +93,7 @@ export class GameRoom extends DurableObject<Env> {
       code: this.code,
       phase: this.phase,
       boardSize: this.boardSize,
+      roundSeconds: this.roundSeconds,
       board: this.board,
       countdownEndsAt: this.countdownEndsAt,
       endsAt: this.endsAt,
@@ -145,6 +153,9 @@ export class GameRoom extends DurableObject<Env> {
       case "setBoardSize":
         await this.handleSetBoardSize(attachment?.playerId, msg.boardSize);
         break;
+      case "setRoundSeconds":
+        await this.handleSetRoundSeconds(attachment?.playerId, msg.roundSeconds);
+        break;
       case "start":
         await this.handleStart(attachment?.playerId);
         break;
@@ -186,7 +197,7 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase === "countdown" && this.countdownEndsAt != null && now >= this.countdownEndsAt) {
       this.phase = "playing";
       this.countdownEndsAt = null;
-      this.endsAt = now + ROUND_MS;
+      this.endsAt = now + this.roundSeconds * 1000;
       await this.ctx.storage.setAlarm(this.endsAt);
       await this.persist();
       this.broadcastState();
@@ -247,6 +258,18 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "lobby" && this.phase !== "results") return;
     if (!isBoardSize(boardSize)) return;
     this.boardSize = boardSize;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetRoundSeconds(
+    playerId: string | undefined,
+    roundSeconds: RoundSeconds,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isRoundSeconds(roundSeconds)) return;
+    this.roundSeconds = roundSeconds;
     await this.persist();
     this.broadcastState();
   }
@@ -372,6 +395,7 @@ export class GameRoom extends DurableObject<Env> {
       code: this.code,
       phase: this.phase,
       boardSize: this.boardSize,
+      roundSeconds: this.roundSeconds,
       board: this.phase === "lobby" ? null : this.board,
       countdownEndsAt: this.countdownEndsAt,
       endsAt: this.endsAt,

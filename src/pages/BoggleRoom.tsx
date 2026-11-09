@@ -32,8 +32,18 @@ export function BoggleRoom() {
 
   const roomCode = code.toUpperCase();
 
-  const { state, me, connected, myWords, join, setBoardSize, start, playAgain, submitWord } =
-    useRoom({
+  const {
+    state,
+    me,
+    connected,
+    myWords,
+    join,
+    setBoardSize,
+    setRoundSeconds,
+    start,
+    playAgain,
+    submitWord,
+  } = useRoom({
       code: roomCode,
       onWordResult: (ok, word, _points, reason) => {
         outcomeSeq.current += 1;
@@ -124,6 +134,10 @@ export function BoggleRoom() {
           onSetBoardSize={(size) => {
             unlockAudio();
             setBoardSize(size);
+          }}
+          onSetRoundSeconds={(seconds) => {
+            unlockAudio();
+            setRoundSeconds(seconds);
           }}
           onStart={() => {
             unlockAudio();
@@ -230,6 +244,40 @@ export function BoggleRoom() {
                         {n}×{n}
                       </button>
                     ))}
+                  </div>
+                </div>
+                <div className="round-time">
+                  <div className="round-time-header">
+                    <h2>Round time</h2>
+                    <strong>
+                      {state.roundSeconds === 60
+                        ? "1:00"
+                        : state.roundSeconds === 90
+                          ? "1:30"
+                          : "2:00"}
+                    </strong>
+                  </div>
+                  <input
+                    className="round-slider"
+                    type="range"
+                    min={0}
+                    max={2}
+                    step={1}
+                    value={[60, 90, 120].indexOf(state.roundSeconds ?? 90)}
+                    aria-label="Round time"
+                    onChange={(e) => {
+                      const opts = [60, 90, 120] as const;
+                      const next = opts[Number(e.target.value)];
+                      if (next) {
+                        unlockAudio();
+                        setRoundSeconds(next);
+                      }
+                    }}
+                  />
+                  <div className="round-ticks" aria-hidden="true">
+                    <span>1:00</span>
+                    <span>1:30</span>
+                    <span>2:00</span>
                   </div>
                 </div>
                 <button

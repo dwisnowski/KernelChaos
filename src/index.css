@@ -380,6 +380,55 @@ input {
   cursor: default;
 }
 
+.round-time {
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.round-time-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.round-time-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.round-time-header strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.round-slider {
+  width: 100%;
+  accent-color: var(--accent);
+  height: 1.4rem;
+  cursor: pointer;
+}
+
+.round-slider:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.round-ticks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-family: var(--font-display);
+}
+
 .start-btn {
   width: 100%;
   padding: 1rem;

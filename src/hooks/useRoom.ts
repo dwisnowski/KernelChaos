@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BoardSize, ClientMessage, RoomState, ServerMessage } from "../types.ts";
+import type {
+  BoardSize,
+  ClientMessage,
+  RoundSeconds,
+  RoomState,
+  ServerMessage,
+} from "../types.ts";
 
 export interface FoundWord {
   word: string;
@@ -104,6 +110,11 @@ export function useRoom({ code, onWordResult, onError }: UseRoomOptions) {
     [send],
   );
 
+  const setRoundSeconds = useCallback(
+    (roundSeconds: RoundSeconds) => send({ type: "setRoundSeconds", roundSeconds }),
+    [send],
+  );
+
   const start = useCallback(() => send({ type: "start" }), [send]);
   const playAgain = useCallback(() => send({ type: "playAgain" }), [send]);
   const submitWord = useCallback(
@@ -121,6 +132,7 @@ export function useRoom({ code, onWordResult, onError }: UseRoomOptions) {
     myWords,
     join,
     setBoardSize,
+    setRoundSeconds,
     start,
     playAgain,
     submitWord,

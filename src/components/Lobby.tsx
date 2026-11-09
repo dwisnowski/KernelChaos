@@ -1,18 +1,40 @@
 import { QRCodeSVG } from "qrcode.react";
-import type { BoardSize, PlayerPublic, RoomState } from "../types.ts";
+import {
+  ROUND_SECONDS_OPTIONS,
+  type BoardSize,
+  type PlayerPublic,
+  type RoundSeconds,
+  type RoomState,
+} from "../types.ts";
 
 interface Props {
   state: RoomState;
   me: PlayerPublic | null;
   joinUrl: string;
   onSetBoardSize: (size: BoardSize) => void;
+  onSetRoundSeconds: (seconds: RoundSeconds) => void;
   onStart: () => void;
 }
 
 const SIZES: BoardSize[] = [4, 5, 6];
 
-export function Lobby({ state, me, joinUrl, onSetBoardSize, onStart }: Props) {
+function formatRoundLabel(seconds: RoundSeconds): string {
+  if (seconds === 60) return "1:00";
+  if (seconds === 90) return "1:30";
+  return "2:00";
+}
+
+export function Lobby({
+  state,
+  me,
+  joinUrl,
+  onSetBoardSize,
+  onSetRoundSeconds,
+  onStart,
+}: Props) {
   const isHost = me?.isHost ?? false;
+  const roundSeconds = state.roundSeconds ?? 90;
+  const sliderIndex = Math.max(0, ROUND_SECONDS_OPTIONS.indexOf(roundSeconds));
 
   return (
     <section className="lobby">
@@ -55,7 +77,34 @@ export function Lobby({ state, me, joinUrl, onSetBoardSize, onStart }: Props) {
               </button>
             ))}
           </div>
-          {!isHost ? <p className="muted">Only the host can change the size.</p> : null}
+        </div>
+
+        <div className="round-time">
+          <div className="round-time-header">
+            <h2>Round time</h2>
+            <strong aria-live="polite">{formatRoundLabel(roundSeconds)}</strong>
+          </div>
+          <input
+            className="round-slider"
+            type="range"
+            min={0}
+            max={ROUND_SECONDS_OPTIONS.length - 1}
+            step={1}
+            value={sliderIndex}
+            disabled={!isHost}
+            aria-label="Round time"
+            aria-valuetext={formatRoundLabel(roundSeconds)}
+            onChange={(e) => {
+              const next = ROUND_SECONDS_OPTIONS[Number(e.target.value)];
+              if (next) onSetRoundSeconds(next);
+            }}
+          />
+          <div className="round-ticks" aria-hidden="true">
+            {ROUND_SECONDS_OPTIONS.map((s) => (
+              <span key={s}>{formatRoundLabel(s)}</span>
+            ))}
+          </div>
+          {!isHost ? <p className="muted">Only the host can change size and time.</p> : null}
         </div>
 
         {isHost ? (
