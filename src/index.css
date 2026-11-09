@@ -471,7 +471,7 @@ input {
   aspect-ratio: 1;
   display: grid;
   grid-template-columns: repeat(var(--n), 1fr);
-  gap: clamp(0.35rem, 1.5vw, 0.7rem);
+  gap: clamp(0.55rem, 2.2vw, 1rem);
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;

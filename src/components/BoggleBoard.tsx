@@ -64,26 +64,67 @@ function nearestCellAt(
   return best;
 }
 
-function adjacentIndices(size: number, idx: number): number[] {
-  const row = Math.floor(idx / size);
-  const col = idx % size;
-  const out: number[] = [];
-  for (let dr = -1; dr <= 1; dr++) {
-    for (let dc = -1; dc <= 1; dc++) {
-      if (dr === 0 && dc === 0) continue;
-      const r = row + dr;
-      const c = col + dc;
-      if (r >= 0 && r < size && c >= 0 && c < size) {
-        out.push(r * size + c);
-      }
-    }
+/** Orthogonal stride between neighboring cell centers (average of first row step). */
+function orthogonalStride(centers: CellCenter[], size: number): number {
+  if (centers.length < 2) return 80;
+  const a = centers[0]!;
+  const b = centers[1]!;
+  // Prefer horizontal neighbor when available.
+  if (size > 1) {
+    return Math.hypot(b.cx - a.cx, b.cy - a.cy);
   }
-  return out;
+  return 80;
+}
+
+function neighborInDirection(size: number, idx: number, dr: number, dc: number): number | null {
+  const row = Math.floor(idx / size) + dr;
+  const col = (idx % size) + dc;
+  if (row < 0 || row >= size || col < 0 || col >= size) return null;
+  return row * size + col;
 }
 
 /**
- * Extend by nearest *adjacent* cell center (incl. diagonals), not raw cell-under-finger.
- * Crossing a corner toward a diagonal letter no longer snags on the orthogonal neighbor.
+ * Map finger angle from the current letter into one of 8 equal wedges.
+ * Diagonals get the same ±22.5° share as orthogonals — nearest-center made
+ * diagonals harder because those centers are √2 farther away.
+ *
+ * atan2(dy, dx): 0 = east, increases clockwise in screen coords (y down).
+ * Sectors: E, SE, S, SW, W, NW, N, NE.
+ */
+function directionFromDelta(dx: number, dy: number): { dr: number; dc: number } {
+  const angle = Math.atan2(dy, dx); // -PI..PI
+  const step = Math.PI / 4;
+  // Round to nearest 45° sector; shift so 0 maps to east.
+  let sector = Math.round(angle / step);
+  if (sector === -4) sector = 4;
+  // sector: 0 E, 1 SE, 2 S, 3 SW, 4/-4 W, -3 NW, -2 N, -1 NE
+  switch (sector) {
+    case 0:
+      return { dr: 0, dc: 1 };
+    case 1:
+      return { dr: 1, dc: 1 };
+    case 2:
+      return { dr: 1, dc: 0 };
+    case 3:
+      return { dr: 1, dc: -1 };
+    case 4:
+    case -4:
+      return { dr: 0, dc: -1 };
+    case -3:
+      return { dr: -1, dc: -1 };
+    case -2:
+      return { dr: -1, dc: 0 };
+    case -1:
+      return { dr: -1, dc: 1 };
+    default:
+      return { dr: 0, dc: 1 };
+  }
+}
+
+/**
+ * Direction-wedge selection: once the finger leaves a small dead zone around
+ * the current letter, snap to the adjacent letter in that compass direction
+ * (including diagonals). Pull back toward the previous letter to undo.
  */
 function extendPathToward(
   path: number[],
@@ -100,31 +141,37 @@ function extendPathToward(
   const last = path[path.length - 1]!;
   const prev = path.length >= 2 ? path[path.length - 2]! : null;
   const byIdx = new Map(centers.map((c) => [c.idx, c]));
+  const lastC = byIdx.get(last);
+  if (!lastC) return path;
 
-  const candidates = new Set<number>([last]);
-  if (prev != null) candidates.add(prev);
-  for (const n of adjacentIndices(size, last)) {
-    if (!path.includes(n) || n === prev) candidates.add(n);
-  }
+  const dx = clientX - lastC.cx;
+  const dy = clientY - lastC.cy;
+  const dist = Math.hypot(dx, dy);
+  const stride = orthogonalStride(centers, size);
 
-  let best = last;
-  let bestD = Infinity;
-  for (const idx of candidates) {
-    const c = byIdx.get(idx);
-    if (!c) continue;
-    const d = dist2(clientX, clientY, c.cx, c.cy);
-    if (d < bestD) {
-      bestD = d;
-      best = idx;
+  // Stay on the current letter until the finger clearly commits to a direction.
+  const commitRadius = stride * 0.32;
+  if (dist < commitRadius) return path;
+
+  // Prefer backtracking when pulling toward the previous letter.
+  if (prev != null) {
+    const prevC = byIdx.get(prev);
+    if (prevC) {
+      const toPrev = dist2(clientX, clientY, prevC.cx, prevC.cy);
+      const toLast = dist2(clientX, clientY, lastC.cx, lastC.cy);
+      if (toPrev < toLast * 0.92) {
+        return path.slice(0, -1);
+      }
     }
   }
 
-  if (best === last) return path;
-  if (prev != null && best === prev) return path.slice(0, -1);
-  if (!path.includes(best) && areAdjacent(size, last, best)) {
-    return [...path, best];
-  }
-  return path;
+  const { dr, dc } = directionFromDelta(dx, dy);
+  const next = neighborInDirection(size, last, dr, dc);
+  if (next == null) return path;
+  if (prev != null && next === prev) return path.slice(0, -1);
+  if (path.includes(next)) return path;
+  if (!areAdjacent(size, last, next)) return path;
+  return [...path, next];
 }
 
 export function BoggleBoard({ board, size, disabled, onSubmitPath, onInvalid }: Props) {
