@@ -14,6 +14,7 @@ import { BoggleBoard } from "../components/BoggleBoard.tsx";
 import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Lobby } from "../components/Lobby.tsx";
+import { WordLengthPie } from "../components/WordLengthPie.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
 import { BONUS_LABELS, type BonusId } from "../types.ts";
 
@@ -251,6 +252,11 @@ export function BoggleRoom() {
                     ))}
                   </ul>
                 ) : null}
+                <WordLengthPie
+                  words={r.words.map((w) => w.word)}
+                  label={`${r.name} word lengths`}
+                  size={132}
+                />
                 <ul>
                   {r.words.map((w) => (
                     <li key={w.word}>

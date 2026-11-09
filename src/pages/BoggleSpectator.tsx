@@ -5,6 +5,8 @@ import { playBonusAwards, unlockAudio } from "../audio/sfx.ts";
 import { BoggleBoard } from "../components/BoggleBoard.tsx";
 import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
+import { MissedWordCloud } from "../components/MissedWordCloud.tsx";
+import { WordLengthPie } from "../components/WordLengthPie.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
 
 export function BoggleSpectator() {
@@ -147,34 +149,50 @@ export function BoggleSpectator() {
 
         {state?.phase === "results" && state.results ? (
           <div className="spectator-results">
-            <h1 className="results-title">Round {state.round} — phones have the scores</h1>
-            <p className="winner-banner spectator-results-banner">
-              Word chase over. Check your phone for the winner.
-            </p>
-            <ul className="spectator-counts is-results" aria-label="Final word counts">
-              {playersByWords.map((p) => (
-                <li key={p.id}>
-                  <span className="spectator-name">{p.name}</span>
-                  <strong className="spectator-count">{p.wordCount} words</strong>
-                </li>
-              ))}
-            </ul>
-            {badgeFeed.length > 0 ? (
-              <div className="spectator-badges is-inline">
-                <h2>Round badges</h2>
-                <ul className="spectator-badge-feed">
-                  {badgeFeed.map((item) => (
-                    <li key={item.id} className="spectator-badge-row">
-                      <BonusBadges bonuses={item.bonuses} className="spectator-badge-pills" />
-                    </li>
-                  ))}
-                </ul>
+            <aside className="spectator-side spectator-missed">
+              <p className="spectator-tag">Missed words</p>
+              <h2 className="spectator-missed-title">Still on the board</h2>
+              <MissedWordCloud words={state.missedWords ?? []} />
+            </aside>
+
+            <div className="spectator-results-main">
+              <h1 className="results-title">Round {state.round} — phones have the scores</h1>
+              <p className="winner-banner spectator-results-banner">
+                Word chase over. Check your phone for the winner.
+              </p>
+              <p className="spectator-tag">Words by length</p>
+              <div className="spectator-pies" aria-label="Word length breakdowns">
+                {state.results.map((r) => (
+                  <article key={r.id} className="spectator-pie-card">
+                    <header>
+                      <h2 className="spectator-name">{r.name}</h2>
+                      <strong className="spectator-count">{r.wordCount}</strong>
+                    </header>
+                    <WordLengthPie
+                      words={r.words.map((w) => w.word)}
+                      label={`${r.name} word lengths`}
+                      size={160}
+                    />
+                  </article>
+                ))}
               </div>
-            ) : null}
-            <p className="muted">
-              Host starts the next round from their phone.{" "}
-              <Link to={`/boggle/room/${roomCode}`}>Open player view</Link>
-            </p>
+              {badgeFeed.length > 0 ? (
+                <div className="spectator-badges is-inline">
+                  <h2>Round badges</h2>
+                  <ul className="spectator-badge-feed">
+                    {badgeFeed.map((item) => (
+                      <li key={item.id} className="spectator-badge-row">
+                        <BonusBadges bonuses={item.bonuses} className="spectator-badge-pills" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <p className="muted">
+                Host starts the next round from their phone.{" "}
+                <Link to={`/boggle/room/${roomCode}`}>Open player view</Link>
+              </p>
+            </div>
           </div>
         ) : null}
       </section>

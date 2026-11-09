@@ -72,6 +72,8 @@ export interface RoomState {
   players: PlayerPublic[];
   results: PlayerResult[] | null;
   winners: string[] | null;
+  /** Board dictionary words nobody found; results only */
+  missedWords: string[] | null;
   round: number;
 }
 

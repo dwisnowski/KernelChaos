@@ -42,6 +42,8 @@ export interface RoomState {
   /** Present in results phase */
   results: PlayerResult[] | null;
   winners: string[] | null;
+  /** Board dictionary words nobody found; results only */
+  missedWords: string[] | null;
   round: number;
 }
 
