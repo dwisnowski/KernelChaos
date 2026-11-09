@@ -13,3 +13,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0002 – Chaos scoring, badges, and SFX](adr/0002-chaos-scoring-badges.md) — Length ramp + path/unique multipliers + flat/round awards; badge pills; per-bonus Web Audio cues; provisional then final scores
 - [0003 – TV spectator screen](adr/0003-tv-spectator-screen.md) — Spectator WS role; `/tv` display with word counts + anonymous badge feed; score-blind central TV
 - [0004 – Results length pies and missed-word cloud](adr/0004-results-length-pies-missed-cloud.md) — Board solver at results; per-player length donuts on phone+TV; TV missed-word cloud (score-blind)
+- [0005 – TV post-game scores](adr/0005-tv-post-game-scores.md) — Results on TV show winner + points; play stays score-blind

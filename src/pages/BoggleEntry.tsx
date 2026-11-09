@@ -1,11 +1,14 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "../components/Layout.tsx";
 import { unlockAudio } from "../audio/sfx.ts";
 
 export function BoggleEntry() {
   const [params] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const isJoinFocus =
+    location.pathname.endsWith("/join") || Boolean(params.get("code"));
   const [name, setName] = useState(() => localStorage.getItem("kernelchaos.name") ?? "");
   const [code, setCode] = useState(() => (params.get("code") ?? "").toUpperCase());
   const [busy, setBusy] = useState(false);
@@ -54,6 +57,37 @@ export function BoggleEntry() {
     navigate(`/boggle/room/${room}`, { state: { name: trimmed } });
   }
 
+  const createCard = (
+    <form className="entry-card" onSubmit={createRoom}>
+      <h2>Start a session</h2>
+      <p>Create a room and share the code or QR with family.</p>
+      <button className={`btn${isJoinFocus ? "" : " primary"}`} type="submit" disabled={busy}>
+        {busy ? "Creating…" : "Create room"}
+      </button>
+    </form>
+  );
+
+  const joinCard = (
+    <form className="entry-card" onSubmit={joinRoom}>
+      <h2>Join a session</h2>
+      <label className="field">
+        <span>Room code</span>
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          maxLength={4}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="A7K3"
+        />
+      </label>
+      <button className={`btn${isJoinFocus ? " primary" : ""}`} type="submit">
+        Join room
+      </button>
+    </form>
+  );
+
   return (
     <Layout title="KernelChaos · Boggle">
       <section className="entry">
@@ -74,32 +108,17 @@ export function BoggleEntry() {
           />
         </label>
 
-        <form className="entry-card" onSubmit={createRoom}>
-          <h2>Start a session</h2>
-          <p>Create a room and share the code or QR with family.</p>
-          <button className="btn primary" type="submit" disabled={busy}>
-            {busy ? "Creating…" : "Create room"}
-          </button>
-        </form>
-
-        <form className="entry-card" onSubmit={joinRoom}>
-          <h2>Join a session</h2>
-          <label className="field">
-            <span>Room code</span>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              maxLength={4}
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              placeholder="A7K3"
-            />
-          </label>
-          <button className="btn" type="submit">
-            Join room
-          </button>
-        </form>
+        {isJoinFocus ? (
+          <>
+            {joinCard}
+            {createCard}
+          </>
+        ) : (
+          <>
+            {createCard}
+            {joinCard}
+          </>
+        )}
 
         {error ? <p className="error">{error}</p> : null}
       </section>

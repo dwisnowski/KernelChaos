@@ -78,8 +78,8 @@ export function BoggleSpectator() {
                   size={240}
                   level="M"
                   includeMargin
-                  bgColor="#f4f7f2"
-                  fgColor="#0e2a24"
+                  bgColor="#f2f5fa"
+                  fgColor="#0e1f35"
                 />
               </div>
               <p className="muted qr-hint">Players scan to join on their phones</p>
@@ -156,17 +156,44 @@ export function BoggleSpectator() {
             </aside>
 
             <div className="spectator-results-main">
-              <h1 className="results-title">Round {state.round} — phones have the scores</h1>
-              <p className="winner-banner spectator-results-banner">
-                Word chase over. Check your phone for the winner.
-              </p>
+              <h1 className="results-title">Round {state.round} results</h1>
+              {state.winners && state.winners.length > 0 ? (
+                <p className="winner-banner spectator-results-banner">
+                  {state.winners.length > 1 ? "Tie! " : "Winner: "}
+                  {state.results
+                    .filter((r) => state.winners!.includes(r.id))
+                    .map((r) => r.name)
+                    .join(" & ")}
+                </p>
+              ) : (
+                <p className="winner-banner spectator-results-banner">
+                  No scoring words this round
+                </p>
+              )}
+              <ul className="spectator-scoreboard" aria-label="Final scores">
+                {state.results.map((r) => (
+                  <li
+                    key={r.id}
+                    className={state.winners?.includes(r.id) ? "is-winner" : undefined}
+                  >
+                    <span className="spectator-name">{r.name}</span>
+                    <span className="spectator-score-meta">
+                      <em>{r.wordCount} words</em>
+                      <strong className="spectator-count">{r.score} pts</strong>
+                    </span>
+                  </li>
+                ))}
+              </ul>
               <p className="spectator-tag">Words by length</p>
               <div className="spectator-pies" aria-label="Word length breakdowns">
                 {state.results.map((r) => (
-                  <article key={r.id} className="spectator-pie-card">
+                  <article
+                    key={r.id}
+                    className={`spectator-pie-card${state.winners?.includes(r.id) ? " is-winner" : ""}`}
+                  >
                     <header>
                       <h2 className="spectator-name">{r.name}</h2>
-                      <strong className="spectator-count">{r.wordCount}</strong>
+                      <strong className="spectator-count">{r.score} pts</strong>
                     </header>
                     <WordLengthPie
                       words={r.words.map((w) => w.word)}

@@ -44,7 +44,7 @@ export function Lobby({
           {state.code}
         </p>
         <div className="qr-wrap">
-          <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#f4f7f2" fgColor="#0e2a24" />
+          <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#f2f5fa" fgColor="#0e1f35" />
         </div>
         <p className="muted qr-hint">Scan to join · {joinUrl.replace(/^https?:\/\//, "")}</p>
         <a

@@ -14,7 +14,7 @@ Family sessions often put a living-room TV on the room code / board while everyo
 - Ship a dedicated route `/boggle/room/:code/tv` for the central display. Lobby links open it in a new tab.
 - During play the TV shows: large timer, read-only board, **per-player word counts only** (no points, no winner), and a **Chaos hits** feed of badge pills.
 - Badge pops are broadcast as anonymous `badgeEvent` messages (bonus ids + timestamp only — never player id/name/word). Live submit bonuses and end-of-round awards both feed the TV.
-- Results on the TV stay score-blind: word counts plus the anonymous badge feed; phones remain the place for winners and point breakdowns.
+- Results on the TV originally stayed score-blind (word counts + badge feed). **Superseded for results** by [ADR 0005](./0005-tv-post-game-scores.md): TV now shows winner + points after the round; play remains score-blind.
 
 ## Consequences
 
