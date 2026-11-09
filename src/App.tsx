@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { BoggleEntry } from "./pages/BoggleEntry.tsx";
 import { BoggleRoom } from "./pages/BoggleRoom.tsx";
+import { BoggleSpectator } from "./pages/BoggleSpectator.tsx";
 import { Home } from "./pages/Home.tsx";
 
 export function App() {
@@ -10,6 +11,7 @@ export function App() {
       <Route path="/boggle" element={<BoggleEntry />} />
       <Route path="/boggle/join" element={<BoggleEntry />} />
       <Route path="/boggle/room/:code" element={<BoggleRoom />} />
+      <Route path="/boggle/room/:code/tv" element={<BoggleSpectator />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

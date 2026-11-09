@@ -43,7 +43,8 @@ interface PlayerRecord {
 }
 
 interface Attachment {
-  playerId: string;
+  playerId?: string;
+  spectator?: boolean;
 }
 
 interface StoredWord {
@@ -231,6 +232,9 @@ export class GameRoom extends DurableObject<Env> {
       case "join":
         await this.handleJoin(ws, msg.name);
         break;
+      case "spectate":
+        await this.handleSpectate(ws);
+        break;
       case "setBoardSize":
         await this.handleSetBoardSize(attachment?.playerId, msg.boardSize);
         break;
@@ -254,7 +258,7 @@ export class GameRoom extends DurableObject<Env> {
   async webSocketClose(ws: WebSocket, _code: number, _reason: string, _wasClean: boolean): Promise<void> {
     await this.ensureLoaded();
     const attachment = ws.deserializeAttachment() as Attachment | null;
-    if (!attachment?.playerId) return;
+    if (!attachment?.playerId || attachment.spectator) return;
 
     const player = this.players.get(attachment.playerId);
     if (!player) return;
@@ -288,10 +292,37 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase === "playing" && this.endsAt != null && now >= this.endsAt) {
       this.phase = "results";
       this.endsAt = null;
-      this.finalizeScores();
+      const endBadges = this.finalizeScores();
       await this.persist();
       this.broadcastState();
+      for (const bonuses of endBadges) {
+        this.broadcastBadgeEvent(bonuses);
+      }
     }
+  }
+
+  private async handleSpectate(ws: WebSocket): Promise<void> {
+    if (!this.code) {
+      this.send(ws, { type: "error", message: "Room not ready" });
+      return;
+    }
+    const existing = ws.deserializeAttachment() as Attachment | null;
+    if (existing?.playerId && this.players.has(existing.playerId)) {
+      this.send(ws, {
+        type: "welcome",
+        playerId: existing.playerId,
+        role: "player",
+        state: this.publicState(),
+      });
+      return;
+    }
+    ws.serializeAttachment({ spectator: true } satisfies Attachment);
+    this.send(ws, {
+      type: "welcome",
+      playerId: "",
+      role: "spectator",
+      state: this.publicState(),
+    });
   }
 
   private async handleJoin(ws: WebSocket, rawName: string): Promise<void> {
@@ -314,6 +345,7 @@ export class GameRoom extends DurableObject<Env> {
       this.send(ws, {
         type: "welcome",
         playerId: existing.playerId,
+        role: "player",
         state: this.publicState(),
       });
       return;
@@ -330,7 +362,12 @@ export class GameRoom extends DurableObject<Env> {
     });
     ws.serializeAttachment({ playerId: id } satisfies Attachment);
     await this.persist();
-    this.send(ws, { type: "welcome", playerId: id, state: this.publicState() });
+    this.send(ws, {
+      type: "welcome",
+      playerId: id,
+      role: "player",
+      state: this.publicState(),
+    });
     this.broadcastState(ws);
   }
 
@@ -482,11 +519,17 @@ export class GameRoom extends DurableObject<Env> {
       bonuses: scored.bonuses,
     });
     this.broadcastState();
+    if (scored.bonuses.length > 0) {
+      this.broadcastBadgeEvent(scored.bonuses);
+    }
   }
 
-  /** Apply unique / last-word / lone-wolf / coverage once when entering results. */
-  private finalizeScores(): void {
-    if (this.scoresFinalized) return;
+  /**
+   * Apply unique / last-word / lone-wolf / coverage once when entering results.
+   * Returns anonymous badge batches for the TV feed (no player ids).
+   */
+  private finalizeScores(): BonusId[][] {
+    if (this.scoresFinalized) return [];
     this.scoresFinalized = true;
 
     const finders = new Map<string, string[]>();
@@ -499,15 +542,19 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     const last = this.lastAccept;
+    const anonymousBatches: BonusId[][] = [];
 
     for (const p of this.players.values()) {
       for (const rec of p.words.values()) {
         const unique = (finders.get(rec.word)?.length ?? 0) === 1;
         const isLastWord = last != null && last.playerId === p.id && last.word === rec.word;
+        const before = new Set(rec.bonuses);
         const bonuses = finalizeWordBonuses(rec.bonuses, { unique, isLastWord });
         const rareCount = rareLetterCount(rec.word);
         rec.bonuses = bonuses;
         rec.points = computePoints(rec.base, bonuses, rareCount);
+        const added = bonuses.filter((b) => !before.has(b));
+        if (added.length > 0) anonymousBatches.push(added);
       }
     }
 
@@ -520,13 +567,17 @@ export class GameRoom extends DurableObject<Env> {
       const awards: RoundAward[] = [];
       if (loneWolfId === p.id) {
         awards.push({ id: "loneWolf", points: 5 });
+        anonymousBatches.push(["loneWolf"]);
       }
       const cov = coveragePoints([...p.words.values()].map((w) => w.path));
       if (cov > 0) {
         awards.push({ id: "coverage", points: cov });
+        anonymousBatches.push(["coverage"]);
       }
       p.roundAwards = awards;
     }
+
+    return anonymousBatches;
   }
 
   private playerScore(p: PlayerRecord): number {
@@ -541,6 +592,7 @@ export class GameRoom extends DurableObject<Env> {
 
   private publicState(): RoomState {
     if (this.phase === "results" && !this.scoresFinalized) {
+      // Late reconnect path — end badges already missed for this round.
       this.finalizeScores();
     }
 
@@ -599,6 +651,22 @@ export class GameRoom extends DurableObject<Env> {
       ws.send(JSON.stringify(msg));
     } catch {
       /* socket gone */
+    }
+  }
+
+  private broadcastBadgeEvent(bonuses: BonusId[]): void {
+    if (bonuses.length === 0) return;
+    const payload = JSON.stringify({
+      type: "badgeEvent",
+      bonuses,
+      at: Date.now(),
+    } satisfies ServerMessage);
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.send(payload);
+      } catch {
+        /* ignore */
+      }
     }
   }
 

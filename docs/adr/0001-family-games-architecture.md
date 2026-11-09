@@ -29,5 +29,5 @@ Constraints that shaped the design:
 - Family sessions work from any browser with WebSockets; no app install.
 - Room state lives in the DO (persisted + alarms for countdown/round end); empty or abandoned codes may still occupy DO names until eviction/reuse policy evolves.
 - Dictionary size affects Worker bundle size; Enable1 trim is acceptable for MVP but may need compression later.
-- TV “display mode” is CSS breakpoints, not a separate spectator role — the host can still play from the TV browser if desired.
+- TV “display mode” began as CSS breakpoints (host can still play from the TV browser). Living-room score-blind viewing is a separate spectator role — see [ADR 0003](./0003-tv-spectator-screen.md).
 - Code anchors: `worker/room.ts`, `worker/boggle/`, `src/pages/BoggleRoom.tsx`, `src/components/BoggleBoard.tsx`, `src/audio/sfx.ts`, `wrangler.jsonc`.

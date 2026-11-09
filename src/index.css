@@ -844,7 +844,185 @@ input {
   }
 }
 
+.tv-link {
+  display: inline-flex;
+  margin-top: 0.85rem;
+  text-decoration: none;
+  justify-content: center;
+}
+
+.spectator-screen {
+  display: grid;
+  gap: 1rem;
+  min-height: min(78dvh, 900px);
+}
+
+.spectator-tag {
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.spectator-lobby {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.spectator-lobby-main {
+  text-align: center;
+  display: grid;
+  gap: 0.65rem;
+  justify-items: center;
+}
+
+.spectator-roster,
+.spectator-counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.spectator-roster li,
+.spectator-counts li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+}
+
+.spectator-roster em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.85rem;
+}
+
+.spectator-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.spectator-count {
+  font-family: var(--font-display);
+  color: var(--accent-2);
+  font-size: 1.15em;
+}
+
+.spectator-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+}
+
+.spectator-play {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.spectator-side,
+.spectator-badges {
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+
+.spectator-badges h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.5vw, 1.7rem);
+}
+
+.spectator-badge-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: min(58dvh, 640px);
+  overflow: auto;
+}
+
+.spectator-badge-row {
+  animation: badge-pop 0.45s ease both;
+}
+
+.spectator-badge-pills {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.spectator-badge-pills .bonus-badge {
+  font-size: clamp(0.95rem, 2vw, 1.25rem);
+  padding: 0.28rem 0.7rem;
+}
+
+.spectator-board .boggle-board {
+  width: min(100%, 720px);
+}
+
+.spectator-results {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.spectator-results-banner {
+  max-width: 28rem;
+}
+
+.spectator-counts.is-results {
+  width: min(520px, 100%);
+}
+
+.spectator-badges.is-inline {
+  width: min(640px, 100%);
+  justify-items: center;
+}
+
+.spectator-badges.is-inline .spectator-badge-feed {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-height: none;
+}
+
+@keyframes badge-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.app-main:has(.spectator-screen) {
+  width: min(1400px, 100%);
+}
+
 @media (min-width: 820px) {
+  .spectator-lobby {
+    grid-template-columns: 1.2fr 0.8fr;
+    align-items: start;
+  }
+
+  .spectator-play {
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(200px, 280px);
+  }
+
   .lobby {
     grid-template-columns: 1.1fr 0.9fr;
     align-items: start;

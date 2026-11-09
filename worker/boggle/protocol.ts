@@ -47,6 +47,7 @@ export interface RoomState {
 
 export type ClientMessage =
   | { type: "join"; name: string }
+  | { type: "spectate" }
   | { type: "setBoardSize"; boardSize: BoardSize }
   | { type: "setRoundSeconds"; roundSeconds: RoundSeconds }
   | { type: "start" }
@@ -54,7 +55,7 @@ export type ClientMessage =
   | { type: "playAgain" };
 
 export type ServerMessage =
-  | { type: "welcome"; playerId: string; state: RoomState }
+  | { type: "welcome"; playerId: string; state: RoomState; role?: "player" | "spectator" }
   | { type: "state"; state: RoomState }
   | {
       type: "wordResult";
@@ -64,6 +65,8 @@ export type ServerMessage =
       bonuses?: BonusId[];
       reason?: string;
     }
+  /** Anonymous badge pop for TV spectator — never includes player identity. */
+  | { type: "badgeEvent"; bonuses: BonusId[]; at: number }
   | { type: "error"; message: string };
 
 export const CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";

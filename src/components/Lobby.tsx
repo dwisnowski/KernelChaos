@@ -47,6 +47,14 @@ export function Lobby({
           <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#f4f7f2" fgColor="#0e2a24" />
         </div>
         <p className="muted qr-hint">Scan to join · {joinUrl.replace(/^https?:\/\//, "")}</p>
+        <a
+          className="btn tv-link"
+          href={`/boggle/room/${state.code}/tv`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open TV spectator
+        </a>
       </div>
 
       <div className="lobby-side">
