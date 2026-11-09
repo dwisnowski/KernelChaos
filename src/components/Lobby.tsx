@@ -1,0 +1,71 @@
+import { QRCodeSVG } from "qrcode.react";
+import type { BoardSize, PlayerPublic, RoomState } from "../types.ts";
+
+interface Props {
+  state: RoomState;
+  me: PlayerPublic | null;
+  joinUrl: string;
+  onSetBoardSize: (size: BoardSize) => void;
+  onStart: () => void;
+}
+
+const SIZES: BoardSize[] = [4, 5, 6];
+
+export function Lobby({ state, me, joinUrl, onSetBoardSize, onStart }: Props) {
+  const isHost = me?.isHost ?? false;
+
+  return (
+    <section className="lobby">
+      <div className="lobby-join">
+        <p className="lobby-label">Room code</p>
+        <p className="room-code" aria-label={`Room code ${state.code}`}>
+          {state.code}
+        </p>
+        <div className="qr-wrap">
+          <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#f4f7f2" fgColor="#0e2a24" />
+        </div>
+        <p className="muted qr-hint">Scan to join · {joinUrl.replace(/^https?:\/\//, "")}</p>
+      </div>
+
+      <div className="lobby-side">
+        <div className="player-list">
+          <h2>Players</h2>
+          <ul>
+            {state.players.map((p) => (
+              <li key={p.id}>
+                <span>{p.name}</span>
+                {p.isHost ? <em>host</em> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="board-size">
+          <h2>Board size</h2>
+          <div className="size-pills" role="group" aria-label="Board size">
+            {SIZES.map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={`size-pill${state.boardSize === n ? " is-active" : ""}`}
+                disabled={!isHost}
+                onClick={() => onSetBoardSize(n)}
+              >
+                {n}×{n}
+              </button>
+            ))}
+          </div>
+          {!isHost ? <p className="muted">Only the host can change the size.</p> : null}
+        </div>
+
+        {isHost ? (
+          <button type="button" className="btn primary start-btn" onClick={onStart}>
+            Start game
+          </button>
+        ) : (
+          <p className="waiting">Waiting for the host to start…</p>
+        )}
+      </div>
+    </section>
+  );
+}
