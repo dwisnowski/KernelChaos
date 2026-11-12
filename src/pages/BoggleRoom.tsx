@@ -14,7 +14,7 @@ import { BoggleBoard } from "../components/BoggleBoard.tsx";
 import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Lobby } from "../components/Lobby.tsx";
-import { WordLengthPie } from "../components/WordLengthPie.tsx";
+import { WordLengthCoverageBars } from "../components/WordLengthCoverageBars.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
 import { BONUS_LABELS, type BonusId } from "../types.ts";
 
@@ -240,7 +240,12 @@ export function BoggleRoom() {
               >
                 <header>
                   <h2>{r.name}</h2>
-                  <strong>{r.score} pts</strong>
+                  <div className="result-card-meta">
+                    <em>
+                      {r.wordCount} / {state.possibleWordCount ?? "?"} words
+                    </em>
+                    <strong>{r.score} pts</strong>
+                  </div>
                 </header>
                 {r.roundAwards.length > 0 ? (
                   <ul className="round-awards">
@@ -252,10 +257,10 @@ export function BoggleRoom() {
                     ))}
                   </ul>
                 ) : null}
-                <WordLengthPie
+                <WordLengthCoverageBars
                   words={r.words.map((w) => w.word)}
-                  label={`${r.name} word lengths`}
-                  size={132}
+                  possibleByLength={state.possibleByLength ?? []}
+                  label={`${r.name} words found by length`}
                 />
                 <ul>
                   {r.words.map((w) => (

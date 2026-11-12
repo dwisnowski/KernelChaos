@@ -1,13 +1,4 @@
-import { wordLengthBuckets, type LengthBucketKey } from "../lib/wordLengthBuckets.ts";
-
-const SLICE_COLORS: Record<LengthBucketKey, string> = {
-  "3": "#5a8f7b",
-  "4": "#3ecf8e",
-  "5": "#f0a202",
-  "6": "#e07a3a",
-  "7": "#c45c4a",
-  "8+": "#8ecfff",
-};
+import { LENGTH_BUCKET_COLORS, wordLengthBuckets } from "../lib/wordLengthBuckets.ts";
 
 interface Props {
   words: Iterable<string>;
@@ -67,7 +58,7 @@ export function WordLengthPie({ words, label = "Word lengths", size = 148 }: Pro
             <path
               key={s.key}
               d={s.path}
-              fill={SLICE_COLORS[s.key]}
+              fill={LENGTH_BUCKET_COLORS[s.key]}
               className="word-length-pie-slice"
             />
           ))}
@@ -94,7 +85,10 @@ export function WordLengthPie({ words, label = "Word lengths", size = 148 }: Pro
       <ul className="word-length-pie-legend" aria-label="Length breakdown">
         {slices.map((s) => (
           <li key={s.key}>
-            <span className="word-length-pie-swatch" style={{ background: SLICE_COLORS[s.key] }} />
+            <span
+              className="word-length-pie-swatch"
+              style={{ background: LENGTH_BUCKET_COLORS[s.key] }}
+            />
             <span>{s.label} letters</span>
             <em>{s.count}</em>
           </li>

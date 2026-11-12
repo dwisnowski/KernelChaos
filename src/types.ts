@@ -61,6 +61,14 @@ export interface PlayerResult extends PlayerPublic {
   roundAwards: RoundAward[];
 }
 
+/** Length buckets shared by results charts (3–7 individual, 8+ grouped). */
+export type LengthBucketKey = "3" | "4" | "5" | "6" | "7" | "8+";
+
+export interface LengthCount {
+  key: LengthBucketKey;
+  count: number;
+}
+
 export interface RoomState {
   code: string;
   phase: Phase;
@@ -74,6 +82,10 @@ export interface RoomState {
   winners: string[] | null;
   /** Board dictionary words nobody found; results only */
   missedWords: string[] | null;
+  /** Full unique board dictionary words (length ≥ 3); results only */
+  possibleWordCount: number | null;
+  /** Board dictionary words by length bucket; results only */
+  possibleByLength: LengthCount[] | null;
   round: number;
 }
 

@@ -8,6 +8,7 @@ import {
   MIN_WORD_LEN,
   isRoundSeconds,
   type ClientMessage,
+  type LengthCount,
   type Phase,
   type PlayerPublic,
   type PlayerResult,
@@ -24,7 +25,7 @@ import {
   scoreAtSubmit,
   type BonusId,
 } from "./boggle/scoring.ts";
-import { computeMissedWords } from "./boggle/solver.ts";
+import { computeBoardCoverage } from "./boggle/solver.ts";
 import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
 
 interface WordRecord {
@@ -122,6 +123,8 @@ export class GameRoom extends DurableObject<Env> {
   private scoresFinalized = false;
   /** Results-only: dictionary words on the board nobody found (capped). */
   private missedWords: string[] | null = null;
+  private possibleWordCount: number | null = null;
+  private possibleByLength: LengthCount[] | null = null;
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
@@ -140,6 +143,8 @@ export class GameRoom extends DurableObject<Env> {
       lastAccept?: { playerId: string; word: string } | null;
       scoresFinalized?: boolean;
       missedWords?: string[] | null;
+      possibleWordCount?: number | null;
+      possibleByLength?: LengthCount[] | null;
     }>("room");
     if (stored) {
       this.code = stored.code;
@@ -156,6 +161,8 @@ export class GameRoom extends DurableObject<Env> {
       this.lastAccept = stored.lastAccept ?? null;
       this.scoresFinalized = stored.scoresFinalized ?? this.phase === "results";
       this.missedWords = stored.missedWords ?? null;
+      this.possibleWordCount = stored.possibleWordCount ?? null;
+      this.possibleByLength = stored.possibleByLength ?? null;
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -186,6 +193,8 @@ export class GameRoom extends DurableObject<Env> {
       lastAccept: this.lastAccept,
       scoresFinalized: this.scoresFinalized,
       missedWords: this.missedWords,
+      possibleWordCount: this.possibleWordCount,
+      possibleByLength: this.possibleByLength,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -445,6 +454,8 @@ export class GameRoom extends DurableObject<Env> {
     this.lastAccept = null;
     this.scoresFinalized = false;
     this.missedWords = null;
+    this.possibleWordCount = null;
+    this.possibleByLength = null;
     await this.ctx.storage.setAlarm(this.countdownEndsAt);
     await this.persist();
     this.broadcastState();
@@ -461,6 +472,8 @@ export class GameRoom extends DurableObject<Env> {
     this.lastAccept = null;
     this.scoresFinalized = false;
     this.missedWords = null;
+    this.possibleWordCount = null;
+    this.possibleByLength = null;
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
@@ -568,9 +581,14 @@ export class GameRoom extends DurableObject<Env> {
 
     if (this.board) {
       const found = [...this.players.values()].flatMap((p) => [...p.words.keys()]);
-      this.missedWords = computeMissedWords(this.board, this.boardSize, found);
+      const coverage = computeBoardCoverage(this.board, this.boardSize, found);
+      this.missedWords = coverage.missedWords;
+      this.possibleWordCount = coverage.possibleWordCount;
+      this.possibleByLength = coverage.possibleByLength;
     } else {
       this.missedWords = [];
+      this.possibleWordCount = 0;
+      this.possibleByLength = [];
     }
 
     const finders = new Map<string, string[]>();
@@ -648,13 +666,23 @@ export class GameRoom extends DurableObject<Env> {
     let results: PlayerResult[] | null = null;
     let winners: string[] | null = null;
     let missedWords: string[] | null = null;
+    let possibleWordCount: number | null = null;
+    let possibleByLength: LengthCount[] | null = null;
 
     if (this.phase === "results") {
-      if (this.missedWords == null && this.board) {
+      if (
+        (this.missedWords == null || this.possibleWordCount == null || this.possibleByLength == null) &&
+        this.board
+      ) {
         const found = [...this.players.values()].flatMap((p) => [...p.words.keys()]);
-        this.missedWords = computeMissedWords(this.board, this.boardSize, found);
+        const coverage = computeBoardCoverage(this.board, this.boardSize, found);
+        this.missedWords = coverage.missedWords;
+        this.possibleWordCount = coverage.possibleWordCount;
+        this.possibleByLength = coverage.possibleByLength;
       }
       missedWords = this.missedWords ?? [];
+      possibleWordCount = this.possibleWordCount ?? 0;
+      possibleByLength = this.possibleByLength ?? [];
       results = [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -690,6 +718,8 @@ export class GameRoom extends DurableObject<Env> {
       results,
       winners,
       missedWords,
+      possibleWordCount,
+      possibleByLength,
       round: this.round,
     };
   }

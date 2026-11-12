@@ -7,6 +7,7 @@ import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { MissedWordCloud } from "../components/MissedWordCloud.tsx";
 import { WordLengthPie } from "../components/WordLengthPie.tsx";
+import { WordLengthPossibleBars } from "../components/WordLengthPossibleBars.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
 
 export function BoggleSpectator() {
@@ -178,12 +179,19 @@ export function BoggleSpectator() {
                   >
                     <span className="spectator-name">{r.name}</span>
                     <span className="spectator-score-meta">
-                      <em>{r.wordCount} words</em>
+                      <em>
+                        {r.wordCount} / {state.possibleWordCount ?? "?"} words
+                      </em>
                       <strong className="spectator-count">{r.score} pts</strong>
                     </span>
                   </li>
                 ))}
               </ul>
+              <p className="spectator-tag">On the board by length</p>
+              <WordLengthPossibleBars
+                possibleByLength={state.possibleByLength ?? []}
+                label="Possible words by length"
+              />
               <p className="spectator-tag">Words by length</p>
               <div className="spectator-pies" aria-label="Word length breakdowns">
                 {state.results.map((r) => (

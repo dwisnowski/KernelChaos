@@ -1,7 +1,33 @@
 import type { BoardSize } from "./dice.ts";
 import { getDictionary } from "./dictionary.ts";
-import { MIN_WORD_LEN } from "./protocol.ts";
+import {
+  MIN_WORD_LEN,
+  type LengthBucketKey,
+  type LengthCount,
+} from "./protocol.ts";
 import { areAdjacent } from "./path.ts";
+
+const LENGTH_ORDER: LengthBucketKey[] = ["3", "4", "5", "6", "7", "8+"];
+
+function bucketKeyForLength(len: number): LengthBucketKey | null {
+  if (len < MIN_WORD_LEN) return null;
+  if (len >= 8) return "8+";
+  return String(len) as LengthBucketKey;
+}
+
+function countByLength(words: Iterable<string>): LengthCount[] {
+  const counts = new Map<LengthBucketKey, number>();
+  for (const key of LENGTH_ORDER) counts.set(key, 0);
+  for (const word of words) {
+    const key = bucketKeyForLength(word.length);
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return LENGTH_ORDER.map((key) => ({
+    key,
+    count: counts.get(key) ?? 0,
+  })).filter((b) => b.count > 0);
+}
 
 interface TrieNode {
   kids: Map<string, TrieNode>;
@@ -79,13 +105,26 @@ export function findAllWords(board: string[], size: BoardSize): string[] {
 /** Cap for WS/TV payloads — longest first, then alpha. */
 export const MISSED_WORDS_CAP = 120;
 
-export function computeMissedWords(
+export interface BoardWordCoverage {
+  missedWords: string[];
+  possibleWordCount: number;
+  possibleByLength: LengthCount[];
+}
+
+/** One solve pass: capped misses + full board coverage totals. */
+export function computeBoardCoverage(
   board: string[],
   size: BoardSize,
   foundByPlayers: Iterable<string>,
-): string[] {
+): BoardWordCoverage {
+  const all = findAllWords(board, size);
   const found = new Set(foundByPlayers);
-  const missed = findAllWords(board, size).filter((w) => !found.has(w));
+  const missed = all.filter((w) => !found.has(w));
   missed.sort((a, b) => b.length - a.length || a.localeCompare(b));
-  return missed.slice(0, MISSED_WORDS_CAP);
+  return {
+    missedWords: missed.slice(0, MISSED_WORDS_CAP),
+    possibleWordCount: all.length,
+    possibleByLength: countByLength(all),
+  };
 }
+

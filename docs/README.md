@@ -16,3 +16,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0005 – TV post-game scores](adr/0005-tv-post-game-scores.md) — Results on TV show winner + points; play stays score-blind
 - [0006 – Boggle global stats](adr/0006-boggle-global-stats.md) — D1 hall of fame on `/boggle`; round-end snapshots; name + date records; no accounts
 - [0007 – Spectator room entry](adr/0007-spectator-room-entry.md) — Create for TV / Spectate on TV from entry; no name; first player remains host
+- [0008 – Results word coverage](adr/0008-results-word-coverage.md) — Board `possibleWordCount` + by-length; phone found-vs-possible bars; TV possible-by-length chart
