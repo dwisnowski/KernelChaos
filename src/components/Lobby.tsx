@@ -1,4 +1,5 @@
 import { QRCodeSVG } from "qrcode.react";
+import { OpenTvButton } from "./OpenTvButton.tsx";
 import {
   ROUND_SECONDS_OPTIONS,
   type BoardSize,
@@ -47,14 +48,7 @@ export function Lobby({
           <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#f2f5fa" fgColor="#0e1f35" />
         </div>
         <p className="muted qr-hint">Scan to join · {joinUrl.replace(/^https?:\/\//, "")}</p>
-        <a
-          className="btn tv-link"
-          href={`/boggle/room/${state.code}/tv`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open TV spectator
-        </a>
+        <OpenTvButton roomCode={state.code} />
       </div>
 
       <div className="lobby-side">

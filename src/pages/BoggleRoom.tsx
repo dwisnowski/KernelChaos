@@ -14,6 +14,7 @@ import { BoggleBoard } from "../components/BoggleBoard.tsx";
 import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Lobby } from "../components/Lobby.tsx";
+import { OpenTvButton } from "../components/OpenTvButton.tsx";
 import { WordLengthCoverageBars } from "../components/WordLengthCoverageBars.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
 import { BONUS_LABELS, type BonusId } from "../types.ts";
@@ -194,6 +195,7 @@ export function BoggleRoom() {
                 </li>
               ))}
             </ul>
+            <OpenTvButton roomCode={roomCode} className="btn tv-link play-tv-link" />
           </div>
           <BoggleBoard
             board={state.board}
@@ -277,6 +279,7 @@ export function BoggleRoom() {
             ))}
           </div>
           <div className="results-actions">
+            <OpenTvButton roomCode={roomCode} />
             {me?.isHost ? (
               <>
                 <div className="board-size">
