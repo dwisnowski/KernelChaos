@@ -19,7 +19,11 @@ export function BoggleEntry() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/rooms", { method: "POST" });
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ game: "boggle" }),
+      });
       const data = (await res.json()) as { code?: string; error?: string };
       if (!res.ok || !data.code) {
         setError(data.error ?? "Could not create room");

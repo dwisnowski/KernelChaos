@@ -162,6 +162,37 @@ input {
   font-family: var(--font-display);
 }
 
+.game-shelf-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.game-shelf-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--stroke);
+  background: var(--card);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.game-shelf-list a:hover {
+  transform: translateY(-2px);
+  border-color: rgba(240, 162, 2, 0.45);
+}
+
+.game-shelf-list strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1533,6 +1564,198 @@ input {
   .countdown-num {
     font-size: 14rem;
   }
+}
+
+/* —— Scattergories —— */
+.scatter-letter {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(5rem, 22vw, 10rem);
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  text-align: center;
+}
+
+.scatter-letter-sm {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.scatter-countdown,
+.spectator-countdown {
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  min-height: 50dvh;
+  text-align: center;
+}
+
+.scatter-play-header,
+.spectator-scatter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.scatter-form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.scatter-field {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: var(--card);
+}
+
+.scatter-field span {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.scatter-field em {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+
+.scatter-field input {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  padding: 0.35rem 0;
+  outline: none;
+  font-size: 1.05rem;
+}
+
+.scatter-review {
+  display: grid;
+  gap: 1rem;
+}
+
+.scatter-review-meta {
+  margin: 0;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.scatter-review-category {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+}
+
+.scatter-answer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.scatter-answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--card);
+  animation: rise 0.35s ease both;
+}
+
+.scatter-answer-unique {
+  border-color: rgba(62, 207, 142, 0.45);
+}
+
+.scatter-answer-duplicate,
+.scatter-answer-invalidLetter,
+.scatter-answer-rejected,
+.scatter-answer-empty {
+  opacity: 0.72;
+}
+
+.scatter-answer-duplicate {
+  border-color: rgba(255, 107, 107, 0.35);
+}
+
+.scatter-answer-name {
+  font-weight: 700;
+  margin-right: 0.65rem;
+}
+
+.scatter-answer-raw {
+  font-size: 1.15rem;
+}
+
+.scatter-answer-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.scatter-invalid-btn {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.scatter-review-nav {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.scatter-review-tv .scatter-answer-raw {
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+}
+
+.spectator-scatter-play {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.spectator-category-list {
+  columns: 2;
+  gap: 1.5rem;
+  margin: 0;
+  padding-left: 1.4rem;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+}
+
+.spectator-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.55rem;
+}
+
+.spectator-progress li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: var(--card);
 }
 
 @media (prefers-reduced-motion: reduce) {

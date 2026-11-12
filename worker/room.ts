@@ -7,15 +7,15 @@ import {
   DEFAULT_ROUND_SECONDS,
   MIN_WORD_LEN,
   isRoundSeconds,
-  type ClientMessage,
+  type ClientMessage as BoggleClientMessage,
   type LengthCount,
-  type Phase,
-  type PlayerPublic,
-  type PlayerResult,
+  type Phase as BogglePhase,
+  type PlayerPublic as BogglePlayerPublic,
+  type PlayerResult as BogglePlayerResult,
   type RoundAward,
   type RoundSeconds,
-  type RoomState,
-  type ServerMessage,
+  type RoomState as BoggleRoomState,
+  type ServerMessage as BoggleServerMessage,
 } from "./boggle/protocol.ts";
 import {
   computePoints,
@@ -27,6 +27,28 @@ import {
 } from "./boggle/scoring.ts";
 import { computeBoardCoverage } from "./boggle/solver.ts";
 import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
+import { rollLetter } from "./scattergories/letter.ts";
+import { pickList } from "./scattergories/packs.ts";
+import {
+  CATEGORIES_PER_LIST,
+  DEFAULT_SCATTER_ROUND_SECONDS,
+  SCATTER_COUNTDOWN_MS,
+  isPackTier,
+  isScatterRoundSeconds,
+  type PackTier,
+  type ScatterClientMessage,
+  type ScatterPhase,
+  type ScatterPlayerPublic,
+  type ScatterPlayerResult,
+  type ScatterRoomState,
+  type ScatterRoundSeconds,
+  type ScatterServerMessage,
+} from "./scattergories/protocol.ts";
+import { scoreCategory, scorePlayerAcrossCategories } from "./scattergories/scoring.ts";
+
+export type GameType = "boggle" | "scattergories";
+
+type AnyPhase = BogglePhase | ScatterPhase;
 
 interface WordRecord {
   word: string;
@@ -43,6 +65,8 @@ interface PlayerRecord {
   isHost: boolean;
   words: Map<string, WordRecord>;
   roundAwards: RoundAward[];
+  answers: string[];
+  hostRejected: boolean[];
 }
 
 interface Attachment {
@@ -65,6 +89,19 @@ interface StoredPlayer {
   isHost: boolean;
   words: StoredWord[] | [string, number][];
   roundAwards?: RoundAward[];
+  answers?: string[];
+  hostRejected?: boolean[];
+}
+
+type ClientMessage = BoggleClientMessage | ScatterClientMessage;
+type ServerMessage = BoggleServerMessage | ScatterServerMessage;
+
+function emptyAnswers(): string[] {
+  return Array.from({ length: CATEGORIES_PER_LIST }, () => "");
+}
+
+function emptyRejected(): boolean[] {
+  return Array.from({ length: CATEGORIES_PER_LIST }, () => false);
 }
 
 function isBoardSize(n: unknown): n is BoardSize {
@@ -108,11 +145,16 @@ function loadWords(raw: StoredPlayer["words"]): Map<string, WordRecord> {
   return map;
 }
 
+function isGameType(v: unknown): v is GameType {
+  return v === "boggle" || v === "scattergories";
+}
+
 export class GameRoom extends DurableObject<Env> {
+  private gameType: GameType = "boggle";
   private code = "";
-  private phase: Phase = "lobby";
+  private phase: AnyPhase = "lobby";
   private boardSize: BoardSize = 4;
-  private roundSeconds: RoundSeconds = DEFAULT_ROUND_SECONDS;
+  private roundSeconds: RoundSeconds | ScatterRoundSeconds = DEFAULT_ROUND_SECONDS;
   private board: string[] | null = null;
   private countdownEndsAt: number | null = null;
   private endsAt: number | null = null;
@@ -121,19 +163,28 @@ export class GameRoom extends DurableObject<Env> {
   private globalAcceptCount = 0;
   private lastAccept: { playerId: string; word: string } | null = null;
   private scoresFinalized = false;
-  /** Results-only: dictionary words on the board nobody found (capped). */
   private missedWords: string[] | null = null;
   private possibleWordCount: number | null = null;
   private possibleByLength: LengthCount[] | null = null;
+
+  // Scattergories
+  private packTier: PackTier = "family";
+  private letter: string | null = null;
+  private categories: string[] | null = null;
+  private listId: string | null = null;
+  private usedListIds: string[] = [];
+  private reviewIndex: number | null = null;
+
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
     if (this.loaded) return;
     const stored = await this.ctx.storage.get<{
+      gameType?: GameType;
       code: string;
-      phase: Phase;
+      phase: AnyPhase;
       boardSize: BoardSize;
-      roundSeconds?: RoundSeconds;
+      roundSeconds?: RoundSeconds | ScatterRoundSeconds;
       board: string[] | null;
       countdownEndsAt: number | null;
       endsAt: number | null;
@@ -145,14 +196,27 @@ export class GameRoom extends DurableObject<Env> {
       missedWords?: string[] | null;
       possibleWordCount?: number | null;
       possibleByLength?: LengthCount[] | null;
+      packTier?: PackTier;
+      letter?: string | null;
+      categories?: string[] | null;
+      listId?: string | null;
+      usedListIds?: string[];
+      reviewIndex?: number | null;
     }>("room");
     if (stored) {
+      this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
       this.code = stored.code;
       this.phase = stored.phase;
       this.boardSize = stored.boardSize;
-      this.roundSeconds = isRoundSeconds(stored.roundSeconds)
-        ? stored.roundSeconds
-        : DEFAULT_ROUND_SECONDS;
+      if (this.gameType === "scattergories") {
+        this.roundSeconds = isScatterRoundSeconds(stored.roundSeconds)
+          ? stored.roundSeconds
+          : DEFAULT_SCATTER_ROUND_SECONDS;
+      } else {
+        this.roundSeconds = isRoundSeconds(stored.roundSeconds)
+          ? stored.roundSeconds
+          : DEFAULT_ROUND_SECONDS;
+      }
       this.board = stored.board;
       this.countdownEndsAt = stored.countdownEndsAt;
       this.endsAt = stored.endsAt;
@@ -163,6 +227,12 @@ export class GameRoom extends DurableObject<Env> {
       this.missedWords = stored.missedWords ?? null;
       this.possibleWordCount = stored.possibleWordCount ?? null;
       this.possibleByLength = stored.possibleByLength ?? null;
+      this.packTier = isPackTier(stored.packTier) ? stored.packTier : "family";
+      this.letter = stored.letter ?? null;
+      this.categories = stored.categories ?? null;
+      this.listId = stored.listId ?? null;
+      this.usedListIds = stored.usedListIds ?? [];
+      this.reviewIndex = stored.reviewIndex ?? null;
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -172,6 +242,8 @@ export class GameRoom extends DurableObject<Env> {
             isHost: p.isHost,
             words: loadWords(p.words),
             roundAwards: p.roundAwards ?? [],
+            answers: padAnswers(p.answers),
+            hostRejected: padRejected(p.hostRejected),
           },
         ]),
       );
@@ -181,6 +253,7 @@ export class GameRoom extends DurableObject<Env> {
 
   private async persist(): Promise<void> {
     await this.ctx.storage.put("room", {
+      gameType: this.gameType,
       code: this.code,
       phase: this.phase,
       boardSize: this.boardSize,
@@ -195,12 +268,20 @@ export class GameRoom extends DurableObject<Env> {
       missedWords: this.missedWords,
       possibleWordCount: this.possibleWordCount,
       possibleByLength: this.possibleByLength,
+      packTier: this.packTier,
+      letter: this.letter,
+      categories: this.categories,
+      listId: this.listId,
+      usedListIds: this.usedListIds,
+      reviewIndex: this.reviewIndex,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
         isHost: p.isHost,
         words: [...p.words.values()],
         roundAwards: p.roundAwards,
+        answers: p.answers,
+        hostRejected: p.hostRejected,
       })),
     });
   }
@@ -210,14 +291,18 @@ export class GameRoom extends DurableObject<Env> {
     const url = new URL(request.url);
 
     if (request.method === "POST" && url.pathname.endsWith("/init")) {
-      const body = (await request.json()) as { code?: string };
+      const body = (await request.json()) as { code?: string; game?: string };
       if (!body.code || !/^[A-Z1-9]{4}$/.test(body.code)) {
         return Response.json({ error: "Invalid code" }, { status: 400 });
       }
       if (!this.code) {
         this.code = body.code;
+        this.gameType = isGameType(body.game) ? body.game : "boggle";
+        if (this.gameType === "scattergories") {
+          this.roundSeconds = DEFAULT_SCATTER_ROUND_SECONDS;
+        }
         await this.persist();
-        return Response.json({ code: this.code, created: true });
+        return Response.json({ code: this.code, game: this.gameType, created: true });
       }
       return Response.json({ error: "taken", code: this.code }, { status: 409 });
     }
@@ -252,7 +337,12 @@ export class GameRoom extends DurableObject<Env> {
         await this.handleSpectate(ws);
         break;
       case "setBoardSize":
+        if (this.gameType !== "boggle") break;
         await this.handleSetBoardSize(attachment?.playerId, msg.boardSize);
+        break;
+      case "setPackTier":
+        if (this.gameType !== "scattergories") break;
+        await this.handleSetPackTier(attachment?.playerId, msg.packTier);
         break;
       case "setRoundSeconds":
         await this.handleSetRoundSeconds(attachment?.playerId, msg.roundSeconds);
@@ -261,7 +351,28 @@ export class GameRoom extends DurableObject<Env> {
         await this.handleStart(attachment?.playerId);
         break;
       case "submitWord":
+        if (this.gameType !== "boggle") break;
         await this.handleSubmit(ws, attachment?.playerId, msg.path);
+        break;
+      case "submitAnswers":
+        if (this.gameType !== "scattergories") break;
+        await this.handleSubmitAnswers(attachment?.playerId, msg.answers);
+        break;
+      case "reviewNext":
+        if (this.gameType !== "scattergories") break;
+        await this.handleReviewNext(attachment?.playerId);
+        break;
+      case "reviewPrev":
+        if (this.gameType !== "scattergories") break;
+        await this.handleReviewPrev(attachment?.playerId);
+        break;
+      case "toggleAnswerInvalid":
+        if (this.gameType !== "scattergories") break;
+        await this.handleToggleInvalid(attachment?.playerId, msg.playerId);
+        break;
+      case "finishReview":
+        if (this.gameType !== "scattergories") break;
+        await this.handleFinishReview(attachment?.playerId);
         break;
       case "playAgain":
         await this.handlePlayAgain(attachment?.playerId);
@@ -279,7 +390,6 @@ export class GameRoom extends DurableObject<Env> {
     const player = this.players.get(attachment.playerId);
     if (!player) return;
 
-    // Keep player in room during active round so scores remain; remove from lobby.
     if (this.phase === "lobby") {
       this.players.delete(attachment.playerId);
       if (player.isHost) {
@@ -306,8 +416,15 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     if (this.phase === "playing" && this.endsAt != null && now >= this.endsAt) {
-      this.phase = "results";
       this.endsAt = null;
+      if (this.gameType === "scattergories") {
+        this.phase = "review";
+        this.reviewIndex = 0;
+        await this.persist();
+        this.broadcastState();
+        return;
+      }
+      this.phase = "results";
       const endBadges = this.finalizeScores();
       await this.recordRoundStats(now);
       await this.persist();
@@ -319,6 +436,7 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private async recordRoundStats(completedAt: number): Promise<void> {
+    if (this.gameType !== "boggle") return;
     if (!this.code || this.round < 1) return;
     try {
       await insertRoundStats(this.env.STATS_DB, {
@@ -330,7 +448,7 @@ export class GameRoom extends DurableObject<Env> {
           return {
             id: p.id,
             name: p.name,
-            score: this.playerScore(p),
+            score: this.bogglePlayerScore(p),
             wordCount: p.words.size,
             longestWord: longest.word,
             longestLen: longest.len,
@@ -354,7 +472,7 @@ export class GameRoom extends DurableObject<Env> {
         playerId: existing.playerId,
         role: "player",
         state: this.publicState(),
-      });
+      } as ServerMessage);
       return;
     }
     ws.serializeAttachment({ spectator: true } satisfies Attachment);
@@ -363,7 +481,7 @@ export class GameRoom extends DurableObject<Env> {
       playerId: "",
       role: "spectator",
       state: this.publicState(),
-    });
+    } as ServerMessage);
   }
 
   private async handleJoin(ws: WebSocket, rawName: string): Promise<void> {
@@ -388,7 +506,7 @@ export class GameRoom extends DurableObject<Env> {
         playerId: existing.playerId,
         role: "player",
         state: this.publicState(),
-      });
+      } as ServerMessage);
       return;
     }
 
@@ -400,6 +518,8 @@ export class GameRoom extends DurableObject<Env> {
       isHost,
       words: new Map(),
       roundAwards: [],
+      answers: emptyAnswers(),
+      hostRejected: emptyRejected(),
     });
     ws.serializeAttachment({ playerId: id } satisfies Attachment);
     await this.persist();
@@ -408,14 +528,12 @@ export class GameRoom extends DurableObject<Env> {
       playerId: id,
       role: "player",
       state: this.publicState(),
-    });
+    } as ServerMessage);
     this.broadcastState(ws);
   }
 
   private async handleSetBoardSize(playerId: string | undefined, boardSize: BoardSize): Promise<void> {
-    if (!playerId || !this.isHost(playerId)) {
-      return;
-    }
+    if (!playerId || !this.isHost(playerId)) return;
     if (this.phase !== "lobby" && this.phase !== "results") return;
     if (!isBoardSize(boardSize)) return;
     this.boardSize = boardSize;
@@ -423,13 +541,26 @@ export class GameRoom extends DurableObject<Env> {
     this.broadcastState();
   }
 
+  private async handleSetPackTier(playerId: string | undefined, packTier: PackTier): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isPackTier(packTier)) return;
+    this.packTier = packTier;
+    await this.persist();
+    this.broadcastState();
+  }
+
   private async handleSetRoundSeconds(
     playerId: string | undefined,
-    roundSeconds: RoundSeconds,
+    roundSeconds: RoundSeconds | ScatterRoundSeconds,
   ): Promise<void> {
     if (!playerId || !this.isHost(playerId)) return;
     if (this.phase !== "lobby" && this.phase !== "results") return;
-    if (!isRoundSeconds(roundSeconds)) return;
+    if (this.gameType === "scattergories") {
+      if (!isScatterRoundSeconds(roundSeconds)) return;
+    } else if (!isRoundSeconds(roundSeconds)) {
+      return;
+    }
     this.roundSeconds = roundSeconds;
     await this.persist();
     this.broadcastState();
@@ -443,19 +574,41 @@ export class GameRoom extends DurableObject<Env> {
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
+      p.answers = emptyAnswers();
+      p.hostRejected = emptyRejected();
     }
 
     this.round += 1;
-    this.board = generateBoard(this.boardSize);
-    this.phase = "countdown";
-    this.countdownEndsAt = Date.now() + COUNTDOWN_MS;
+    this.countdownEndsAt =
+      Date.now() + (this.gameType === "scattergories" ? SCATTER_COUNTDOWN_MS : COUNTDOWN_MS);
     this.endsAt = null;
-    this.globalAcceptCount = 0;
-    this.lastAccept = null;
     this.scoresFinalized = false;
-    this.missedWords = null;
-    this.possibleWordCount = null;
-    this.possibleByLength = null;
+    this.reviewIndex = null;
+
+    if (this.gameType === "scattergories") {
+      const used = new Set(this.usedListIds);
+      const list = pickList(this.packTier, used);
+      this.listId = list.id;
+      this.categories = list.categories;
+      this.letter = rollLetter();
+      this.usedListIds = [...this.usedListIds, list.id];
+      this.board = null;
+      this.missedWords = null;
+      this.possibleWordCount = null;
+      this.possibleByLength = null;
+    } else {
+      this.board = generateBoard(this.boardSize);
+      this.globalAcceptCount = 0;
+      this.lastAccept = null;
+      this.missedWords = null;
+      this.possibleWordCount = null;
+      this.possibleByLength = null;
+      this.letter = null;
+      this.categories = null;
+      this.listId = null;
+    }
+
+    this.phase = "countdown";
     await this.ctx.storage.setAlarm(this.countdownEndsAt);
     await this.persist();
     this.broadcastState();
@@ -474,11 +627,72 @@ export class GameRoom extends DurableObject<Env> {
     this.missedWords = null;
     this.possibleWordCount = null;
     this.possibleByLength = null;
+    this.letter = null;
+    this.categories = null;
+    this.listId = null;
+    this.reviewIndex = null;
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
+      p.answers = emptyAnswers();
+      p.hostRejected = emptyRejected();
     }
     await this.ctx.storage.deleteAlarm();
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSubmitAnswers(playerId: string | undefined, answers: string[]): Promise<void> {
+    if (!playerId || this.phase !== "playing") return;
+    if (this.endsAt != null && Date.now() >= this.endsAt) return;
+    const player = this.players.get(playerId);
+    if (!player) return;
+    if (!Array.isArray(answers)) return;
+
+    const next = emptyAnswers();
+    for (let i = 0; i < CATEGORIES_PER_LIST; i++) {
+      const raw = answers[i];
+      next[i] = typeof raw === "string" ? raw.slice(0, 80) : "";
+    }
+    player.answers = next;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleReviewNext(playerId: string | undefined): Promise<void> {
+    if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
+    const idx = this.reviewIndex ?? 0;
+    if (idx >= CATEGORIES_PER_LIST - 1) return;
+    this.reviewIndex = idx + 1;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleReviewPrev(playerId: string | undefined): Promise<void> {
+    if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
+    const idx = this.reviewIndex ?? 0;
+    if (idx <= 0) return;
+    this.reviewIndex = idx - 1;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleToggleInvalid(playerId: string | undefined, targetId: string): Promise<void> {
+    if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
+    const idx = this.reviewIndex;
+    if (idx == null || idx < 0 || idx >= CATEGORIES_PER_LIST) return;
+    const target = this.players.get(targetId);
+    if (!target) return;
+    target.hostRejected[idx] = !target.hostRejected[idx];
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleFinishReview(playerId: string | undefined): Promise<void> {
+    if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
+    this.phase = "results";
+    this.reviewIndex = null;
+    this.scoresFinalized = true;
     await this.persist();
     this.broadcastState();
   }
@@ -571,10 +785,6 @@ export class GameRoom extends DurableObject<Env> {
     }
   }
 
-  /**
-   * Apply unique / last-word / lone-wolf / coverage once when entering results.
-   * Returns anonymous badge batches for the TV feed (no player ids).
-   */
   private finalizeScores(): BonusId[][] {
     if (this.scoresFinalized) return [];
     this.scoresFinalized = true;
@@ -639,31 +849,114 @@ export class GameRoom extends DurableObject<Env> {
     return anonymousBatches;
   }
 
-  private playerScore(p: PlayerRecord): number {
+  private bogglePlayerScore(p: PlayerRecord): number {
     const wordPts = [...p.words.values()].reduce((a, w) => a + w.points, 0);
     const awardPts = p.roundAwards.reduce((a, r) => a + r.points, 0);
     return wordPts + awardPts;
+  }
+
+  private scatterPlayerScore(p: PlayerRecord): number {
+    if (!this.letter) return 0;
+    const all = [...this.players.values()].map((x) => ({
+      id: x.id,
+      name: x.name,
+      answers: x.answers,
+      hostRejected: x.hostRejected,
+    }));
+    return scorePlayerAcrossCategories(p.id, this.letter, all).total;
   }
 
   private isHost(playerId: string): boolean {
     return this.players.get(playerId)?.isHost === true;
   }
 
-  private publicState(): RoomState {
+  private scatterSnapshot(): ScatterRoomState {
+    const players: ScatterPlayerPublic[] = [...this.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+      answerCount: p.answers.filter((a) => a.trim().length > 0).length,
+      score: this.scatterPlayerScore(p),
+    }));
+
+    let reviewAnswers: ScatterRoomState["reviewAnswers"] = null;
+    if (this.phase === "review" && this.letter != null && this.reviewIndex != null) {
+      const idx = this.reviewIndex;
+      reviewAnswers = scoreCategory(
+        this.letter,
+        [...this.players.values()].map((p) => ({
+          playerId: p.id,
+          playerName: p.name,
+          raw: p.answers[idx] ?? "",
+          hostRejected: p.hostRejected[idx] ?? false,
+        })),
+      );
+    }
+
+    let results: ScatterPlayerResult[] | null = null;
+    let winners: string[] | null = null;
+
+    if (this.phase === "results" && this.letter) {
+      const all = [...this.players.values()].map((x) => ({
+        id: x.id,
+        name: x.name,
+        answers: x.answers,
+        hostRejected: x.hostRejected,
+      }));
+      results = [...this.players.values()].map((p) => {
+        const scored = scorePlayerAcrossCategories(p.id, this.letter!, all);
+        return {
+          id: p.id,
+          name: p.name,
+          isHost: p.isHost,
+          answerCount: p.answers.filter((a) => a.trim().length > 0).length,
+          score: scored.total,
+          answers: [...p.answers],
+          categoryPoints: scored.categoryPoints,
+        };
+      });
+      results.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+      const top = results[0]?.score ?? 0;
+      winners = results.filter((r) => r.score === top && top > 0).map((r) => r.id);
+      if (winners.length === 0 && results.length > 0) {
+        winners = results.map((r) => r.id);
+      }
+    }
+
+    return {
+      game: "scattergories",
+      code: this.code,
+      phase: this.phase as ScatterPhase,
+      packTier: this.packTier,
+      roundSeconds: this.roundSeconds as ScatterRoundSeconds,
+      letter: this.phase === "lobby" ? null : this.letter,
+      categories: this.phase === "lobby" ? null : this.categories,
+      listId: this.phase === "lobby" ? null : this.listId,
+      countdownEndsAt: this.countdownEndsAt,
+      endsAt: this.endsAt,
+      players,
+      reviewIndex: this.phase === "review" ? this.reviewIndex : null,
+      reviewAnswers,
+      results,
+      winners,
+      round: this.round,
+    };
+  }
+
+  private boggleSnapshot(): BoggleRoomState {
     if (this.phase === "results" && !this.scoresFinalized) {
-      // Late reconnect path — end badges already missed for this round.
       this.finalizeScores();
     }
 
-    const players: PlayerPublic[] = [...this.players.values()].map((p) => ({
+    const players: BogglePlayerPublic[] = [...this.players.values()].map((p) => ({
       id: p.id,
       name: p.name,
       isHost: p.isHost,
       wordCount: p.words.size,
-      score: this.playerScore(p),
+      score: this.bogglePlayerScore(p),
     }));
 
-    let results: PlayerResult[] | null = null;
+    let results: BogglePlayerResult[] | null = null;
     let winners: string[] | null = null;
     let missedWords: string[] | null = null;
     let possibleWordCount: number | null = null;
@@ -688,7 +981,7 @@ export class GameRoom extends DurableObject<Env> {
         name: p.name,
         isHost: p.isHost,
         wordCount: p.words.size,
-        score: this.playerScore(p),
+        score: this.bogglePlayerScore(p),
         words: [...p.words.values()]
           .map((w) => ({
             word: w.word,
@@ -708,9 +1001,9 @@ export class GameRoom extends DurableObject<Env> {
 
     return {
       code: this.code,
-      phase: this.phase,
+      phase: this.phase as BogglePhase,
       boardSize: this.boardSize,
-      roundSeconds: this.roundSeconds,
+      roundSeconds: this.roundSeconds as RoundSeconds,
       board: this.phase === "lobby" ? null : this.board,
       countdownEndsAt: this.countdownEndsAt,
       endsAt: this.endsAt,
@@ -722,6 +1015,11 @@ export class GameRoom extends DurableObject<Env> {
       possibleByLength,
       round: this.round,
     };
+  }
+
+  private publicState(): BoggleRoomState | ScatterRoomState {
+    if (this.gameType === "scattergories") return this.scatterSnapshot();
+    return this.boggleSnapshot();
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {
@@ -738,7 +1036,7 @@ export class GameRoom extends DurableObject<Env> {
       type: "badgeEvent",
       bonuses,
       at: Date.now(),
-    } satisfies ServerMessage);
+    } satisfies BoggleServerMessage);
     for (const socket of this.ctx.getWebSockets()) {
       try {
         socket.send(payload);
@@ -749,7 +1047,8 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private broadcastState(except?: WebSocket): void {
-    const payload = JSON.stringify({ type: "state", state: this.publicState() } satisfies ServerMessage);
+    const state = this.publicState();
+    const payload = JSON.stringify({ type: "state", state });
     for (const socket of this.ctx.getWebSockets()) {
       if (except && socket === except) continue;
       try {
@@ -759,4 +1058,22 @@ export class GameRoom extends DurableObject<Env> {
       }
     }
   }
+}
+
+function padAnswers(raw: string[] | undefined): string[] {
+  const out = emptyAnswers();
+  if (!raw) return out;
+  for (let i = 0; i < CATEGORIES_PER_LIST; i++) {
+    out[i] = typeof raw[i] === "string" ? raw[i]! : "";
+  }
+  return out;
+}
+
+function padRejected(raw: boolean[] | undefined): boolean[] {
+  const out = emptyRejected();
+  if (!raw) return out;
+  for (let i = 0; i < CATEGORIES_PER_LIST; i++) {
+    out[i] = Boolean(raw[i]);
+  }
+  return out;
 }

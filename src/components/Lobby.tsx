@@ -48,7 +48,7 @@ export function Lobby({
           <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#f2f5fa" fgColor="#0e1f35" />
         </div>
         <p className="muted qr-hint">Scan to join · {joinUrl.replace(/^https?:\/\//, "")}</p>
-        <OpenTvButton roomCode={state.code} />
+        <OpenTvButton roomCode={state.code} game="boggle" />
       </div>
 
       <div className="lobby-side">

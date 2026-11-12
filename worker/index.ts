@@ -32,6 +32,15 @@ export default {
     }
 
     if (url.pathname === "/api/rooms" && request.method === "POST") {
+      let game: "boggle" | "scattergories" = "boggle";
+      try {
+        const body = (await request.json()) as { game?: string };
+        if (body.game === "scattergories" || body.game === "boggle") {
+          game = body.game;
+        }
+      } catch {
+        /* empty body → boggle default */
+      }
       for (let attempt = 0; attempt < 12; attempt++) {
         const code = randomCode();
         const stub = env.GAME_ROOMS.getByName(code);
@@ -39,11 +48,11 @@ export default {
           new Request("https://room/init", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ code }),
+            body: JSON.stringify({ code, game }),
           }),
         );
         if (init.ok) {
-          return Response.json({ code });
+          return Response.json({ code, game });
         }
       }
       return Response.json({ error: "Could not create room" }, { status: 503 });

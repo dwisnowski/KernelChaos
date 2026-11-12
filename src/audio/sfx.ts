@@ -216,3 +216,36 @@ export function playBonusAwards(bonuses: BonusId[], max = 3): void {
     t += Math.max(dur * 0.55, 0.08);
   }
 }
+
+/** Scattergories: letter revealed / countdown flair. */
+export function playLetterRoll(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(392, t, 0.08, "triangle", 0.07);
+  tone(523, t + 0.08, 0.1, "triangle", 0.08);
+  tone(784, t + 0.18, 0.16, "sine", 0.09);
+}
+
+/** Scattergories: host advances review category. */
+export function playReviewAdvance(): void {
+  const c = getCtx();
+  if (!c) return;
+  tone(660, c.currentTime, 0.09, "sine", 0.06);
+}
+
+/** Scattergories: duplicate cancel cue on reveal. */
+export function playDupeCancel(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(220, t, 0.08, "square", 0.035);
+  tone(180, t + 0.07, 0.12, "square", 0.03);
+}
+
+/** Scattergories: host toggles invalid. */
+export function playInvalidToggle(): void {
+  const c = getCtx();
+  if (!c) return;
+  tone(311, c.currentTime, 0.1, "triangle", 0.05);
+}

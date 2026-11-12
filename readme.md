@@ -9,6 +9,8 @@ Family games over the internet — a [Wild Idea Zone](https://www.wildideazone.c
 
 **Boggle** — create a room, share a 4-character code or QR, pick 4×4 / 5×5 / 6×6, then drag letters on the same timed board. Scores tally at the end.
 
+**Scattergories** — same room codes and TV spectator flow; phones fill a 12-category list for one letter; after the timer the TV reveals answers one category at a time (duplicates cancel).
+
 ## Develop
 
 ```bash

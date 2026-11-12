@@ -17,3 +17,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0006 – Boggle global stats](adr/0006-boggle-global-stats.md) — D1 hall of fame on `/boggle`; round-end snapshots; name + date records; no accounts
 - [0007 – Spectator room entry](adr/0007-spectator-room-entry.md) — Create for TV / Spectate on TV from entry; no name; first player remains host
 - [0008 – Results word coverage](adr/0008-results-word-coverage.md) — Board `possibleWordCount` + by-length; phone found-vs-possible bars; TV possible-by-length chart
+- [0009 – Scattergories + game shell](adr/0009-scattergories-and-game-shell.md) — Polymorphic rooms; TV/player + QR/code + SFX as shared shell; original family/kids/adult packs; review-phase scoring

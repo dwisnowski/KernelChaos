@@ -15,11 +15,27 @@ export function Home() {
           <Link className="btn primary" to="/boggle" onClick={() => unlockAudio()}>
             Play Boggle
           </Link>
+          <Link className="btn" to="/scattergories" onClick={() => unlockAudio()}>
+            Play Scattergories
+          </Link>
         </div>
       </section>
-      <section className="game-shelf" aria-label="More games soon">
-        <h2>Coming soon</h2>
-        <p className="muted">More family games will land here. Boggle is ready tonight.</p>
+      <section className="game-shelf" aria-label="Games">
+        <h2>Games</h2>
+        <ul className="game-shelf-list">
+          <li>
+            <Link to="/boggle" onClick={() => unlockAudio()}>
+              <strong>Boggle</strong>
+              <span className="muted">Drag letters on a shared timed board</span>
+            </Link>
+          </li>
+          <li>
+            <Link to="/scattergories" onClick={() => unlockAudio()}>
+              <strong>Scattergories</strong>
+              <span className="muted">Fill categories · TV reveals answers</span>
+            </Link>
+          </li>
+        </ul>
       </section>
     </Layout>
   );
