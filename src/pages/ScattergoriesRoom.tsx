@@ -175,7 +175,10 @@ export function ScattergoriesRoom() {
   }
 
   return (
-    <Layout title="KernelChaos · Scattergories">
+    <Layout
+      title="KernelChaos · Scattergories"
+      tvRoom={{ code: roomCode, game: "scattergories" }}
+    >
       {!connected ? <p className="muted connecting">Connecting…</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
@@ -265,11 +268,6 @@ export function ScattergoriesRoom() {
             >
               {formatClock(playLeft)}
             </div>
-            <OpenTvButton
-              roomCode={roomCode}
-              game="scattergories"
-              className="btn tv-link play-tv-link"
-            />
           </header>
           <form
             className="scatter-form"

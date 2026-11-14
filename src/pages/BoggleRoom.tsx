@@ -145,7 +145,7 @@ export function BoggleRoom() {
     state?.endsAt != null ? Math.max(0, Math.ceil((state.endsAt - now) / 1000)) : 0;
 
   return (
-    <Layout title="KernelChaos · Boggle">
+    <Layout title="KernelChaos · Boggle" tvRoom={{ code: roomCode, game: "boggle" }}>
       {!connected ? <p className="muted connecting">Connecting…</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
@@ -195,7 +195,6 @@ export function BoggleRoom() {
                 </li>
               ))}
             </ul>
-            <OpenTvButton roomCode={roomCode} className="btn tv-link play-tv-link" />
           </div>
           <BoggleBoard
             board={state.board}
