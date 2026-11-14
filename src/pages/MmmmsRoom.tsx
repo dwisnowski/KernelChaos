@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { playRoundEnd, playWinner, unlockAudio } from "../audio/sfx.ts";
+import {
+  playMmmmsDeal,
+  playMmmmsDefeat,
+  playMmmmsExplode,
+  playMmmmsGuess,
+  playMmmmsHalt,
+  playMmmmsLock,
+  playMmmmsSmash,
+  playWinner,
+  unlockAudio,
+} from "../audio/sfx.ts";
 import { BurstOverlay, type BurstOverlayHandle } from "../components/BurstOverlay.tsx";
 import { ColorPalette } from "../components/ColorPalette.tsx";
 import { Layout } from "../components/Layout.tsx";
@@ -79,11 +89,16 @@ export function MmmmsRoom() {
 
   useEffect(() => {
     if (!state) return;
-    if (phaseRef.current && phaseRef.current !== "results" && state.phase === "results") {
-      playWinner();
+    const prev = phaseRef.current;
+    if (prev === "lobby" && state.phase === "organize") {
+      playMmmmsDeal();
     }
-    if (phaseRef.current && phaseRef.current !== "resolving" && state.phase === "resolving") {
-      playRoundEnd();
+    if (prev && prev !== "resolving" && state.phase === "resolving") {
+      playMmmmsSmash();
+    }
+    if (prev && prev !== "results" && state.phase === "results") {
+      if (playerId != null && state.winnerId === playerId) playWinner();
+      else playMmmmsDefeat();
     }
     if (state.phase === "lobby" || state.phase === "organize") {
       setVanishing(new Set());
@@ -91,7 +106,7 @@ export function MmmmsRoom() {
       resolveKeyRef.current = null;
     }
     phaseRef.current = state.phase;
-  }, [state]);
+  }, [state, playerId]);
 
   useEffect(() => {
     if (!state || state.phase !== "resolving" || !state.lastAttack) return;
@@ -132,11 +147,14 @@ export function MmmmsRoom() {
           );
         }
         if (step.kind === "explode") {
+          playMmmmsExplode(i);
           exploded += 1;
           setAnimExploded(exploded);
           if (isDefender) {
             setVanishing((prev) => new Set(prev).add(i));
           }
+        } else {
+          playMmmmsHalt();
         }
         await new Promise((r) => setTimeout(r, STEP_MS));
       }
@@ -265,6 +283,7 @@ export function MmmmsRoom() {
                         className="btn primary"
                         onClick={() => {
                           unlockAudio();
+                          playMmmmsLock();
                           submitOrder();
                         }}
                       >
@@ -289,8 +308,12 @@ export function MmmmsRoom() {
                 label={state.phase === "guess" ? "Guess color" : "Attack color"}
                 onSelect={(color) => {
                   unlockAudio();
-                  if (state.phase === "guess") guessColor(color);
-                  else attackColor(color);
+                  if (state.phase === "guess") {
+                    playMmmmsGuess();
+                    guessColor(color);
+                  } else {
+                    attackColor(color);
+                  }
                 }}
               />
             </div>

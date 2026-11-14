@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { playRoundEnd, playWinner, unlockAudio } from "../audio/sfx.ts";
+import {
+  playMmmmsDeal,
+  playMmmmsExplode,
+  playMmmmsHalt,
+  playMmmmsSmash,
+  playWinner,
+  unlockAudio,
+} from "../audio/sfx.ts";
 import { BurstOverlay, type BurstOverlayHandle } from "../components/BurstOverlay.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { HiddenOrbStack } from "../components/OrbList.tsx";
@@ -36,11 +43,15 @@ export function MmmmsSpectator() {
   useEffect(() => {
     if (!state) return;
     unlockAudio();
-    if (phaseRef.current && phaseRef.current !== "results" && state.phase === "results") {
-      playWinner();
+    const prev = phaseRef.current;
+    if (prev === "lobby" && state.phase === "organize") {
+      playMmmmsDeal();
     }
-    if (phaseRef.current && phaseRef.current !== "resolving" && state.phase === "resolving") {
-      playRoundEnd();
+    if (prev && prev !== "resolving" && state.phase === "resolving") {
+      playMmmmsSmash();
+    }
+    if (prev && prev !== "results" && state.phase === "results") {
+      playWinner();
     }
     phaseRef.current = state.phase;
   }, [state]);
@@ -74,8 +85,11 @@ export function MmmmsSpectator() {
           );
         }
         if (step.kind === "explode") {
+          playMmmmsExplode(i);
           exploded += 1;
           setAnimExploded(exploded);
+        } else {
+          playMmmmsHalt();
         }
         await new Promise((r) => setTimeout(r, STEP_MS));
       }

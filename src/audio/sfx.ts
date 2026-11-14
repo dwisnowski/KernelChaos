@@ -249,3 +249,67 @@ export function playInvalidToggle(): void {
   if (!c) return;
   tone(311, c.currentTime, 0.1, "triangle", 0.05);
 }
+
+/** M&Ms Smash: stacks dealt / enter organize. */
+export function playMmmmsDeal(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(330, t, 0.06, "triangle", 0.05);
+  tone(392, t + 0.05, 0.06, "triangle", 0.055);
+  tone(494, t + 0.1, 0.06, "triangle", 0.06);
+  tone(587, t + 0.15, 0.1, "sine", 0.07);
+}
+
+/** M&Ms Smash: player locks stack order. */
+export function playMmmmsLock(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(440, t, 0.08, "triangle", 0.06);
+  tone(554, t + 0.07, 0.12, "sine", 0.07);
+}
+
+/** M&Ms Smash: defender commits guess color. */
+export function playMmmmsGuess(): void {
+  const c = getCtx();
+  if (!c) return;
+  tone(698, c.currentTime, 0.1, "sine", 0.06);
+}
+
+/** M&Ms Smash: attack resolve begins (smash sting). */
+export function playMmmmsSmash(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(196, t, 0.1, "square", 0.05);
+  tone(147, t + 0.06, 0.14, "sawtooth", 0.04);
+  tone(98, t + 0.12, 0.18, "triangle", 0.06);
+}
+
+/** M&Ms Smash: one orb explodes; pitch rises slightly along the chain. */
+export function playMmmmsExplode(stepIndex: number): void {
+  const c = getCtx();
+  if (!c) return;
+  const freq = 320 + Math.min(stepIndex, 12) * 28;
+  tone(freq, c.currentTime, 0.09, "square", 0.045);
+}
+
+/** M&Ms Smash: correct-guess survive-and-halt. */
+export function playMmmmsHalt(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(880, t, 0.06, "triangle", 0.07);
+  tone(1175, t + 0.05, 0.12, "sine", 0.08);
+}
+
+/** M&Ms Smash: local player lost the duel. */
+export function playMmmmsDefeat(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(349, t, 0.14, "triangle", 0.07);
+  tone(277, t + 0.12, 0.18, "sine", 0.08);
+  tone(220, t + 0.28, 0.24, "triangle", 0.07);
+}
