@@ -22,4 +22,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0011 – Scattergories letter die roll](adr/0011-scattergories-letter-die-roll.md) — Rolling phase; random roller; classic 20-face WebGL icosahedron; live pose mirror; ≤5s settle; AFK server fallback
 - [0012 – Active room directory + empty-room teardown](adr/0012-active-room-directory.md) — Join-first entry; D1 open-lobby list; ~30s empty grace then clear DO storage / free code
 - [0013 – Player seat resume after spectator](adr/0013-player-seat-resume.md) — `resumeId` + private `myWords`/`myAnswers` on welcome so spectator → player keeps entries
-- [0014 – Mmmms two-player orb duel](adr/0014-mmmms.md) — Exactly two seats; 12/20/30 orbs; organize → guess → attack; hidden stacks; inclusive explode path; correct-guess 50% halt saves; particle bursts
+- [0014 – M&Ms Smash two-player orb duel](adr/0014-mmmms.md) — Exactly two seats; 12/20/30 orbs; organize → guess → attack; hidden stacks; inclusive explode path; correct-guess 50% halt saves; particle bursts

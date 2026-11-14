@@ -1,12 +1,12 @@
-# ADR 0014: Mmmms two-player orb duel
+# ADR 0014: M&Ms Smash two-player orb duel
 
 ## Status
 
-Accepted (implemented: polymorphic `GameRoom` `mmmms` type, organize → guess → attack phases, particle burst FX).
+Accepted (implemented: polymorphic `GameRoom` `mmmms` type, organize → guess → attack phases, particle burst FX). Display name: **M&Ms Smash** (internal id remains `mmmms`).
 
 ## Context
 
-KernelChaos already supports Boggle and Scattergories through a shared phone+TV shell and a polymorphic Durable Object ([ADR 0009](./0009-scattergories-and-game-shell.md)). A third family game, **Mmmms**, needs the same join friction (4-character code + QR) but is a strict **two-player** duel: each seat gets a private stack of colored orbs, reorders them, then alternates attack/defend until one stack is empty.
+KernelChaos already supports Boggle and Scattergories through a shared phone+TV shell and a polymorphic Durable Object ([ADR 0009](./0009-scattergories-and-game-shell.md)). A third family game, **M&Ms Smash**, needs the same join friction (4-character code + QR) but is a strict **two-player** duel: each seat gets a private stack of colored orbs, reorders them, then alternates attack/defend until one stack is empty.
 
 Attack resolution is intentional and mind-game heavy: the defender’s remaining colors stay hidden (count only); the defender guesses the attack color just before the attacker picks; a correct guess grants per-orb 50% “survive and halt” saves along the explosion path.
 
@@ -26,5 +26,5 @@ Attack resolution is intentional and mind-game heavy: the defender’s remaining
 
 - `GameType` grows to `"boggle" | "scattergories" | "mmmms"` across Worker and UI unions.
 - Domain logic lives under `worker/mmmms/`; `GameRoom` only dispatches.
-- Two-player cap is Mmmms-specific; Boggle/Scattergories remain unbounded.
+- Two-player cap is M&Ms Smash-specific; Boggle/Scattergories remain unbounded.
 - Cross-links: extends [0009](./0009-scattergories-and-game-shell.md), [0003](./0003-tv-spectator-screen.md), [0007](./0007-spectator-room-entry.md).

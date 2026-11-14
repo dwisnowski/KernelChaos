@@ -108,7 +108,7 @@ export function MmmmsSpectator() {
               <p className="room-code" aria-label={`Room code ${state.code}`}>
                 {state.code}
               </p>
-              <p className="spectator-tag">TV spectator · Mmmms · 2 players</p>
+              <p className="spectator-tag">TV spectator · M&Ms Smash · 2 players</p>
               <div className="qr-wrap">
                 <QRCodeSVG
                   value={joinUrl}
@@ -187,7 +187,7 @@ export function MmmmsSpectator() {
               <div className="mmmms-results">
                 <h2>{state.winnerName ?? "Winner"} wins!</h2>
                 <Link className="btn" to="/mmmms">
-                  Back to Mmmms
+                  Back to M&Ms Smash
                 </Link>
               </div>
             ) : null}

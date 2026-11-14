@@ -67,7 +67,7 @@ export function useMmmmsRoom({ code, role = "player", onError }: Options) {
       }
       if (msg.type === "welcome") {
         if (!msg.state || msg.state.game !== "mmmms") {
-          onErrorRef.current?.("This room is not a Mmmms game");
+          onErrorRef.current?.("This room is not an M&Ms Smash game");
           return;
         }
         setPlayerId(msg.playerId || null);
@@ -77,7 +77,7 @@ export function useMmmmsRoom({ code, role = "player", onError }: Options) {
         else if (msg.state.phase === "lobby") setMyOrbs(null);
       } else if (msg.type === "state") {
         if (!msg.state || msg.state.game !== "mmmms") {
-          onErrorRef.current?.("This room is not a Mmmms game");
+          onErrorRef.current?.("This room is not an M&Ms Smash game");
           return;
         }
         setState(msg.state);

@@ -98,7 +98,7 @@ interface PlayerRecord {
   roundAwards: RoundAward[];
   answers: string[];
   hostRejected: boolean[];
-  /** Mmmms: bottom→top stack (index 0 explodes first). */
+  /** M&Ms Smash: bottom→top stack (index 0 explodes first). */
   orbs: OrbColor[];
   mmmmsReady: boolean;
 }
@@ -249,7 +249,7 @@ export class GameRoom extends DurableObject<Env> {
   private rollEndsAt: number | null = null;
   private emptyGraceEndsAt: number | null = null;
 
-  // Mmmms
+  // M&Ms Smash
   private orbCount: OrbCount = DEFAULT_ORB_COUNT;
   private attackerId: string | null = null;
   private defenderId: string | null = null;
@@ -857,7 +857,7 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     if (this.gameType === "mmmms" && this.players.size >= 2) {
-      this.send(ws, { type: "error", message: "Mmmms is full (2 players)" });
+      this.send(ws, { type: "error", message: "M&Ms Smash is full (2 players)" });
       return;
     }
 

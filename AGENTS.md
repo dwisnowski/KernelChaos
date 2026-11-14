@@ -4,7 +4,7 @@ Short orientation for AI coding agents. Humans should start with [`readme.md`](.
 
 ## What this is
 
-Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters), Scattergories (category forms + TV review), and Mmmms (two-player orb duel), all with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
+Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters), Scattergories (category forms + TV review), and M&Ms Smash (two-player orb duel), all with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
 
 ## Read before changing architecture
 

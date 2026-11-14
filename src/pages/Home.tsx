@@ -83,7 +83,7 @@ export function Home() {
           </article>
           <article className="game-card">
             <MmmmsIcon />
-            <h2>Mmmms</h2>
+            <h2>M&Ms Smash</h2>
             <p>
               Two players stack colored orbs, guess the attack, and explode from the bottom up.
             </p>

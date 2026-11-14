@@ -158,7 +158,7 @@ export function MmmmsRoom() {
 
   if (!name) {
     return (
-      <Layout title="KernelChaos · Mmmms">
+      <Layout title="KernelChaos · M&Ms Smash">
         <section className="entry-card">
           <p>Enter a name to join this room.</p>
           <Link className="btn primary" to={`/mmmms/join?code=${roomCode}`}>
@@ -181,7 +181,7 @@ export function MmmmsRoom() {
 
   return (
     <Layout
-      title="KernelChaos · Mmmms"
+      title="KernelChaos · M&Ms Smash"
       tvRoom={{
         code: roomCode,
         game: "mmmms",

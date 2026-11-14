@@ -89,12 +89,12 @@ export function MmmmsEntry() {
   }
 
   return (
-    <Layout title="KernelChaos · Mmmms">
+    <Layout title="KernelChaos · M&Ms Smash">
       <section className="entry">
         <Link className="back-link" to="/">
           ← All games
         </Link>
-        <h1>Mmmms</h1>
+        <h1>M&Ms Smash</h1>
         <p className="lede">Stack colored orbs, guess the attack, and watch the bottom explode.</p>
 
         <label className="field">
