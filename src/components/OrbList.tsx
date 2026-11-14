@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMemo } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ORB_COLOR_HEX, ORB_COLOR_LABELS, type OrbColor } from "../mmmmsTypes.ts";
 
 interface Props {
@@ -27,10 +27,19 @@ interface Props {
   className?: string;
 }
 
+interface SortableOrb {
+  id: string;
+  color: OrbColor;
+}
+
 interface SortableOrbRowProps {
   id: string;
   color: OrbColor;
   disabled: boolean;
+}
+
+function colorsEqual(a: OrbColor[], b: OrbColor[]): boolean {
+  return a.length === b.length && a.every((color, i) => color === b[i]);
 }
 
 function SortableOrbRow({ id, color, disabled }: SortableOrbRowProps) {
@@ -71,13 +80,33 @@ function SortableOrbRow({ id, color, disabled }: SortableOrbRowProps) {
 /**
  * Visual stack for organize: top of column = top of stack (high index),
  * bottom of column = index 0. Storage remains bottom→top.
+ *
+ * Sortable ids are stable per orb instance (not storage indices) so after a
+ * drop the dragged row stays in the drop slot instead of snapping back while
+ * colors reshuffle under index-based keys.
  */
 export function OrbList({ orbs, disabled = false, onReorder, className }: Props) {
-  // Top→bottom visual order; id = storage index (bottom→top).
-  const visual = useMemo(
-    () => orbs.map((color, index) => ({ id: String(index), color })).reverse(),
-    [orbs],
-  );
+  const idPrefix = useId();
+  const seq = useRef(0);
+  const makeItems = (colors: OrbColor[]): SortableOrb[] =>
+    colors.map((color) => ({ id: `${idPrefix}-${seq.current++}`, color }));
+
+  const [items, setItems] = useState<SortableOrb[]>(() => makeItems(orbs));
+
+  useEffect(() => {
+    setItems((prev) => {
+      if (colorsEqual(
+        prev.map((item) => item.color),
+        orbs,
+      )) {
+        return prev;
+      }
+      return makeItems(orbs);
+    });
+  }, [orbs, idPrefix]);
+
+  // Top→bottom visual order; ids travel with each orb through arrayMove.
+  const visual = useMemo(() => [...items].reverse(), [items]);
   const itemIds = useMemo(() => visual.map((row) => row.id), [visual]);
 
   const sensors = useSensors(
@@ -90,11 +119,13 @@ export function OrbList({ orbs, disabled = false, onReorder, className }: Props)
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = Number(active.id);
-    const newIndex = Number(over.id);
-    if (!Number.isFinite(oldIndex) || !Number.isFinite(newIndex)) return;
-    if (oldIndex === newIndex) return;
-    onReorder(arrayMove(orbs, oldIndex, newIndex));
+    const oldIndex = items.findIndex((item) => item.id === active.id);
+    const newIndex = items.findIndex((item) => item.id === over.id);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+
+    const next = arrayMove(items, oldIndex, newIndex);
+    setItems(next);
+    onReorder(next.map((item) => item.color));
   }
 
   return (
