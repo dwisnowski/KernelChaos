@@ -27,12 +27,13 @@ import {
 } from "./boggle/scoring.ts";
 import { computeBoardCoverage } from "./boggle/solver.ts";
 import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
-import { rollLetter } from "./scattergories/letter.ts";
+import { isLetterDie, rollLetter } from "./scattergories/letter.ts";
 import { pickList } from "./scattergories/packs.ts";
 import {
   CATEGORIES_PER_LIST,
   DEFAULT_SCATTER_ROUND_SECONDS,
   SCATTER_COUNTDOWN_MS,
+  SCATTER_ROLL_TIMEOUT_MS,
   isPackTier,
   isScatterRoundSeconds,
   type PackTier,
@@ -207,6 +208,8 @@ export class GameRoom extends DurableObject<Env> {
   private categories: string[] | null = null;
   private listId: string | null = null;
   private usedListIds: string[] = [];
+  private rollerId: string | null = null;
+  private rollerName: string | null = null;
   private reviewIndex: number | null = null;
   private reviewBallots: ReviewBallotMaps = emptyReviewBallots();
 
@@ -236,6 +239,8 @@ export class GameRoom extends DurableObject<Env> {
       categories?: string[] | null;
       listId?: string | null;
       usedListIds?: string[];
+      rollerId?: string | null;
+      rollerName?: string | null;
       reviewIndex?: number | null;
       reviewBallots?: StoredReviewBallots;
     }>("room");
@@ -268,6 +273,8 @@ export class GameRoom extends DurableObject<Env> {
       this.categories = stored.categories ?? null;
       this.listId = stored.listId ?? null;
       this.usedListIds = stored.usedListIds ?? [];
+      this.rollerId = stored.rollerId ?? null;
+      this.rollerName = stored.rollerName ?? null;
       this.reviewIndex = stored.reviewIndex ?? null;
       this.reviewBallots = loadReviewBallots(stored.reviewBallots);
       this.players = new Map(
@@ -310,6 +317,8 @@ export class GameRoom extends DurableObject<Env> {
       categories: this.categories,
       listId: this.listId,
       usedListIds: this.usedListIds,
+      rollerId: this.rollerId,
+      rollerName: this.rollerName,
       reviewIndex: this.reviewIndex,
       reviewBallots: serializeReviewBallots(this.reviewBallots),
       players: [...this.players.values()].map((p) => ({
@@ -388,6 +397,14 @@ export class GameRoom extends DurableObject<Env> {
       case "start":
         await this.handleStart(attachment?.playerId);
         break;
+      case "diePose":
+        if (this.gameType !== "scattergories") break;
+        this.handleDiePose(attachment?.playerId, msg.qx, msg.qy, msg.qz, msg.qw);
+        break;
+      case "submitLetterRoll":
+        if (this.gameType !== "scattergories") break;
+        await this.handleSubmitLetterRoll(attachment?.playerId, msg.letter);
+        break;
       case "submitWord":
         if (this.gameType !== "boggle") break;
         await this.handleSubmit(ws, attachment?.playerId, msg.path);
@@ -442,6 +459,11 @@ export class GameRoom extends DurableObject<Env> {
   async alarm(): Promise<void> {
     await this.ensureLoaded();
     const now = Date.now();
+
+    if (this.phase === "rolling" && this.gameType === "scattergories") {
+      await this.beginScatterCountdown(rollLetter());
+      return;
+    }
 
     if (this.phase === "countdown" && this.countdownEndsAt != null && now >= this.countdownEndsAt) {
       this.phase = "playing";
@@ -622,35 +644,98 @@ export class GameRoom extends DurableObject<Env> {
     this.reviewBallots = emptyReviewBallots();
 
     this.round += 1;
-    this.countdownEndsAt =
-      Date.now() + (this.gameType === "scattergories" ? SCATTER_COUNTDOWN_MS : COUNTDOWN_MS);
     this.endsAt = null;
     this.scoresFinalized = false;
     this.reviewIndex = null;
 
     if (this.gameType === "scattergories") {
-      const used = new Set(this.usedListIds);
-      const list = pickList(this.packTier, used);
-      this.listId = list.id;
-      this.categories = list.categories;
-      this.letter = rollLetter();
-      this.usedListIds = [...this.usedListIds, list.id];
       this.board = null;
-      this.missedWords = null;
-      this.possibleWordCount = null;
-      this.possibleByLength = null;
-    } else {
-      this.board = generateBoard(this.boardSize);
-      this.globalAcceptCount = 0;
-      this.lastAccept = null;
       this.missedWords = null;
       this.possibleWordCount = null;
       this.possibleByLength = null;
       this.letter = null;
       this.categories = null;
       this.listId = null;
+      this.countdownEndsAt = null;
+
+      const ids = [...this.players.keys()];
+      const pick = crypto.getRandomValues(new Uint8Array(1))[0]! % ids.length;
+      const roller = this.players.get(ids[pick]!)!;
+      this.rollerId = roller.id;
+      this.rollerName = roller.name;
+      this.phase = "rolling";
+      await this.ctx.storage.setAlarm(Date.now() + SCATTER_ROLL_TIMEOUT_MS);
+      await this.persist();
+      this.broadcastState();
+      return;
     }
 
+    this.board = generateBoard(this.boardSize);
+    this.globalAcceptCount = 0;
+    this.lastAccept = null;
+    this.missedWords = null;
+    this.possibleWordCount = null;
+    this.possibleByLength = null;
+    this.letter = null;
+    this.categories = null;
+    this.listId = null;
+    this.rollerId = null;
+    this.rollerName = null;
+    this.countdownEndsAt = Date.now() + COUNTDOWN_MS;
+    this.phase = "countdown";
+    await this.ctx.storage.setAlarm(this.countdownEndsAt);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private handleDiePose(
+    playerId: string | undefined,
+    qx: number,
+    qy: number,
+    qz: number,
+    qw: number,
+  ): void {
+    if (!playerId || this.phase !== "rolling" || playerId !== this.rollerId) return;
+    if (![qx, qy, qz, qw].every((n) => typeof n === "number" && Number.isFinite(n))) return;
+    const mag = Math.hypot(qx, qy, qz, qw);
+    if (mag < 1e-6) return;
+    const payload = JSON.stringify({
+      type: "diePose",
+      rollerId: playerId,
+      qx: qx / mag,
+      qy: qy / mag,
+      qz: qz / mag,
+      qw: qw / mag,
+    } satisfies ScatterServerMessage);
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.send(payload);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  private async handleSubmitLetterRoll(
+    playerId: string | undefined,
+    letter: string,
+  ): Promise<void> {
+    if (!playerId || this.phase !== "rolling" || playerId !== this.rollerId) return;
+    if (typeof letter !== "string" || !isLetterDie(letter)) return;
+    await this.beginScatterCountdown(letter.toUpperCase());
+  }
+
+  private async beginScatterCountdown(letter: string): Promise<void> {
+    if (this.phase !== "rolling") return;
+    const used = new Set(this.usedListIds);
+    const list = pickList(this.packTier, used);
+    this.listId = list.id;
+    this.categories = list.categories;
+    this.letter = letter.toUpperCase();
+    this.usedListIds = [...this.usedListIds, list.id];
+    this.rollerId = null;
+    this.rollerName = null;
+    this.countdownEndsAt = Date.now() + SCATTER_COUNTDOWN_MS;
     this.phase = "countdown";
     await this.ctx.storage.setAlarm(this.countdownEndsAt);
     await this.persist();
@@ -673,6 +758,8 @@ export class GameRoom extends DurableObject<Env> {
     this.letter = null;
     this.categories = null;
     this.listId = null;
+    this.rollerId = null;
+    this.rollerName = null;
     this.reviewIndex = null;
     this.reviewBallots = emptyReviewBallots();
     for (const p of this.players.values()) {
@@ -1053,18 +1140,22 @@ export class GameRoom extends DurableObject<Env> {
       }
     }
 
+    const hideRoundSetup = this.phase === "lobby" || this.phase === "rolling";
+
     return {
       game: "scattergories",
       code: this.code,
       phase: this.phase as ScatterPhase,
       packTier: this.packTier,
       roundSeconds: this.roundSeconds as ScatterRoundSeconds,
-      letter: this.phase === "lobby" ? null : this.letter,
-      categories: this.phase === "lobby" ? null : this.categories,
-      listId: this.phase === "lobby" ? null : this.listId,
+      letter: hideRoundSetup ? null : this.letter,
+      categories: hideRoundSetup ? null : this.categories,
+      listId: hideRoundSetup ? null : this.listId,
       countdownEndsAt: this.countdownEndsAt,
       endsAt: this.endsAt,
       players,
+      rollerId: this.phase === "rolling" ? this.rollerId : null,
+      rollerName: this.phase === "rolling" ? this.rollerName : null,
       reviewIndex: this.phase === "review" ? this.reviewIndex : null,
       reviewAnswers,
       reviewSubmittedBy,

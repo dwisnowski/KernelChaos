@@ -1,9 +1,41 @@
 export type PackTier = "family" | "kids" | "adult";
 export type ScatterRoundSeconds = 120 | 150 | 180;
-export type ScatterPhase = "lobby" | "countdown" | "playing" | "review" | "results";
+export type ScatterPhase =
+  | "lobby"
+  | "rolling"
+  | "countdown"
+  | "playing"
+  | "review"
+  | "results";
 
 export type AnswerStatus = "unique" | "duplicate" | "invalidLetter" | "empty" | "rejected";
 export type ReviewVote = "in" | "out";
+
+/** Classic Scattergories letter die — mirrors worker/scattergories/letter.ts */
+export const LETTER_DIE = [
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+  "M",
+  "N",
+  "O",
+  "P",
+  "R",
+  "S",
+  "T",
+  "W",
+] as const;
+
+export type LetterDieFace = (typeof LETTER_DIE)[number];
 
 export interface ScatterPlayerPublic {
   id: string;
@@ -47,6 +79,8 @@ export interface ScatterRoomState {
   countdownEndsAt: number | null;
   endsAt: number | null;
   players: ScatterPlayerPublic[];
+  rollerId: string | null;
+  rollerName: string | null;
   reviewIndex: number | null;
   reviewAnswers: CategoryAnswerView[] | null;
   reviewSubmittedBy: string[];
@@ -57,12 +91,16 @@ export interface ScatterRoomState {
   round: number;
 }
 
+export type DiePose = { qx: number; qy: number; qz: number; qw: number };
+
 export type ScatterClientMessage =
   | { type: "join"; name: string }
   | { type: "spectate" }
   | { type: "setPackTier"; packTier: PackTier }
   | { type: "setRoundSeconds"; roundSeconds: ScatterRoundSeconds }
   | { type: "start" }
+  | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }
+  | { type: "submitLetterRoll"; letter: string }
   | { type: "submitAnswers"; answers: string[] }
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
@@ -78,6 +116,7 @@ export type ScatterServerMessage =
       role?: "player" | "spectator";
     }
   | { type: "state"; state: ScatterRoomState }
+  | { type: "diePose"; rollerId: string; qx: number; qy: number; qz: number; qw: number }
   | { type: "error"; message: string };
 
 export const CATEGORIES_PER_LIST = 12;

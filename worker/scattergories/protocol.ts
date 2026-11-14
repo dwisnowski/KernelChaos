@@ -2,7 +2,13 @@ export type GameType = "boggle" | "scattergories";
 
 export type PackTier = "family" | "kids" | "adult";
 
-export type ScatterPhase = "lobby" | "countdown" | "playing" | "review" | "results";
+export type ScatterPhase =
+  | "lobby"
+  | "rolling"
+  | "countdown"
+  | "playing"
+  | "review"
+  | "results";
 
 /** Host-selectable round lengths (seconds) for Scattergories. */
 export type ScatterRoundSeconds = 120 | 150 | 180;
@@ -10,6 +16,8 @@ export type ScatterRoundSeconds = 120 | 150 | 180;
 export const SCATTER_ROUND_SECONDS_OPTIONS: ScatterRoundSeconds[] = [120, 150, 180];
 export const DEFAULT_SCATTER_ROUND_SECONDS: ScatterRoundSeconds = 150;
 export const SCATTER_COUNTDOWN_MS = 3000;
+/** Max wait for the chosen roller to submit a letter before server rolls. */
+export const SCATTER_ROLL_TIMEOUT_MS = 30_000;
 export const CATEGORIES_PER_LIST = 12;
 
 export function isScatterRoundSeconds(n: unknown): n is ScatterRoundSeconds {
@@ -69,6 +77,9 @@ export interface ScatterRoomState {
   countdownEndsAt: number | null;
   endsAt: number | null;
   players: ScatterPlayerPublic[];
+  /** Player chosen to flick the letter die during `rolling`. */
+  rollerId: string | null;
+  rollerName: string | null;
   /** Index of category being revealed in review (0–11). */
   reviewIndex: number | null;
   /** Present in review/results — answers for current review category when in review. */
@@ -84,12 +95,16 @@ export interface ScatterRoomState {
   round: number;
 }
 
+export type DiePose = { qx: number; qy: number; qz: number; qw: number };
+
 export type ScatterClientMessage =
   | { type: "join"; name: string }
   | { type: "spectate" }
   | { type: "setPackTier"; packTier: PackTier }
   | { type: "setRoundSeconds"; roundSeconds: ScatterRoundSeconds }
   | { type: "start" }
+  | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }
+  | { type: "submitLetterRoll"; letter: string }
   | { type: "submitAnswers"; answers: string[] }
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
@@ -105,4 +120,5 @@ export type ScatterServerMessage =
       role?: "player" | "spectator";
     }
   | { type: "state"; state: ScatterRoomState }
+  | { type: "diePose"; rollerId: string; qx: number; qy: number; qz: number; qw: number }
   | { type: "error"; message: string };

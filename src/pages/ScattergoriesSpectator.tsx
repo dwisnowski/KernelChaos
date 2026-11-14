@@ -11,6 +11,7 @@ import {
   unlockAudio,
 } from "../audio/sfx.ts";
 import { Layout } from "../components/Layout.tsx";
+import { LetterDie } from "../components/LetterDie.tsx";
 import { ScatterReview } from "../components/ScatterReview.tsx";
 import { useScattergoriesRoom } from "../hooks/useScattergoriesRoom.ts";
 
@@ -24,7 +25,7 @@ export function ScattergoriesSpectator() {
   const reviewIdxRef = useRef<number | null>(null);
   const lastTick = useRef<number | null>(null);
 
-  const { state, connected, spectate } = useScattergoriesRoom({
+  const { state, connected, diePose, spectate } = useScattergoriesRoom({
     code: roomCode,
     role: "spectator",
     onError: (message) => setError(message),
@@ -120,6 +121,18 @@ export function ScattergoriesSpectator() {
               ))}
               {state.players.length === 0 ? <li className="muted">Waiting for players…</li> : null}
             </ul>
+          </div>
+        ) : null}
+
+        {state?.phase === "rolling" ? (
+          <div className="spectator-rolling rise">
+            <p className="lobby-label">{state.rollerName ?? "Someone"} is rolling…</p>
+            <LetterDie
+              key={`tv-roll-${state.round}-${state.rollerId ?? ""}`}
+              mode="remote"
+              pose={diePose}
+              size={360}
+            />
           </div>
         ) : null}
 

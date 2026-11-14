@@ -13,6 +13,7 @@ import {
 } from "../audio/sfx.ts";
 import type { ReviewVote } from "../scatterTypes.ts";
 import { Layout } from "../components/Layout.tsx";
+import { LetterDie } from "../components/LetterDie.tsx";
 import { OpenTvButton } from "../components/OpenTvButton.tsx";
 import { ScatterLobby } from "../components/ScatterLobby.tsx";
 import { ScatterReview } from "../components/ScatterReview.tsx";
@@ -38,15 +39,20 @@ export function ScattergoriesRoom() {
 
   const roomCode = code.toUpperCase();
 
+  const settledRef = useRef(false);
+
   const {
     state,
     me,
     connected,
+    diePose,
     join,
     setPackTier,
     setRoundSeconds,
     start,
     playAgain,
+    sendDiePose,
+    submitLetterRoll,
     submitAnswers,
     reviewNext,
     reviewPrev,
@@ -56,6 +62,10 @@ export function ScattergoriesRoom() {
     code: roomCode,
     onError: (message) => setError(message),
   });
+
+  useEffect(() => {
+    if (state?.phase === "rolling") settledRef.current = false;
+  }, [state?.phase, state?.round]);
 
   useEffect(() => {
     if (!name || joined) return;
@@ -104,7 +114,7 @@ export function ScattergoriesRoom() {
         playDupeCancel();
       }
     }
-    if (state.phase === "lobby" || state.phase === "countdown") {
+    if (state.phase === "lobby" || state.phase === "rolling" || state.phase === "countdown") {
       setAnswers(Array(CATEGORIES_PER_LIST).fill(""));
       lastTick.current = null;
       lastUrgent.current = null;
@@ -187,6 +197,43 @@ export function ScattergoriesRoom() {
             start();
           }}
         />
+      ) : null}
+
+      {state?.phase === "rolling" ? (
+        <section className="scatter-rolling rise">
+          <p className="lobby-label">
+            {me?.id === state.rollerId
+              ? "Your roll"
+              : `${state.rollerName ?? "Someone"} is rolling…`}
+          </p>
+          <LetterDie
+            key={`roll-${state.round}-${state.rollerId ?? ""}`}
+            mode={me?.id === state.rollerId ? "interactive" : "remote"}
+            pose={me?.id === state.rollerId ? null : diePose}
+            size={280}
+            onPose={
+              me?.id === state.rollerId
+                ? (pose) => {
+                    sendDiePose(pose);
+                  }
+                : undefined
+            }
+            onSettle={
+              me?.id === state.rollerId
+                ? (letter) => {
+                    if (settledRef.current) return;
+                    settledRef.current = true;
+                    unlockAudio();
+                    playLetterRoll();
+                    submitLetterRoll(letter);
+                  }
+                : undefined
+            }
+          />
+          {me?.id === state.rollerId ? (
+            <p className="muted">Drag to aim, then flick to roll</p>
+          ) : null}
+        </section>
       ) : null}
 
       {state?.phase === "countdown" ? (

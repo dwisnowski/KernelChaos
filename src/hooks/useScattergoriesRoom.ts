@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  DiePose,
   PackTier,
   ScatterClientMessage,
   ScatterRoundSeconds,
@@ -17,6 +18,7 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
   const [state, setState] = useState<ScatterRoomState | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [diePose, setDiePose] = useState<DiePose | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingJoin = useRef<string | null>(null);
   const pendingSpectate = useRef(false);
@@ -64,12 +66,16 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
         }
         setPlayerId(msg.playerId || null);
         setState(msg.state);
+        if (msg.state.phase !== "rolling") setDiePose(null);
       } else if (msg.type === "state") {
         if (!msg.state || msg.state.game !== "scattergories") {
           onErrorRef.current?.("This room is not a Scattergories game");
           return;
         }
         setState(msg.state);
+        if (msg.state.phase !== "rolling") setDiePose(null);
+      } else if (msg.type === "diePose") {
+        setDiePose({ qx: msg.qx, qy: msg.qy, qz: msg.qz, qw: msg.qw });
       } else if (msg.type === "error") {
         onErrorRef.current?.(msg.message);
       }
@@ -115,6 +121,14 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
   );
   const start = useCallback(() => send({ type: "start" }), [send]);
   const playAgain = useCallback(() => send({ type: "playAgain" }), [send]);
+  const sendDiePose = useCallback(
+    (pose: DiePose) => send({ type: "diePose", ...pose }),
+    [send],
+  );
+  const submitLetterRoll = useCallback(
+    (letter: string) => send({ type: "submitLetterRoll", letter }),
+    [send],
+  );
   const submitAnswers = useCallback(
     (answers: string[]) => send({ type: "submitAnswers", answers }),
     [send],
@@ -134,12 +148,15 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     playerId,
     me,
     connected,
+    diePose,
     join,
     spectate,
     setPackTier,
     setRoundSeconds,
     start,
     playAgain,
+    sendDiePose,
+    submitLetterRoll,
     submitAnswers,
     reviewNext,
     reviewPrev,
