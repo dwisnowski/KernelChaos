@@ -9,7 +9,9 @@
     "lint": "oxlint",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "hunt:coverage": "node --experimental-strip-types scripts/hunt-coverage.ts",
+    "hunt:generate-catalogs": "node scripts/generate-hunt-catalogs.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
