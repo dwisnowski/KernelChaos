@@ -29,3 +29,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0018 – M&Ms Smash combat hanging threads](adr/0018-mmmms-combat-hanging-threads.md) — Dual silk orb canvas in combat; left action prompt; `@dnd-kit` organize handles; TV anonymous threads
 - [0019 – Scattergories Picture Hunt](adr/0019-scattergories-picture-hunt.md) — Lobby Categories vs Hunt; curated scene synonym keys; skip review; shared letter die + 120/150/180 timers
 - [0020 – Picture Hunt scene authoring](adr/0020-hunt-scene-authoring.md) — Metadata-first JSON catalogs; ≥250 objects; ≥10 findable objectIds per die letter; coverage script + generate/verify loop
+- [0021 – Picture Hunt find feedback + boxes](adr/0021-hunt-find-feedback-and-boxes.md) — Green/red flash + SFX; personal remaining rail; normalized metadata boxes on results review

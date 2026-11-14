@@ -74,9 +74,31 @@ export interface ReviewPendingVoter {
   name: string;
 }
 
+export interface HuntBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export type HuntFindStatus =
+  | "unique"
+  | "duplicate"
+  | "invalidLetter"
+  | "empty"
+  | "unknown";
+
+export interface HuntFindLocation {
+  objectId: string;
+  raw: string;
+  box: HuntBox | null;
+}
+
 export interface ScatterPlayerResult extends ScatterPlayerPublic {
   answers: string[];
   categoryPoints: number[];
+  /** Hunt results only — matched finds with optional location boxes. */
+  findLocations?: HuntFindLocation[];
 }
 
 export interface HuntScenePublic {
@@ -102,6 +124,8 @@ export interface ScatterRoomState {
   sceneImageUrl: string | null;
   /** Catalog for lobby scene picker. */
   huntScenes: HuntScenePublic[];
+  /** Distinct letter-findable objectIds in the active hunt scene (0 when N/A). */
+  huntLetterTotal: number;
   countdownEndsAt: number | null;
   endsAt: number | null;
   players: ScatterPlayerPublic[];
@@ -136,6 +160,7 @@ export type ScatterClientMessage =
   | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }
   | { type: "submitLetterRoll"; letter: string }
   | { type: "submitAnswers"; answers: string[] }
+  | { type: "submitHuntFind"; word: string }
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
   | { type: "submitReviewVotes"; votes: Record<string, ReviewVote> }
@@ -153,4 +178,20 @@ export type ScatterServerMessage =
     }
   | { type: "state"; state: ScatterRoomState }
   | { type: "diePose"; rollerId: string; qx: number; qy: number; qz: number; qw: number }
+  | {
+      type: "huntFindResult";
+      ok: boolean;
+      status: HuntFindStatus;
+      remaining: number;
+      matchedCount: number;
+      letterTotal: number;
+      /** Present when ok — the accepted raw word appended to the seat. */
+      word?: string;
+    }
+  | {
+      type: "huntProgress";
+      remaining: number;
+      matchedCount: number;
+      letterTotal: number;
+    }
   | { type: "error"; message: string };

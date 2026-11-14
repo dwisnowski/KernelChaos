@@ -24,7 +24,7 @@ export interface HuntPlayerScore {
 }
 
 /** Build synonym → objectId for names that start with the round letter. */
-function letterSynonymIndex(
+export function letterSynonymIndex(
   scene: HuntScene,
   letter: string,
 ): Map<string, string> {
@@ -37,6 +37,60 @@ function letterSynonymIndex(
     }
   }
   return index;
+}
+
+/** Distinct objectIds that have at least one synonym starting with the letter. */
+export function countLetterObjects(scene: HuntScene, letter: string): number {
+  return new Set(letterSynonymIndex(scene, letter).values()).size;
+}
+
+/** ObjectIds this player has already matched for the letter (from their answer list). */
+export function matchedObjectIdsForPlayer(
+  scene: HuntScene,
+  letter: string,
+  answers: string[],
+): Set<string> {
+  const index = letterSynonymIndex(scene, letter);
+  const matched = new Set<string>();
+  for (const raw of answers) {
+    const n = normalizeAnswer(raw);
+    if (!n || !startsWithLetter(n, letter)) continue;
+    const id = index.get(n);
+    if (id) matched.add(id);
+  }
+  return matched;
+}
+
+export interface HuntWordMatch {
+  ok: boolean;
+  status: HuntFindStatus;
+  objectId: string | null;
+  normalized: string;
+}
+
+/** Validate one find against the key for live feedback (self-duplicates fail). */
+export function matchHuntWord(
+  scene: HuntScene,
+  letter: string,
+  word: string,
+  alreadyMatchedIds: Set<string>,
+): HuntWordMatch {
+  const trimmed = word.trim();
+  const normalized = normalizeAnswer(trimmed);
+  if (!normalized) {
+    return { ok: false, status: "empty", objectId: null, normalized: "" };
+  }
+  if (!startsWithLetter(normalized, letter)) {
+    return { ok: false, status: "invalidLetter", objectId: null, normalized };
+  }
+  const objectId = letterSynonymIndex(scene, letter).get(normalized) ?? null;
+  if (!objectId) {
+    return { ok: false, status: "unknown", objectId: null, normalized };
+  }
+  if (alreadyMatchedIds.has(objectId)) {
+    return { ok: false, status: "duplicate", objectId, normalized };
+  }
+  return { ok: true, status: "unique", objectId, normalized };
 }
 
 /**

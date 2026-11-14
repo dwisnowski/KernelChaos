@@ -1810,11 +1810,113 @@ input {
   gap: 0.65rem;
 }
 
+.hunt-play-layout {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 7.5rem) 1fr;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+@media (max-width: 520px) {
+  .hunt-play-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hunt-remaining-rail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1rem;
+  }
+}
+
+.hunt-remaining-rail {
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: var(--card);
+}
+
+.hunt-remaining-value {
+  margin: 0.15rem 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
+  line-height: 1;
+  color: var(--accent);
+}
+
+.hunt-remaining-meta {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.hunt-play-main {
+  min-width: 0;
+}
+
+.scatter-hunt-play.hunt-flash-ok {
+  animation: huntFlashOk 0.42s ease;
+}
+
+.scatter-hunt-play.hunt-flash-bad {
+  animation: huntFlashBad 0.42s ease;
+}
+
+@keyframes huntFlashOk {
+  0% {
+    background-color: color-mix(in srgb, #2f9e5a 42%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes huntFlashBad {
+  0% {
+    background-color: color-mix(in srgb, #c0392b 42%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 .hunt-scene {
   margin: 0 0 1rem;
   display: grid;
   gap: 0.4rem;
   justify-items: center;
+}
+
+.hunt-scene-frame {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+}
+
+.hunt-scene-frame .hunt-scene-img {
+  max-width: 100%;
+}
+
+.hunt-box-overlay {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid #2f9e5a;
+  border-radius: 6px;
+  background: color-mix(in srgb, #2f9e5a 18%, transparent);
+  pointer-events: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #0e1f35 25%, transparent);
+}
+
+.hunt-location-review {
+  margin: 1.25rem 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hunt-location-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .hunt-scene-img {

@@ -106,6 +106,17 @@ for (const file of files) {
   }
 
   const objectCount = scene.objects?.length ?? 0;
+  const withBox = (scene.objects ?? []).filter(
+    (o) =>
+      o.box &&
+      typeof o.box.x === "number" &&
+      typeof o.box.y === "number" &&
+      typeof o.box.w === "number" &&
+      typeof o.box.h === "number" &&
+      o.box.w > 0 &&
+      o.box.h > 0,
+  ).length;
+  const boxPct = objectCount > 0 ? Math.round((withBox / objectCount) * 100) : 0;
   const perLetter = Object.fromEntries(
     LETTER_DIE.map((l) => [l, counts[l]!.size]),
   ) as Record<string, number>;
@@ -113,6 +124,7 @@ for (const file of files) {
 
   console.log(`\n${scene.id} (${scene.title}) — ${file}`);
   console.log(`  objects: ${objectCount} (need ≥${MIN_OBJECTS})`);
+  console.log(`  boxes: ${withBox}/${objectCount} (${boxPct}%)`);
   console.log(
     "  letters:",
     LETTER_DIE.map((l) => `${l}:${perLetter[l]}`).join(" "),

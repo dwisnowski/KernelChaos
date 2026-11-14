@@ -6,12 +6,14 @@ import {
   playInvalidToggle,
   playLastSeconds,
   playLetterRoll,
+  playReject,
   playReviewAdvance,
   playRoundEnd,
   playWinner,
+  playWordFound,
   unlockAudio,
 } from "../audio/sfx.ts";
-import type { ReviewVote } from "../scatterTypes.ts";
+import type { HuntFindLocation, HuntFindResultMessage, ReviewVote } from "../scatterTypes.ts";
 import { Layout } from "../components/Layout.tsx";
 import { LetterDie } from "../components/LetterDie.tsx";
 import { OpenTvButton } from "../components/OpenTvButton.tsx";
@@ -32,15 +34,32 @@ export function ScattergoriesRoom() {
   const [now, setNow] = useState(() => Date.now());
   const [answers, setAnswers] = useState<string[]>(() => Array(CATEGORIES_PER_LIST).fill(""));
   const [huntDraft, setHuntDraft] = useState("");
+  const [huntFlash, setHuntFlash] = useState<"ok" | "bad" | null>(null);
+  const [reviewLocIndex, setReviewLocIndex] = useState(0);
   const lastTick = useRef<number | null>(null);
   const lastUrgent = useRef<number | null>(null);
   const phaseRef = useRef<string | null>(null);
   const reviewIdxRef = useRef<number | null>(null);
   const syncTimer = useRef<number | null>(null);
+  const flashTimer = useRef<number | null>(null);
 
   const roomCode = code.toUpperCase();
 
   const settledRef = useRef(false);
+
+  const onHuntFindResult = (msg: HuntFindResultMessage) => {
+    unlockAudio();
+    if (flashTimer.current) window.clearTimeout(flashTimer.current);
+    if (msg.ok) {
+      playWordFound(Math.max(3, msg.word?.length ?? 4));
+      setHuntFlash("ok");
+      setHuntDraft("");
+    } else {
+      playReject();
+      setHuntFlash("bad");
+    }
+    flashTimer.current = window.setTimeout(() => setHuntFlash(null), 420);
+  };
 
   const {
     state,
@@ -48,6 +67,7 @@ export function ScattergoriesRoom() {
     connected,
     diePose,
     myAnswers,
+    huntProgress,
     join,
     setPackTier,
     setPlayMode,
@@ -58,6 +78,7 @@ export function ScattergoriesRoom() {
     sendDiePose,
     submitLetterRoll,
     submitAnswers,
+    submitHuntFind,
     reviewNext,
     reviewPrev,
     submitReviewVotes,
@@ -65,9 +86,11 @@ export function ScattergoriesRoom() {
   } = useScattergoriesRoom({
     code: roomCode,
     onError: (message) => setError(message),
+    onHuntFindResult,
   });
 
   const isHunt = state?.playMode === "hunt";
+  const huntFinds = isHunt ? (myAnswers ?? answers.filter((a) => a.trim())) : [];
 
   useEffect(() => {
     if (state?.phase === "rolling") settledRef.current = false;
@@ -146,9 +169,10 @@ export function ScattergoriesRoom() {
     reviewIdxRef.current = state.reviewIndex;
   }, [now, state]);
 
-  // Debounced answer sync while playing
+  // Debounced answer sync while playing (categories only — hunt uses submitHuntFind)
   useEffect(() => {
     if (!state || state.phase !== "playing") return;
+    if (state.playMode === "hunt") return;
     if (syncTimer.current) window.clearTimeout(syncTimer.current);
     syncTimer.current = window.setTimeout(() => {
       submitAnswers(answers);
@@ -157,6 +181,10 @@ export function ScattergoriesRoom() {
       if (syncTimer.current) window.clearTimeout(syncTimer.current);
     };
   }, [answers, state, submitAnswers]);
+
+  useEffect(() => {
+    if (state?.phase === "results") setReviewLocIndex(0);
+  }, [state?.phase, state?.round]);
 
   const joinUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -292,7 +320,11 @@ export function ScattergoriesRoom() {
       ) : null}
 
       {state?.phase === "playing" && isHunt && state.sceneImageUrl ? (
-        <section className="scatter-play scatter-hunt-play">
+        <section
+          className={`scatter-play scatter-hunt-play${
+            huntFlash === "ok" ? " hunt-flash-ok" : huntFlash === "bad" ? " hunt-flash-bad" : ""
+          }`}
+        >
           <header className="scatter-play-header">
             <div>
               <p className="lobby-label">Letter</p>
@@ -310,64 +342,73 @@ export function ScattergoriesRoom() {
             >
               {formatClock(playLeft)}
             </div>
-            <p className="muted hunt-find-count" aria-live="polite">
-              {answers.filter((a) => a.trim()).length} finds
-            </p>
           </header>
-          <figure className="hunt-scene">
-            <img
-              src={state.sceneImageUrl}
-              alt={state.sceneTitle ?? "Hidden object scene"}
-              className="hunt-scene-img"
-            />
-            {state.sceneTitle ? <figcaption className="muted">{state.sceneTitle}</figcaption> : null}
-          </figure>
-          <form
-            className="scatter-form hunt-find-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const next = huntDraft.trim();
-              if (!next || answers.length >= HUNT_MAX_ANSWERS) return;
-              setAnswers((prev) => [...prev, next].slice(0, HUNT_MAX_ANSWERS));
-              setHuntDraft("");
-            }}
-          >
-            <label className="scatter-field">
-              <span>
-                Find objects starting with <em>{state.letter}</em>
-              </span>
-              <input
-                value={huntDraft}
-                onChange={(e) => setHuntDraft(e.target.value)}
-                maxLength={80}
-                autoComplete="off"
-                spellCheck
-                placeholder={`${state.letter}…`}
-              />
-            </label>
-            <button type="submit" className="btn primary" disabled={!huntDraft.trim()}>
-              Add find
-            </button>
-          </form>
-          {answers.length > 0 ? (
-            <ul className="hunt-find-list" aria-label="Your finds">
-              {answers.map((word, i) => (
-                <li key={`${word}-${i}`}>
-                  <span>{word}</span>
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    aria-label={`Remove ${word}`}
-                    onClick={() =>
-                      setAnswers((prev) => prev.filter((_, idx) => idx !== i))
-                    }
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <div className="hunt-play-layout">
+            <aside className="hunt-remaining-rail" aria-live="polite">
+              <p className="lobby-label">Remaining</p>
+              <p className="hunt-remaining-value">
+                {huntProgress?.remaining ??
+                  Math.max(
+                    0,
+                    (state.huntLetterTotal ?? 0) -
+                      (huntProgress?.matchedCount ?? huntFinds.length),
+                  )}
+              </p>
+              <p className="muted hunt-remaining-meta">
+                Found {huntProgress?.matchedCount ?? huntFinds.length}
+                {" / "}
+                {huntProgress?.letterTotal ?? state.huntLetterTotal ?? "—"}
+              </p>
+            </aside>
+            <div className="hunt-play-main">
+              <figure className="hunt-scene">
+                <img
+                  src={state.sceneImageUrl}
+                  alt={state.sceneTitle ?? "Hidden object scene"}
+                  className="hunt-scene-img"
+                />
+                {state.sceneTitle ? (
+                  <figcaption className="muted">{state.sceneTitle}</figcaption>
+                ) : null}
+              </figure>
+              <form
+                className="scatter-form hunt-find-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const next = huntDraft.trim();
+                  if (!next || huntFinds.length >= HUNT_MAX_ANSWERS) return;
+                  unlockAudio();
+                  submitHuntFind(next);
+                }}
+              >
+                <label className="scatter-field">
+                  <span>
+                    Find objects starting with <em>{state.letter}</em>
+                  </span>
+                  <input
+                    value={huntDraft}
+                    onChange={(e) => setHuntDraft(e.target.value)}
+                    maxLength={80}
+                    autoComplete="off"
+                    spellCheck
+                    placeholder={`${state.letter}…`}
+                  />
+                </label>
+                <button type="submit" className="btn primary" disabled={!huntDraft.trim()}>
+                  Add find
+                </button>
+              </form>
+              {huntFinds.length > 0 ? (
+                <ul className="hunt-find-list" aria-label="Your finds">
+                  {huntFinds.map((word, i) => (
+                    <li key={`${word}-${i}`}>
+                      <span>{word}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </div>
         </section>
       ) : null}
 
@@ -459,15 +500,6 @@ export function ScattergoriesRoom() {
                 : "It's a tie!"}
             </p>
           ) : null}
-          {isHunt && state.sceneImageUrl ? (
-            <figure className="hunt-scene hunt-scene-results">
-              <img
-                src={state.sceneImageUrl}
-                alt={state.sceneTitle ?? "Hidden object scene"}
-                className="hunt-scene-img"
-              />
-            </figure>
-          ) : null}
           <ol className="scoreboard">
             {state.results.map((r) => (
               <li key={r.id} className={state.winners?.includes(r.id) ? "is-winner" : ""}>
@@ -476,6 +508,17 @@ export function ScattergoriesRoom() {
               </li>
             ))}
           </ol>
+          {isHunt && me ? (
+            <HuntLocationReview
+              sceneImageUrl={state.sceneImageUrl}
+              sceneTitle={state.sceneTitle}
+              locations={
+                state.results.find((r) => r.id === me.id)?.findLocations ?? []
+              }
+              index={reviewLocIndex}
+              onSelect={setReviewLocIndex}
+            />
+          ) : null}
           {isHunt
             ? state.results.map((r) => (
                 <div key={`finds-${r.id}`} className="hunt-result-block">
@@ -533,4 +576,68 @@ function formatClock(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function HuntLocationReview({
+  sceneImageUrl,
+  sceneTitle,
+  locations,
+  index,
+  onSelect,
+}: {
+  sceneImageUrl: string | null;
+  sceneTitle: string | null;
+  locations: HuntFindLocation[];
+  index: number;
+  onSelect: (i: number) => void;
+}) {
+  if (!sceneImageUrl || locations.length === 0) return null;
+  const safeIndex = Math.min(Math.max(0, index), locations.length - 1);
+  const current = locations[safeIndex]!;
+  const box = current.box;
+
+  return (
+    <div className="hunt-location-review">
+      <h3>Review your finds</h3>
+      <div className="hunt-location-pills" role="list">
+        {locations.map((loc, i) => (
+          <button
+            key={`${loc.objectId}-${i}`}
+            type="button"
+            role="listitem"
+            className={`size-pill${i === safeIndex ? " is-active" : ""}`}
+            onClick={() => onSelect(i)}
+          >
+            {loc.raw}
+          </button>
+        ))}
+      </div>
+      <figure className="hunt-scene hunt-scene-results hunt-scene-review">
+        <div className="hunt-scene-frame">
+          <img
+            src={sceneImageUrl}
+            alt={sceneTitle ?? "Hidden object scene"}
+            className="hunt-scene-img"
+          />
+          {box ? (
+            <span
+              className="hunt-box-overlay"
+              style={{
+                left: `${box.x * 100}%`,
+                top: `${box.y * 100}%`,
+                width: `${box.w * 100}%`,
+                height: `${box.h * 100}%`,
+              }}
+              aria-hidden
+            />
+          ) : null}
+        </div>
+        {box ? (
+          <figcaption className="muted">Location for “{current.raw}”</figcaption>
+        ) : (
+          <figcaption className="muted">No location marked for this object</figcaption>
+        )}
+      </figure>
+    </div>
+  );
 }

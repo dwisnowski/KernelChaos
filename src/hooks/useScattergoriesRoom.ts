@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { loadResumeId, saveResumeId } from "../lib/playerResume.ts";
 import type {
   DiePose,
+  HuntFindResultMessage,
+  HuntProgressMessage,
   PackTier,
   ScatterClientMessage,
   ScatterPlayMode,
@@ -15,19 +17,28 @@ interface Options {
   code: string | null;
   role?: "player" | "spectator";
   onError?: (message: string) => void;
+  onHuntFindResult?: (msg: HuntFindResultMessage) => void;
 }
 
-export function useScattergoriesRoom({ code, role = "player", onError }: Options) {
+export function useScattergoriesRoom({
+  code,
+  role = "player",
+  onError,
+  onHuntFindResult,
+}: Options) {
   const [state, setState] = useState<ScatterRoomState | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [diePose, setDiePose] = useState<DiePose | null>(null);
   const [myAnswers, setMyAnswers] = useState<string[] | null>(null);
+  const [huntProgress, setHuntProgress] = useState<HuntProgressMessage | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingJoin = useRef<string | null>(null);
   const pendingSpectate = useRef(false);
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
+  const onHuntFindResultRef = useRef(onHuntFindResult);
+  onHuntFindResultRef.current = onHuntFindResult;
 
   const send = useCallback((msg: ScatterClientMessage) => {
     const ws = wsRef.current;
@@ -89,6 +100,9 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
         } else if (msg.state.phase === "lobby" || msg.state.phase === "rolling" || msg.state.phase === "countdown") {
           setMyAnswers(null);
         }
+        if (msg.state.phase === "lobby" || msg.state.phase === "rolling") {
+          setHuntProgress(null);
+        }
         if (msg.state.phase !== "rolling") setDiePose(null);
       } else if (msg.type === "state") {
         if (!msg.state || msg.state.game !== "scattergories") {
@@ -99,9 +113,29 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
         if (msg.state.phase === "lobby" || msg.state.phase === "rolling" || msg.state.phase === "countdown") {
           setMyAnswers(null);
         }
+        if (msg.state.phase === "lobby" || msg.state.phase === "rolling") {
+          setHuntProgress(null);
+        }
         if (msg.state.phase !== "rolling") setDiePose(null);
       } else if (msg.type === "diePose") {
         setDiePose({ qx: msg.qx, qy: msg.qy, qz: msg.qz, qw: msg.qw });
+      } else if (msg.type === "huntFindResult") {
+        setHuntProgress({
+          type: "huntProgress",
+          remaining: msg.remaining,
+          matchedCount: msg.matchedCount,
+          letterTotal: msg.letterTotal,
+        });
+        if (msg.ok && msg.word) {
+          setMyAnswers((prev) => {
+            const base = prev ?? [];
+            if (base.includes(msg.word!)) return base;
+            return [...base, msg.word!].slice(0, HUNT_MAX_ANSWERS);
+          });
+        }
+        onHuntFindResultRef.current?.(msg);
+      } else if (msg.type === "huntProgress") {
+        setHuntProgress(msg);
       } else if (msg.type === "error") {
         onErrorRef.current?.(msg.message);
       }
@@ -168,6 +202,10 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     (answers: string[]) => send({ type: "submitAnswers", answers }),
     [send],
   );
+  const submitHuntFind = useCallback(
+    (word: string) => send({ type: "submitHuntFind", word }),
+    [send],
+  );
   const reviewNext = useCallback(() => send({ type: "reviewNext" }), [send]);
   const reviewPrev = useCallback(() => send({ type: "reviewPrev" }), [send]);
   const submitReviewVotes = useCallback(
@@ -185,6 +223,7 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     connected,
     diePose,
     myAnswers,
+    huntProgress,
     join,
     spectate,
     setPackTier,
@@ -196,6 +235,7 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     sendDiePose,
     submitLetterRoll,
     submitAnswers,
+    submitHuntFind,
     reviewNext,
     reviewPrev,
     submitReviewVotes,
