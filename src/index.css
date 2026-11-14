@@ -2051,6 +2051,110 @@ input {
   position: relative;
 }
 
+.mmmms-combat {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 33vw);
+  gap: 0.75rem;
+  align-items: stretch;
+  min-height: min(72dvh, 780px);
+  position: relative;
+  z-index: 1;
+}
+
+.mmmms-combat-action {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.5rem 0.25rem 0.5rem 0;
+  min-width: 0;
+}
+
+.mmmms-combat-prompt {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 3.2vw, 1.85rem);
+  line-height: 1.25;
+}
+
+.mmmms-combat-wait {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.mmmms-combat-threads {
+  min-height: min(72dvh, 780px);
+  height: min(72dvh, 780px);
+  border-radius: 18px;
+  border: 1px solid var(--stroke);
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #d4af37 14%, transparent), transparent 55%),
+    color-mix(in srgb, var(--card) 90%, transparent);
+  overflow: hidden;
+}
+
+.hanging-orb-threads {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.hanging-orb-threads canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mmmms-tv-stage {
+  min-height: min(62dvh, 640px);
+}
+
+.mmmms-tv-threads {
+  position: relative;
+  z-index: 1;
+  height: min(62dvh, 640px);
+  border-radius: 18px;
+  border: 1px solid var(--stroke);
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #d4af37 14%, transparent), transparent 55%),
+    color-mix(in srgb, var(--card) 90%, transparent);
+  overflow: hidden;
+}
+
+.mmmms-tv-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+  .mmmms-combat {
+    grid-template-columns: 1fr minmax(0, 25vw);
+    min-height: min(70dvh, 680px);
+  }
+
+  .mmmms-combat-threads {
+    min-height: min(70dvh, 680px);
+    height: min(70dvh, 680px);
+  }
+
+  .mmmms-combat-prompt {
+    font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+  }
+
+  .mmmms-palette-wrap {
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .color-palette {
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  }
+}
+
 .burst-overlay {
   position: absolute;
   inset: 0;
@@ -2105,7 +2209,7 @@ input {
   margin: 0;
   padding: 0.35rem;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 0.35rem;
   max-height: min(52vh, 520px);
   overflow: auto;
@@ -2120,11 +2224,6 @@ input {
   max-height: min(70dvh, 720px);
 }
 
-.orb-list.is-dragging-active {
-  touch-action: none;
-  cursor: grabbing;
-}
-
 .orb-list.is-locked {
   touch-action: pan-y;
 }
@@ -2132,78 +2231,58 @@ input {
 .orb-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.65rem;
   padding: 0.35rem 0.55rem;
   border-radius: 999px;
   border: 1px solid transparent;
-  cursor: grab;
   user-select: none;
-  touch-action: pan-y;
-}
-
-.orb-list.is-locked .orb-item {
-  cursor: default;
+  background: color-mix(in srgb, var(--card) 70%, transparent);
 }
 
 .orb-item.is-dragging {
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0.55;
+  box-shadow: 0 8px 22px #0003;
+  z-index: 2;
 }
 
-.orb-item.is-placeholder {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--stroke) 80%, var(--accent));
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  min-height: 2.3rem;
-}
-
-.orb-item.is-placeholder .orb-bead,
-.orb-item.is-placeholder .orb-label {
-  visibility: hidden;
-}
-
-.orb-item.is-drop-target {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.orb-drag-ghost {
-  position: fixed;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--orb-color, #888) 55%, var(--stroke));
-  background: color-mix(in srgb, var(--card) 92%, transparent);
-  box-shadow:
-    0 10px 28px #0005,
-    0 0 0 1px color-mix(in srgb, var(--orb-color, #888) 25%, transparent);
-  transform: translate(-50%, -50%) scale(1.08);
-  pointer-events: none;
+.orb-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg0) 55%, var(--card));
+  cursor: grab;
   touch-action: none;
+  padding: 0;
+  color: inherit;
 }
 
-.orb-drag-ghost .orb-bead {
-  width: 1.7rem;
-  height: 1.7rem;
+.orb-drag-handle:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
-.orb-drag-ghost .orb-label {
-  font-size: 1rem;
+.orb-drag-handle:active:not(:disabled) {
+  cursor: grabbing;
 }
 
-.orb-item.is-vanishing {
-  opacity: 0;
-  transform: scale(0.4);
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.orb-item.is-bottom-hot .orb-bead {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--orb-color) 45%, transparent);
+.orb-drag-handle-bars {
+  width: 0.9rem;
+  height: 0.7rem;
+  background:
+    linear-gradient(
+      to bottom,
+      currentColor 0 2px,
+      transparent 2px 5px,
+      currentColor 5px 7px,
+      transparent 7px 10px,
+      currentColor 10px 12px
+    );
+  opacity: 0.7;
 }
 
 .orb-bead {
@@ -2240,32 +2319,16 @@ input {
 
 .mmmms-palette-wrap {
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
   max-width: 28rem;
-  margin-inline: auto;
-  padding: 0.5rem 0 0.25rem;
+  margin-inline: 0;
+  padding: 0;
   position: relative;
   z-index: 1;
 }
 
 .mmmms-palette-wrap .btn {
   justify-self: stretch;
-}
-
-.mmmms-pick-wait {
-  display: grid;
-  place-items: center;
-  min-height: min(40dvh, 280px);
-  text-align: center;
-  position: relative;
-  z-index: 1;
-}
-
-.mmmms-pick-wait p {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.35rem, 4vw, 1.85rem);
-  color: var(--muted);
 }
 
 .mmmms-outcome-overlay {
@@ -2381,19 +2444,9 @@ input {
   padding: 1rem 0;
 }
 
-.mmmms-tv-boards {
-  grid-template-columns: 1fr 1fr;
-}
-
 .mmmms-tv .mmmms-phase {
   text-align: center;
   margin-bottom: 1rem;
-}
-
-@media (max-width: 640px) {
-  .mmmms-tv-boards {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

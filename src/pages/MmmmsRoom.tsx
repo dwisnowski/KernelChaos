@@ -13,13 +13,17 @@ import {
 } from "../audio/sfx.ts";
 import { BurstOverlay, type BurstOverlayHandle } from "../components/BurstOverlay.tsx";
 import { ColorPalette } from "../components/ColorPalette.tsx";
+import {
+  HangingOrbThreads,
+  type HangingOrbThreadsHandle,
+} from "../components/HangingOrbThreads.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { MmmmsLobby } from "../components/MmmmsLobby.tsx";
 import {
   MmmmsOutcomeOverlay,
   resolveMmmmsOutcome,
 } from "../components/MmmmsOutcomeOverlay.tsx";
-import { HiddenOrbStack, OrbList } from "../components/OrbList.tsx";
+import { OrbList } from "../components/OrbList.tsx";
 import { useMmmmsRoom } from "../hooks/useMmmmsRoom.ts";
 import {
   ORB_COLOR_HEX,
@@ -42,6 +46,29 @@ function reconstructPreAttack(remaining: OrbColor[], steps: AttackStep[]): OrbCo
   return rem;
 }
 
+function combatActionCopy(opts: {
+  phase: string;
+  amAttacker: boolean;
+  amDefender: boolean;
+  isActivePicker: boolean;
+}): string {
+  const { phase, amAttacker, amDefender, isActivePicker } = opts;
+  if (phase === "guess") {
+    if (amDefender && isActivePicker) {
+      return "Attempt to block the attack by guessing your opponent's selection";
+    }
+    return "Wait for other player to select their attack";
+  }
+  if (phase === "attack") {
+    if (amAttacker && isActivePicker) {
+      return "Choose an attack color to smash their stack";
+    }
+    return "Waiting on opponent";
+  }
+  if (phase === "resolving") return "Orbs exploding…";
+  return "";
+}
+
 export function MmmmsRoom() {
   const { code = "" } = useParams();
   const location = useLocation();
@@ -50,12 +77,14 @@ export function MmmmsRoom() {
   const [joined, setJoined] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localOrbs, setLocalOrbs] = useState<OrbColor[]>([]);
-  const [vanishing, setVanishing] = useState<Set<number>>(() => new Set());
+  const [vanishingPlayer, setVanishingPlayer] = useState<Set<number>>(() => new Set());
+  const [vanishingOpponent, setVanishingOpponent] = useState<Set<number>>(() => new Set());
   const [animExploded, setAnimExploded] = useState<number | null>(null);
   const [selectedColor, setSelectedColor] = useState<OrbColor | null>(null);
   const phaseRef = useRef<string | null>(null);
   const resolveKeyRef = useRef<string | null>(null);
   const burstRef = useRef<BurstOverlayHandle>(null);
+  const threadsRef = useRef<HangingOrbThreadsHandle>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   const roomCode = code.toUpperCase();
@@ -110,7 +139,8 @@ export function MmmmsRoom() {
       else playMmmmsDefeat();
     }
     if (state.phase === "lobby" || state.phase === "organize") {
-      setVanishing(new Set());
+      setVanishingPlayer(new Set());
+      setVanishingOpponent(new Set());
       setAnimExploded(null);
       resolveKeyRef.current = null;
     }
@@ -133,7 +163,8 @@ export function MmmmsRoom() {
       setLocalOrbs(reconstructPreAttack(remaining, attack.steps));
     }
 
-    setVanishing(new Set());
+    setVanishingPlayer(new Set());
+    setVanishingOpponent(new Set());
     setAnimExploded(0);
 
     (async () => {
@@ -142,16 +173,14 @@ export function MmmmsRoom() {
         if (cancelled) return;
         const step = attack.steps[i]!;
         const stage = stageRef.current;
-        const selector = isDefender
-          ? `.mmmms-board.mine [data-orb-index="${i}"]`
-          : `.mmmms-board.theirs [data-orb-index="${i}"]`;
-        const el = stage?.querySelector<HTMLElement>(selector);
-        if (el && burstRef.current && stage) {
-          const rect = el.getBoundingClientRect();
+        const threadsBox = stage?.querySelector<HTMLElement>(".mmmms-combat-threads");
+        const center = threadsRef.current?.getOrbCenter(isDefender ? "player" : "opponent", i);
+        if (center && burstRef.current && stage && threadsBox) {
           const stageRect = stage.getBoundingClientRect();
+          const threadsRect = threadsBox.getBoundingClientRect();
           burstRef.current.explode(
-            rect.left - stageRect.left + rect.width / 2,
-            rect.top - stageRect.top + rect.height / 2,
+            threadsRect.left - stageRect.left + center.x,
+            threadsRect.top - stageRect.top + center.y,
             ORB_COLOR_HEX[step.color],
           );
         }
@@ -160,7 +189,9 @@ export function MmmmsRoom() {
           exploded += 1;
           setAnimExploded(exploded);
           if (isDefender) {
-            setVanishing((prev) => new Set(prev).add(i));
+            setVanishingPlayer((prev) => new Set(prev).add(i));
+          } else if (isAttacker) {
+            setVanishingOpponent((prev) => new Set(prev).add(i));
           }
         } else {
           playMmmmsHalt();
@@ -202,13 +233,12 @@ export function MmmmsRoom() {
   const ready = me?.ready ?? false;
 
   const isPickPhase = state?.phase === "guess" || state?.phase === "attack";
+  const isCombatPhase =
+    state?.phase === "guess" || state?.phase === "attack" || state?.phase === "resolving";
   const isActivePicker =
     (state?.phase === "guess" && amDefender) || (state?.phase === "attack" && amAttacker);
-  const showOwnBoard =
-    state?.phase === "organize" || (state?.phase === "resolving" && amDefender);
-  const showOpponentBoard = state?.phase === "resolving" && amAttacker;
 
-  const hiddenCount =
+  const opponentThreadCount =
     state?.phase === "resolving" && state.lastAttack && playerId === state.lastAttack.attackerId
       ? (opponent?.remainingCount ?? 0) + state.lastAttack.explodedCount
       : (opponent?.remainingCount ?? 0);
@@ -219,6 +249,16 @@ export function MmmmsRoom() {
       : null;
   const showBlockedOverlay = phoneOutcome === "blocked" && amDefender;
   const showGoFishOverlay = phoneOutcome === "go-fish" && amAttacker;
+
+  const actionCopy =
+    state && isCombatPhase
+      ? combatActionCopy({
+          phase: state.phase,
+          amAttacker,
+          amDefender,
+          isActivePicker,
+        })
+      : "";
 
   return (
     <Layout
@@ -286,97 +326,90 @@ export function MmmmsRoom() {
             {showBlockedOverlay ? <MmmmsOutcomeOverlay kind="blocked" /> : null}
             {showGoFishOverlay ? <MmmmsOutcomeOverlay kind="go-fish" /> : null}
 
-            {isPickPhase && !isActivePicker ? (
-              <div className="mmmms-pick-wait" aria-live="polite">
-                <p>
-                  {state.phase === "guess"
-                    ? "Opponent is guessing…"
-                    : "Opponent is attacking…"}
-                </p>
+            {state.phase === "organize" ? (
+              <div className="mmmms-boards is-organize-solo">
+                <div className="mmmms-board mine">
+                  <h2>Your stack</h2>
+                  <p className="muted orb-stack-hint">
+                    Bottom explodes first · drag the handle to reorder
+                  </p>
+                  <OrbList
+                    orbs={localOrbs}
+                    disabled={ready}
+                    onReorder={(next) => {
+                      setLocalOrbs(next);
+                      reorder(next);
+                    }}
+                  />
+                  <div className="mmmms-organize-actions">
+                    {ready ? (
+                      <p className="waiting">Locked in — waiting for opponent…</p>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => {
+                          unlockAudio();
+                          playMmmmsLock();
+                          submitOrder();
+                        }}
+                      >
+                        Submit order
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : null}
 
-            {isActivePicker ? (
-              <div className="mmmms-palette-wrap">
-                <ColorPalette
-                  label={state.phase === "guess" ? "Guess color" : "Attack color"}
-                  selected={selectedColor}
-                  onSelect={(color) => {
-                    unlockAudio();
-                    setSelectedColor(color);
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn primary"
-                  disabled={selectedColor == null}
-                  onClick={() => {
-                    if (selectedColor == null) return;
-                    unlockAudio();
-                    if (state.phase === "guess") {
-                      playMmmmsGuess();
-                      guessColor(selectedColor);
-                    } else {
-                      attackColor(selectedColor);
-                    }
-                  }}
-                >
-                  Submit
-                </button>
-              </div>
-            ) : null}
-
-            {showOwnBoard || showOpponentBoard ? (
-              <div
-                className={`mmmms-boards${state.phase === "organize" || state.phase === "resolving" ? " is-organize-solo" : ""}`}
-              >
-                {showOwnBoard ? (
-                  <div className="mmmms-board mine">
-                    <h2>Your stack</h2>
-                    <p className="muted orb-stack-hint">
-                      {state.phase === "organize"
-                        ? "Bottom explodes first · hold to drag"
-                        : "Bottom explodes first"}
-                    </p>
-                    <OrbList
-                      orbs={localOrbs}
-                      disabled={state.phase !== "organize" || ready}
-                      vanishing={vanishing}
-                      highlightBottom={state.phase === "resolving" && amDefender}
-                      onReorder={(next) => {
-                        setLocalOrbs(next);
-                        reorder(next);
-                      }}
-                    />
-                    {state.phase === "organize" ? (
-                      <div className="mmmms-organize-actions">
-                        {ready ? (
-                          <p className="waiting">Locked in — waiting for opponent…</p>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn primary"
-                            onClick={() => {
-                              unlockAudio();
-                              playMmmmsLock();
-                              submitOrder();
-                            }}
-                          >
-                            Submit order
-                          </button>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {showOpponentBoard ? (
-                  <div className="mmmms-board theirs">
-                    <h2>{opponent?.name ?? "Opponent"}</h2>
-                    <p className="muted orb-stack-hint">Hidden colors · count only</p>
-                    <HiddenOrbStack count={hiddenCount} />
-                  </div>
-                ) : null}
+            {isCombatPhase ? (
+              <div className="mmmms-combat">
+                <div className="mmmms-combat-action" aria-live="polite">
+                  <p className="mmmms-combat-prompt">{actionCopy}</p>
+                  {isActivePicker ? (
+                    <div className="mmmms-palette-wrap">
+                      <ColorPalette
+                        label={state.phase === "guess" ? "Guess color" : "Attack color"}
+                        selected={selectedColor}
+                        onSelect={(color) => {
+                          unlockAudio();
+                          setSelectedColor(color);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn primary"
+                        disabled={selectedColor == null}
+                        onClick={() => {
+                          if (selectedColor == null) return;
+                          unlockAudio();
+                          if (state.phase === "guess") {
+                            playMmmmsGuess();
+                            guessColor(selectedColor);
+                          } else {
+                            attackColor(selectedColor);
+                          }
+                        }}
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  ) : null}
+                  {isPickPhase && !isActivePicker ? (
+                    <p className="mmmms-combat-wait muted">Hang tight…</p>
+                  ) : null}
+                </div>
+                <div className="mmmms-combat-threads">
+                  <HangingOrbThreads
+                    ref={threadsRef}
+                    playerOrbs={localOrbs}
+                    opponentCount={opponentThreadCount}
+                    vanishingPlayer={vanishingPlayer}
+                    vanishingOpponent={vanishingOpponent}
+                    highlightPlayerBottom={state.phase === "resolving" && amDefender}
+                    enableTilt
+                  />
+                </div>
               </div>
             ) : null}
           </div>
@@ -397,7 +430,11 @@ export function MmmmsRoom() {
 
           {state.phase === "results" ? (
             <div className="mmmms-results">
-              <h2>{state.winnerId === playerId ? "You win!" : `${state.winnerName ?? "Opponent"} wins`}</h2>
+              <h2>
+                {state.winnerId === playerId
+                  ? "You win!"
+                  : `${state.winnerName ?? "Opponent"} wins`}
+              </h2>
               {me?.isHost ? (
                 <button
                   type="button"

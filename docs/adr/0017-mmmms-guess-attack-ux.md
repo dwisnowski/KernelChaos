@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (implemented: pick-phase palette-only layout, select-then-submit, role-specific resolve boards, Blocked / Go Fish overlays on phone and TV, `colorInStack` on `lastAttack`).
+Accepted (select-then-submit + Blocked / Go Fish overlays + `colorInStack` still apply; pick-phase “hide both stacks” layout superseded by dual hanging threads in [0018](./0018-mmmms-combat-hanging-threads.md)).
 
 ## Context
 
@@ -23,4 +23,4 @@ Server turn order stays sequential ([ADR 0014](./0014-mmmms.md)): defender guess
 
 - Phone layout for pick/resolve lives in `MmmmsRoom`; shared overlay in `MmmmsOutcomeOverlay`; TV mirrors outcomes in `MmmmsSpectator`.
 - ADR 0016’s “two-board from guess onward” is superseded for pick phases; organize solo board is unchanged.
-- Cross-links: extends [0014](./0014-mmmms.md), [0016](./0016-mmmms-organize-ux.md); SFX still [0015](./0015-mmmms-sfx.md).
+- Cross-links: extends [0014](./0014-mmmms.md), [0016](./0016-mmmms-organize-ux.md); SFX still [0015](./0015-mmmms-sfx.md); combat stack layout superseded by [0018](./0018-mmmms-combat-hanging-threads.md).

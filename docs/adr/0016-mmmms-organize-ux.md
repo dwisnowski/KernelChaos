@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (implemented: solo organize board, scrollable full stack, long-press floating ghost reorder).
+Accepted (organize solo board + scrollable stack still apply; long-press ghost drag superseded by `@dnd-kit` row handles in [0018](./0018-mmmms-combat-hanging-threads.md)).
 
 ## Context
 
@@ -21,4 +21,4 @@ Server secrecy was already correct ([ADR 0014](./0014-mmmms.md)): opponent color
 
 - Organize UX lives in `OrbList` + `MmmmsRoom` CSS; protocol and server reorder/`submitOrder` unchanged.
 - Players must discover “hold to drag”; hint copy on the organize board covers that.
-- Cross-links: extends [0014](./0014-mmmms.md); SFX policy [0015](./0015-mmmms-sfx.md); superseded for guess/attack layout by [0017](./0017-mmmms-guess-attack-ux.md).
+- Cross-links: extends [0014](./0014-mmmms.md); SFX policy [0015](./0015-mmmms-sfx.md); superseded for guess/attack layout by [0017](./0017-mmmms-guess-attack-ux.md); organize drag mechanics superseded by [0018](./0018-mmmms-combat-hanging-threads.md).

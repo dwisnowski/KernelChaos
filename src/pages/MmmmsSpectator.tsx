@@ -10,12 +10,15 @@ import {
   unlockAudio,
 } from "../audio/sfx.ts";
 import { BurstOverlay, type BurstOverlayHandle } from "../components/BurstOverlay.tsx";
+import {
+  HangingOrbThreads,
+  type HangingOrbThreadsHandle,
+} from "../components/HangingOrbThreads.tsx";
 import { Layout } from "../components/Layout.tsx";
 import {
   MmmmsOutcomeOverlay,
   resolveMmmmsOutcome,
 } from "../components/MmmmsOutcomeOverlay.tsx";
-import { HiddenOrbStack } from "../components/OrbList.tsx";
 import { useMmmmsRoom } from "../hooks/useMmmmsRoom.ts";
 import { ORB_COLOR_HEX, ORB_COLOR_LABELS } from "../mmmmsTypes.ts";
 
@@ -27,9 +30,11 @@ export function MmmmsSpectator() {
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
   const [animExploded, setAnimExploded] = useState<number | null>(null);
+  const [vanishingDefender, setVanishingDefender] = useState<Set<number>>(() => new Set());
   const phaseRef = useRef<string | null>(null);
   const resolveKeyRef = useRef<string | null>(null);
   const burstRef = useRef<BurstOverlayHandle>(null);
+  const threadsRef = useRef<HangingOrbThreadsHandle>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   const { state, connected, spectate } = useMmmmsRoom({
@@ -57,6 +62,11 @@ export function MmmmsSpectator() {
     if (prev && prev !== "results" && state.phase === "results") {
       playWinner();
     }
+    if (state.phase === "lobby" || state.phase === "organize") {
+      setVanishingDefender(new Set());
+      setAnimExploded(null);
+      resolveKeyRef.current = null;
+    }
     phaseRef.current = state.phase;
   }, [state]);
 
@@ -69,6 +79,7 @@ export function MmmmsSpectator() {
 
     let cancelled = false;
     setAnimExploded(0);
+    setVanishingDefender(new Set());
 
     (async () => {
       let exploded = 0;
@@ -76,15 +87,15 @@ export function MmmmsSpectator() {
         if (cancelled) return;
         const step = attack.steps[i]!;
         const stage = stageRef.current;
-        const el = stage?.querySelector<HTMLElement>(
-          `.mmmms-board[data-player="${attack.defenderId}"] [data-orb-index="${i}"]`,
-        );
-        if (el && burstRef.current && stage) {
-          const rect = el.getBoundingClientRect();
+        const threadsBox = stage?.querySelector<HTMLElement>(".mmmms-tv-threads");
+        // TV layout: left = attacker (opponent slot), right = defender (player slot).
+        const center = threadsRef.current?.getOrbCenter("player", i);
+        if (center && burstRef.current && stage && threadsBox) {
           const stageRect = stage.getBoundingClientRect();
+          const threadsRect = threadsBox.getBoundingClientRect();
           burstRef.current.explode(
-            rect.left - stageRect.left + rect.width / 2,
-            rect.top - stageRect.top + rect.height / 2,
+            threadsRect.left - stageRect.left + center.x,
+            threadsRect.top - stageRect.top + center.y,
             ORB_COLOR_HEX[step.color],
           );
         }
@@ -92,13 +103,13 @@ export function MmmmsSpectator() {
           playMmmmsExplode(i);
           exploded += 1;
           setAnimExploded(exploded);
+          setVanishingDefender((prev) => new Set(prev).add(i));
         } else {
           playMmmmsHalt();
         }
         await new Promise((r) => setTimeout(r, STEP_MS));
       }
       if (!cancelled) setAnimExploded(attack.explodedCount);
-      // Spectators do not ack; server advances on player acks / timeout.
     })();
 
     return () => {
@@ -115,6 +126,35 @@ export function MmmmsSpectator() {
     state?.phase === "resolving" && state.lastAttack
       ? resolveMmmmsOutcome(state.lastAttack)
       : null;
+
+  const leftPlayer =
+    state?.players.find((p) => p.id === state.attackerId) ?? state?.players[0] ?? null;
+  const rightPlayer =
+    state?.players.find((p) => p.id === state.defenderId) ??
+    state?.players.find((p) => p.id !== leftPlayer?.id) ??
+    null;
+
+  function displayCount(playerId: string | undefined, remaining: number): number {
+    if (!state || !playerId) return remaining;
+    if (
+      state.phase === "resolving" &&
+      state.lastAttack &&
+      playerId === state.lastAttack.defenderId
+    ) {
+      return remaining + state.lastAttack.explodedCount;
+    }
+    return remaining;
+  }
+
+  const leftCount = displayCount(leftPlayer?.id, leftPlayer?.remainingCount ?? 0);
+  const rightCount = displayCount(rightPlayer?.id, rightPlayer?.remainingCount ?? 0);
+
+  function roleLabel(playerId: string | undefined): string {
+    if (!state || !playerId) return "";
+    if (playerId === state.attackerId) return " · Attacker";
+    if (playerId === state.defenderId) return " · Defender";
+    return "";
+  }
 
   return (
     <Layout title="KernelChaos · TV" playerRoom={{ code: roomCode, game: "mmmms" }}>
@@ -170,30 +210,29 @@ export function MmmmsSpectator() {
                         : state.phase}
             </p>
 
+            <div className="mmmms-tv-labels">
+              <span>
+                {leftPlayer?.name ?? "Player"}
+                {roleLabel(leftPlayer?.id)} · {leftCount} left
+              </span>
+              <span>
+                {rightPlayer?.name ?? "Player"}
+                {roleLabel(rightPlayer?.id)} · {rightCount} left
+              </span>
+            </div>
+
             <div className="mmmms-stage mmmms-tv-stage" ref={stageRef}>
               <BurstOverlay ref={burstRef} className="burst-overlay mmmms-burst" />
               {tvOutcome ? <MmmmsOutcomeOverlay kind={tvOutcome} className="is-tv" /> : null}
-              <div className="mmmms-boards mmmms-tv-boards">
-                {state.players.map((p) => {
-                  const role =
-                    p.id === state.attackerId ? "Attacker" : p.id === state.defenderId ? "Defender" : "";
-                  const count =
-                    state.phase === "resolving" &&
-                    state.lastAttack &&
-                    p.id === state.lastAttack.defenderId
-                      ? p.remainingCount + state.lastAttack.explodedCount
-                      : p.remainingCount;
-                  return (
-                    <div key={p.id} className="mmmms-board" data-player={p.id}>
-                      <h2>
-                        {p.name}
-                        {role ? <em>{role}</em> : null}
-                      </h2>
-                      <p className="muted">{p.remainingCount} left</p>
-                      <HiddenOrbStack count={count} />
-                    </div>
-                  );
-                })}
+              <div className="mmmms-tv-threads">
+                <HangingOrbThreads
+                  ref={threadsRef}
+                  playerOrbs={null}
+                  playerCount={rightCount}
+                  opponentCount={leftCount}
+                  vanishingPlayer={vanishingDefender}
+                  enableTilt={false}
+                />
               </div>
             </div>
 
@@ -203,7 +242,9 @@ export function MmmmsSpectator() {
                   Attack · {ORB_COLOR_LABELS[state.lastAttack.attackColor]}
                   {state.lastAttack.guessCorrect ? " · save!" : ""}
                 </p>
-                <p className="mmmms-exploded-count">Exploded {animExploded ?? state.lastAttack.explodedCount}</p>
+                <p className="mmmms-exploded-count">
+                  Exploded {animExploded ?? state.lastAttack.explodedCount}
+                </p>
               </div>
             ) : null}
 
