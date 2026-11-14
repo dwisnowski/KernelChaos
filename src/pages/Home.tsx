@@ -39,6 +39,17 @@ function ScattergoriesIcon() {
   );
 }
 
+function MmmmsIcon() {
+  return (
+    <svg className="game-card-icon" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="38" r="6" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="24" cy="26" r="5.5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="24" cy="15" r="5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="24" cy="6" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.75" />
+    </svg>
+  );
+}
+
 export function Home() {
   return (
     <Layout>
@@ -67,6 +78,16 @@ export function Home() {
               Fill categories for a rolled letter. The TV reveals answers and scores the round together.
             </p>
             <Link className="btn primary" to="/scattergories" onClick={() => unlockAudio()}>
+              Play
+            </Link>
+          </article>
+          <article className="game-card">
+            <MmmmsIcon />
+            <h2>Mmmms</h2>
+            <p>
+              Two players stack colored orbs, guess the attack, and explode from the bottom up.
+            </p>
+            <Link className="btn primary" to="/mmmms" onClick={() => unlockAudio()}>
               Play
             </Link>
           </article>

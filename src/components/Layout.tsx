@@ -16,12 +16,12 @@ export function Layout({
   /** When set, shows “Open TV spectator” next to the mute control. */
   tvRoom?: {
     code: string;
-    game: "boggle" | "scattergories";
+    game: "boggle" | "scattergories" | "mmmms";
     /** Confirm before opening while a round is underway. */
     roundActive?: boolean;
   };
   /** When set, shows “Back to player mode” next to the mute control. */
-  playerRoom?: { code: string; game: "boggle" | "scattergories" };
+  playerRoom?: { code: string; game: "boggle" | "scattergories" | "mmmms" };
 }) {
   const [mute, setMute] = useState(isMuted);
 

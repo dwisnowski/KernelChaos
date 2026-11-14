@@ -2020,6 +2020,244 @@ input {
   background: var(--card);
 }
 
+/* —— Mmmms —— */
+.mmmms-play {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.mmmms-hud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mmmms-phase {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.mmmms-counts {
+  display: flex;
+  gap: 1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.mmmms-stage {
+  position: relative;
+}
+
+.burst-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.burst-overlay canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mmmms-boards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  position: relative;
+  z-index: 1;
+}
+
+.mmmms-board h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mmmms-board h2 em {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+}
+
+.orb-stack-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+}
+
+.orb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.35rem;
+  max-height: min(52vh, 520px);
+  overflow: auto;
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  touch-action: none;
+}
+
+.orb-list.is-locked {
+  touch-action: pan-y;
+}
+
+.orb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: grab;
+  user-select: none;
+}
+
+.orb-list.is-locked .orb-item {
+  cursor: default;
+}
+
+.orb-item.is-dragging {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.orb-item.is-drop-target {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.orb-item.is-vanishing {
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.orb-item.is-bottom-hot .orb-bead {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--orb-color) 45%, transparent);
+}
+
+.orb-bead {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #fff8, transparent 42%), var(--orb-color, #888);
+  box-shadow: inset 0 -2px 4px #0004;
+  flex-shrink: 0;
+}
+
+.orb-item.is-hidden .orb-bead {
+  background: radial-gradient(circle at 32% 28%, #fff4, transparent 42%), #6b7c8f;
+}
+
+.orb-label {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.orb-list-hidden .orb-item {
+  justify-content: center;
+  padding: 0.2rem;
+}
+
+.orb-list-hidden .orb-bead {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.mmmms-organize-actions {
+  margin-top: 0.85rem;
+}
+
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 0.55rem;
+}
+
+.color-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 0.4rem;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--card);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.color-swatch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.color-swatch.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.color-swatch-dot {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #fff8, transparent 42%), var(--orb-color);
+}
+
+.color-swatch-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.mmmms-attack-result {
+  text-align: center;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--card);
+}
+
+.mmmms-exploded-count {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+.mmmms-results {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+  padding: 1rem 0;
+}
+
+.mmmms-tv-boards {
+  grid-template-columns: 1fr 1fr;
+}
+
+.mmmms-tv .mmmms-phase {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 640px) {
+  .mmmms-tv-boards {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -48,15 +48,31 @@ import {
   type ScatterServerMessage,
 } from "./scattergories/protocol.ts";
 import { scoreCategory, scorePlayerAcrossCategories } from "./scattergories/scoring.ts";
+import { dealOrbs, isOrbColor, resolveAttack, type OrbColor } from "./mmmms/orbs.ts";
+import {
+  DEFAULT_ORB_COUNT,
+  isOrbCount,
+  isValidOrbList,
+  type MmmmsAttackResult,
+  type MmmmsClientMessage,
+  type MmmmsPhase,
+  type MmmmsPlayerPublic,
+  type MmmmsRoomState,
+  type MmmmsServerMessage,
+  type OrbCount,
+} from "./mmmms/protocol.ts";
 
 /** Per-category: voterId → (targetPlayerId → in|out). */
 type ReviewBallotMaps = Array<Map<string, Record<string, ReviewVote>>>;
 /** Persistable form of ReviewBallotMaps. */
 type StoredReviewBallots = Array<Record<string, Record<string, ReviewVote>>>;
 
-export type GameType = "boggle" | "scattergories";
+export type GameType = "boggle" | "scattergories" | "mmmms";
 
-type AnyPhase = BogglePhase | ScatterPhase;
+type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase;
+
+/** Max wait for clients to finish explosion animation before advancing. */
+const MMMMS_RESOLVE_TIMEOUT_MS = 15_000;
 
 /** Brief window so a refresh does not destroy the room immediately. */
 const EMPTY_GRACE_MS = 30_000;
@@ -82,6 +98,9 @@ interface PlayerRecord {
   roundAwards: RoundAward[];
   answers: string[];
   hostRejected: boolean[];
+  /** Mmmms: bottom→top stack (index 0 explodes first). */
+  orbs: OrbColor[];
+  mmmmsReady: boolean;
 }
 
 interface Attachment {
@@ -106,10 +125,12 @@ interface StoredPlayer {
   roundAwards?: RoundAward[];
   answers?: string[];
   hostRejected?: boolean[];
+  orbs?: OrbColor[];
+  mmmmsReady?: boolean;
 }
 
-type ClientMessage = BoggleClientMessage | ScatterClientMessage;
-type ServerMessage = BoggleServerMessage | ScatterServerMessage;
+type ClientMessage = BoggleClientMessage | ScatterClientMessage | MmmmsClientMessage;
+type ServerMessage = BoggleServerMessage | ScatterServerMessage | MmmmsServerMessage;
 
 function emptyAnswers(): string[] {
   return Array.from({ length: CATEGORIES_PER_LIST }, () => "");
@@ -189,7 +210,12 @@ function loadWords(raw: StoredPlayer["words"]): Map<string, WordRecord> {
 }
 
 function isGameType(v: unknown): v is GameType {
-  return v === "boggle" || v === "scattergories";
+  return v === "boggle" || v === "scattergories" || v === "mmmms";
+}
+
+function loadOrbs(raw: unknown): OrbColor[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isOrbColor);
 }
 
 export class GameRoom extends DurableObject<Env> {
@@ -223,6 +249,16 @@ export class GameRoom extends DurableObject<Env> {
   private rollEndsAt: number | null = null;
   private emptyGraceEndsAt: number | null = null;
 
+  // Mmmms
+  private orbCount: OrbCount = DEFAULT_ORB_COUNT;
+  private attackerId: string | null = null;
+  private defenderId: string | null = null;
+  private defenderGuess: OrbColor | null = null;
+  private lastAttack: MmmmsAttackResult | null = null;
+  private winnerId: string | null = null;
+  private resolveAcks = new Set<string>();
+  private resolveEndsAt: number | null = null;
+
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
@@ -255,6 +291,14 @@ export class GameRoom extends DurableObject<Env> {
       reviewBallots?: StoredReviewBallots;
       rollEndsAt?: number | null;
       emptyGraceEndsAt?: number | null;
+      orbCount?: OrbCount;
+      attackerId?: string | null;
+      defenderId?: string | null;
+      defenderGuess?: OrbColor | null;
+      lastAttack?: MmmmsAttackResult | null;
+      winnerId?: string | null;
+      resolveAcks?: string[];
+      resolveEndsAt?: number | null;
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -265,6 +309,8 @@ export class GameRoom extends DurableObject<Env> {
         this.roundSeconds = isScatterRoundSeconds(stored.roundSeconds)
           ? stored.roundSeconds
           : DEFAULT_SCATTER_ROUND_SECONDS;
+      } else if (this.gameType === "mmmms") {
+        this.roundSeconds = DEFAULT_ROUND_SECONDS;
       } else {
         this.roundSeconds = isRoundSeconds(stored.roundSeconds)
           ? stored.roundSeconds
@@ -291,6 +337,14 @@ export class GameRoom extends DurableObject<Env> {
       this.reviewBallots = loadReviewBallots(stored.reviewBallots);
       this.rollEndsAt = stored.rollEndsAt ?? null;
       this.emptyGraceEndsAt = stored.emptyGraceEndsAt ?? null;
+      this.orbCount = isOrbCount(stored.orbCount) ? stored.orbCount : DEFAULT_ORB_COUNT;
+      this.attackerId = stored.attackerId ?? null;
+      this.defenderId = stored.defenderId ?? null;
+      this.defenderGuess = stored.defenderGuess && isOrbColor(stored.defenderGuess) ? stored.defenderGuess : null;
+      this.lastAttack = stored.lastAttack ?? null;
+      this.winnerId = stored.winnerId ?? null;
+      this.resolveAcks = new Set(stored.resolveAcks ?? []);
+      this.resolveEndsAt = stored.resolveEndsAt ?? null;
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -302,6 +356,8 @@ export class GameRoom extends DurableObject<Env> {
             roundAwards: p.roundAwards ?? [],
             answers: padAnswers(p.answers),
             hostRejected: padRejected(p.hostRejected),
+            orbs: loadOrbs(p.orbs),
+            mmmmsReady: Boolean(p.mmmmsReady),
           },
         ]),
       );
@@ -337,6 +393,14 @@ export class GameRoom extends DurableObject<Env> {
       reviewBallots: serializeReviewBallots(this.reviewBallots),
       rollEndsAt: this.rollEndsAt,
       emptyGraceEndsAt: this.emptyGraceEndsAt,
+      orbCount: this.orbCount,
+      attackerId: this.attackerId,
+      defenderId: this.defenderId,
+      defenderGuess: this.defenderGuess,
+      lastAttack: this.lastAttack,
+      winnerId: this.winnerId,
+      resolveAcks: [...this.resolveAcks],
+      resolveEndsAt: this.resolveEndsAt,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -345,6 +409,8 @@ export class GameRoom extends DurableObject<Env> {
         roundAwards: p.roundAwards,
         answers: p.answers,
         hostRejected: p.hostRejected,
+        orbs: p.orbs,
+        mmmmsReady: p.mmmmsReady,
       })),
     });
     await this.syncActiveDirectory();
@@ -409,6 +475,9 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase === "rolling" && this.rollEndsAt != null) {
       candidates.push(this.rollEndsAt);
     }
+    if (this.phase === "resolving" && this.resolveEndsAt != null) {
+      candidates.push(this.resolveEndsAt);
+    }
     if (candidates.length === 0) {
       await this.ctx.storage.deleteAlarm();
       return;
@@ -470,6 +539,14 @@ export class GameRoom extends DurableObject<Env> {
     this.reviewBallots = emptyReviewBallots();
     this.rollEndsAt = null;
     this.emptyGraceEndsAt = null;
+    this.orbCount = DEFAULT_ORB_COUNT;
+    this.attackerId = null;
+    this.defenderId = null;
+    this.defenderGuess = null;
+    this.lastAttack = null;
+    this.winnerId = null;
+    this.resolveAcks = new Set();
+    this.resolveEndsAt = null;
     this.loaded = true;
   }
 
@@ -487,6 +564,8 @@ export class GameRoom extends DurableObject<Env> {
         this.gameType = isGameType(body.game) ? body.game : "boggle";
         if (this.gameType === "scattergories") {
           this.roundSeconds = DEFAULT_SCATTER_ROUND_SECONDS;
+        } else if (this.gameType === "mmmms") {
+          this.orbCount = DEFAULT_ORB_COUNT;
         }
         await this.persist();
         return Response.json({ code: this.code, game: this.gameType, created: true });
@@ -578,6 +657,30 @@ export class GameRoom extends DurableObject<Env> {
       case "playAgain":
         await this.handlePlayAgain(attachment?.playerId);
         break;
+      case "setOrbCount":
+        if (this.gameType !== "mmmms") break;
+        await this.handleSetOrbCount(attachment?.playerId, msg.orbCount);
+        break;
+      case "reorder":
+        if (this.gameType !== "mmmms") break;
+        await this.handleMmmmsReorder(attachment?.playerId, msg.orbs);
+        break;
+      case "submitOrder":
+        if (this.gameType !== "mmmms") break;
+        await this.handleMmmmsSubmitOrder(attachment?.playerId);
+        break;
+      case "guessColor":
+        if (this.gameType !== "mmmms") break;
+        await this.handleMmmmsGuess(attachment?.playerId, msg.color);
+        break;
+      case "attackColor":
+        if (this.gameType !== "mmmms") break;
+        await this.handleMmmmsAttack(attachment?.playerId, msg.color);
+        break;
+      case "resolveDone":
+        if (this.gameType !== "mmmms") break;
+        await this.handleMmmmsResolveDone(attachment?.playerId);
+        break;
       default:
         this.send(ws, { type: "error", message: "Unknown message" });
     }
@@ -663,6 +766,16 @@ export class GameRoom extends DurableObject<Env> {
       for (const bonuses of endBadges) {
         this.broadcastBadgeEvent(bonuses);
       }
+      return;
+    }
+
+    if (
+      this.phase === "resolving" &&
+      this.gameType === "mmmms" &&
+      this.resolveEndsAt != null &&
+      now >= this.resolveEndsAt
+    ) {
+      await this.advanceMmmmsAfterResolve();
     }
   }
 
@@ -743,6 +856,11 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    if (this.gameType === "mmmms" && this.players.size >= 2) {
+      this.send(ws, { type: "error", message: "Mmmms is full (2 players)" });
+      return;
+    }
+
     const id = crypto.randomUUID();
     const isHost = this.players.size === 0;
     this.players.set(id, {
@@ -753,6 +871,8 @@ export class GameRoom extends DurableObject<Env> {
       roundAwards: [],
       answers: emptyAnswers(),
       hostRejected: emptyRejected(),
+      orbs: [],
+      mmmmsReady: false,
     });
     ws.serializeAttachment({ playerId: id } satisfies Attachment);
     await this.persist();
@@ -782,6 +902,16 @@ export class GameRoom extends DurableObject<Env> {
         role: "player",
         state: this.publicState(),
         myAnswers: [...player.answers],
+      } as ServerMessage);
+      return;
+    }
+    if (this.gameType === "mmmms") {
+      this.send(ws, {
+        type: "welcome",
+        playerId,
+        role: "player",
+        state: this.publicState(),
+        myOrbs: [...player.orbs],
       } as ServerMessage);
       return;
     }
@@ -835,13 +965,19 @@ export class GameRoom extends DurableObject<Env> {
   private async handleStart(playerId: string | undefined): Promise<void> {
     if (!playerId || !this.isHost(playerId)) return;
     if (this.phase !== "lobby" && this.phase !== "results") return;
-    if (this.players.size < 1) return;
+    if (this.gameType === "mmmms") {
+      if (this.players.size !== 2) return;
+    } else if (this.players.size < 1) {
+      return;
+    }
 
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
       p.answers = emptyAnswers();
       p.hostRejected = emptyRejected();
+      p.orbs = [];
+      p.mmmmsReady = false;
     }
     this.reviewBallots = emptyReviewBallots();
 
@@ -849,6 +985,37 @@ export class GameRoom extends DurableObject<Env> {
     this.endsAt = null;
     this.scoresFinalized = false;
     this.reviewIndex = null;
+    this.winnerId = null;
+    this.lastAttack = null;
+    this.defenderGuess = null;
+    this.resolveAcks = new Set();
+    this.resolveEndsAt = null;
+
+    if (this.gameType === "mmmms") {
+      this.board = null;
+      this.missedWords = null;
+      this.possibleWordCount = null;
+      this.possibleByLength = null;
+      this.letter = null;
+      this.categories = null;
+      this.listId = null;
+      this.countdownEndsAt = null;
+      this.rollerId = null;
+      this.rollerName = null;
+      for (const p of this.players.values()) {
+        p.orbs = dealOrbs(this.orbCount);
+        p.mmmmsReady = false;
+      }
+      const ids = [...this.players.keys()];
+      const pick = crypto.getRandomValues(new Uint8Array(1))[0]! % ids.length;
+      this.attackerId = ids[pick]!;
+      this.defenderId = ids.find((id) => id !== this.attackerId) ?? null;
+      this.phase = "organize";
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
 
     if (this.gameType === "scattergories") {
       this.board = null;
@@ -966,12 +1133,141 @@ export class GameRoom extends DurableObject<Env> {
     this.rollerName = null;
     this.reviewIndex = null;
     this.reviewBallots = emptyReviewBallots();
+    this.attackerId = null;
+    this.defenderId = null;
+    this.defenderGuess = null;
+    this.lastAttack = null;
+    this.winnerId = null;
+    this.resolveAcks = new Set();
+    this.resolveEndsAt = null;
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
       p.answers = emptyAnswers();
       p.hostRejected = emptyRejected();
+      p.orbs = [];
+      p.mmmmsReady = false;
     }
+    await this.ctx.storage.deleteAlarm();
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetOrbCount(playerId: string | undefined, orbCount: OrbCount): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isOrbCount(orbCount)) return;
+    this.orbCount = orbCount;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleMmmmsReorder(playerId: string | undefined, orbs: OrbColor[]): Promise<void> {
+    if (!playerId || this.phase !== "organize") return;
+    const player = this.players.get(playerId);
+    if (!player || player.mmmmsReady) return;
+    if (!isValidOrbList(orbs, player.orbs.length)) return;
+    // Must be a permutation of the dealt multiset.
+    const sortedCurrent = [...player.orbs].sort().join(",");
+    const sortedNext = [...orbs].sort().join(",");
+    if (sortedCurrent !== sortedNext) return;
+    player.orbs = [...orbs];
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleMmmmsSubmitOrder(playerId: string | undefined): Promise<void> {
+    if (!playerId || this.phase !== "organize") return;
+    const player = this.players.get(playerId);
+    if (!player || player.mmmmsReady) return;
+    if (player.orbs.length === 0) return;
+    player.mmmmsReady = true;
+    const allReady = [...this.players.values()].every((p) => p.mmmmsReady);
+    if (allReady) {
+      this.defenderGuess = null;
+      this.phase = "guess";
+    }
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleMmmmsGuess(playerId: string | undefined, color: OrbColor): Promise<void> {
+    if (!playerId || this.phase !== "guess") return;
+    if (playerId !== this.defenderId) return;
+    if (!isOrbColor(color)) return;
+    if (this.defenderGuess != null) return;
+    this.defenderGuess = color;
+    this.phase = "attack";
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleMmmmsAttack(playerId: string | undefined, color: OrbColor): Promise<void> {
+    if (!playerId || this.phase !== "attack") return;
+    if (playerId !== this.attackerId) return;
+    if (!isOrbColor(color)) return;
+    if (this.defenderGuess == null || !this.defenderId) return;
+    const defender = this.players.get(this.defenderId);
+    if (!defender) return;
+
+    const guessCorrect = this.defenderGuess === color;
+    const resolution = resolveAttack(defender.orbs, color, guessCorrect);
+    defender.orbs = resolution.remaining;
+
+    this.lastAttack = {
+      attackerId: playerId,
+      defenderId: this.defenderId,
+      attackColor: color,
+      guessCorrect,
+      explodedCount: resolution.explodedCount,
+      steps: resolution.steps,
+    };
+
+    if (defender.orbs.length === 0) {
+      this.winnerId = playerId;
+    }
+
+    this.resolveAcks = new Set();
+    this.phase = "resolving";
+    this.resolveEndsAt = Date.now() + MMMMS_RESOLVE_TIMEOUT_MS;
+    await this.ctx.storage.setAlarm(this.resolveEndsAt);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleMmmmsResolveDone(playerId: string | undefined): Promise<void> {
+    if (!playerId || this.phase !== "resolving") return;
+    if (!this.players.has(playerId)) return;
+    this.resolveAcks.add(playerId);
+    if (this.resolveAcks.size < this.players.size) {
+      await this.persist();
+      return;
+    }
+    await this.advanceMmmmsAfterResolve();
+  }
+
+  private async advanceMmmmsAfterResolve(): Promise<void> {
+    if (this.phase !== "resolving") return;
+    this.resolveEndsAt = null;
+    this.resolveAcks = new Set();
+
+    if (this.winnerId) {
+      this.phase = "results";
+      this.attackerId = null;
+      this.defenderId = null;
+      this.defenderGuess = null;
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
+    // Swap roles for the next turn.
+    const prevAttacker = this.attackerId;
+    this.attackerId = this.defenderId;
+    this.defenderId = prevAttacker;
+    this.defenderGuess = null;
+    this.phase = "guess";
     await this.ctx.storage.deleteAlarm();
     await this.persist();
     this.broadcastState();
@@ -1445,8 +1741,39 @@ export class GameRoom extends DurableObject<Env> {
     };
   }
 
-  private publicState(): BoggleRoomState | ScatterRoomState {
+  private mmmmsSnapshot(): MmmmsRoomState {
+    const players: MmmmsPlayerPublic[] = [...this.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+      remainingCount: p.orbs.length,
+      ready: p.mmmmsReady,
+    }));
+
+    let winnerName: string | null = null;
+    if (this.winnerId) {
+      winnerName = this.players.get(this.winnerId)?.name ?? null;
+    }
+
+    return {
+      game: "mmmms",
+      code: this.code,
+      phase: this.phase as MmmmsPhase,
+      orbCount: this.orbCount,
+      players,
+      attackerId: this.attackerId,
+      defenderId: this.defenderId,
+      defenderHasGuessed: this.defenderGuess != null,
+      lastAttack: this.lastAttack,
+      winnerId: this.winnerId,
+      winnerName,
+      round: this.round,
+    };
+  }
+
+  private publicState(): BoggleRoomState | ScatterRoomState | MmmmsRoomState {
     if (this.gameType === "scattergories") return this.scatterSnapshot();
+    if (this.gameType === "mmmms") return this.mmmmsSnapshot();
     return this.boggleSnapshot();
   }
 
@@ -1475,6 +1802,26 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private broadcastState(except?: WebSocket): void {
+    if (this.gameType === "mmmms") {
+      const state = this.mmmmsSnapshot();
+      for (const socket of this.ctx.getWebSockets()) {
+        if (except && socket === except) continue;
+        try {
+          const att = socket.deserializeAttachment() as Attachment | null;
+          const player = att?.playerId ? this.players.get(att.playerId) : undefined;
+          const payload = JSON.stringify({
+            type: "state",
+            state,
+            myOrbs: player ? [...player.orbs] : undefined,
+          } satisfies MmmmsServerMessage);
+          socket.send(payload);
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
+
     const state = this.publicState();
     const payload = JSON.stringify({ type: "state", state });
     for (const socket of this.ctx.getWebSockets()) {

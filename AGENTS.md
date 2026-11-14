@@ -4,7 +4,7 @@ Short orientation for AI coding agents. Humans should start with [`readme.md`](.
 
 ## What this is
 
-Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters) and Scattergories (category forms + TV review), both with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
+Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters), Scattergories (category forms + TV review), and Mmmms (two-player orb duel), all with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
 
 ## Read before changing architecture
 
@@ -23,6 +23,7 @@ When a change records a product or architecture decision: add/update `docs/adr/N
 | `worker/room.ts` | Polymorphic `GameRoom` Durable Object (`boggle` \| `scattergories`) |
 | `worker/boggle/` | Dice, path, scoring, dictionary |
 | `worker/scattergories/` | Letter die, packs, normalize/scoring, protocol |
+| `worker/mmmms/` | Orb colors, deal/resolve attack, protocol |
 | `docs/adr/` | Architecture Decision Records |
 | `Makefile` | Canonical local commands |
 

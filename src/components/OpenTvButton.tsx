@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 interface Props {
   roomCode: string;
   /** Game path slug — defaults to boggle for existing callers. */
-  game?: "boggle" | "scattergories";
+  game?: "boggle" | "scattergories" | "mmmms";
   className?: string;
   /**
    * When true, intercept the click and ask before opening the spectator

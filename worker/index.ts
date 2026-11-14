@@ -35,7 +35,7 @@ export default {
     if (url.pathname === "/api/rooms" && request.method === "GET") {
       const raw = url.searchParams.get("game");
       const game: ActiveRoomGame =
-        raw === "scattergories" || raw === "boggle" ? raw : "boggle";
+        raw === "scattergories" || raw === "boggle" || raw === "mmmms" ? raw : "boggle";
       try {
         const rooms = await listActiveRooms(env.STATS_DB, game);
         return Response.json({ rooms, game });
@@ -46,10 +46,10 @@ export default {
     }
 
     if (url.pathname === "/api/rooms" && request.method === "POST") {
-      let game: "boggle" | "scattergories" = "boggle";
+      let game: ActiveRoomGame = "boggle";
       try {
         const body = (await request.json()) as { game?: string };
-        if (body.game === "scattergories" || body.game === "boggle") {
+        if (body.game === "scattergories" || body.game === "boggle" || body.game === "mmmms") {
           game = body.game;
         }
       } catch {
