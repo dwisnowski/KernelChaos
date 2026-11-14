@@ -90,7 +90,7 @@ export interface RoomState {
 }
 
 export type ClientMessage =
-  | { type: "join"; name: string }
+  | { type: "join"; name: string; resumeId?: string }
   | { type: "spectate" }
   | { type: "setBoardSize"; boardSize: BoardSize }
   | { type: "setRoundSeconds"; roundSeconds: RoundSeconds }
@@ -99,7 +99,14 @@ export type ClientMessage =
   | { type: "playAgain" };
 
 export type ServerMessage =
-  | { type: "welcome"; playerId: string; state: RoomState; role?: "player" | "spectator" }
+  | {
+      type: "welcome";
+      playerId: string;
+      state: RoomState;
+      role?: "player" | "spectator";
+      /** Private word list for this seat — present when rejoining/resuming as a player. */
+      myWords?: WordResultEntry[];
+    }
   | { type: "state"; state: RoomState }
   | {
       type: "wordResult";

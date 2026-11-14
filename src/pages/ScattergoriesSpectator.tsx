@@ -85,7 +85,10 @@ export function ScattergoriesSpectator() {
     state?.endsAt != null ? Math.max(0, Math.ceil((state.endsAt - now) / 1000)) : 0;
 
   return (
-    <Layout title="KernelChaos · TV">
+    <Layout
+      title="KernelChaos · TV"
+      playerRoom={{ code: roomCode, game: "scattergories" }}
+    >
       <section className="spectator-screen">
         {!connected ? <p className="muted connecting">Connecting…</p> : null}
         {error ? <p className="error">{error}</p> : null}

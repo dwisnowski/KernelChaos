@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { loadResumeId, saveResumeId } from "../lib/playerResume.ts";
 import type {
   DiePose,
   PackTier,
@@ -7,6 +8,7 @@ import type {
   ScatterRoomState,
   ScatterServerMessage,
 } from "../scatterTypes.ts";
+import { CATEGORIES_PER_LIST } from "../scatterTypes.ts";
 
 interface Options {
   code: string | null;
@@ -19,6 +21,7 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [diePose, setDiePose] = useState<DiePose | null>(null);
+  const [myAnswers, setMyAnswers] = useState<string[] | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingJoin = useRef<string | null>(null);
   const pendingSpectate = useRef(false);
@@ -45,8 +48,13 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
         pendingSpectate.current = false;
         ws.send(JSON.stringify({ type: "spectate" } satisfies ScatterClientMessage));
       } else if (pendingJoin.current) {
+        const resumeId = loadResumeId(code) ?? undefined;
         ws.send(
-          JSON.stringify({ type: "join", name: pendingJoin.current } satisfies ScatterClientMessage),
+          JSON.stringify({
+            type: "join",
+            name: pendingJoin.current,
+            resumeId,
+          } satisfies ScatterClientMessage),
         );
         pendingJoin.current = null;
       }
@@ -65,7 +73,14 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
           return;
         }
         setPlayerId(msg.playerId || null);
+        if (msg.playerId && code) saveResumeId(code, msg.playerId);
         setState(msg.state);
+        if (msg.myAnswers) {
+          const padded = Array.from({ length: CATEGORIES_PER_LIST }, (_, i) => msg.myAnswers![i] ?? "");
+          setMyAnswers(padded);
+        } else if (msg.state.phase === "lobby" || msg.state.phase === "rolling" || msg.state.phase === "countdown") {
+          setMyAnswers(null);
+        }
         if (msg.state.phase !== "rolling") setDiePose(null);
       } else if (msg.type === "state") {
         if (!msg.state || msg.state.game !== "scattergories") {
@@ -73,6 +88,9 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
           return;
         }
         setState(msg.state);
+        if (msg.state.phase === "lobby" || msg.state.phase === "rolling" || msg.state.phase === "countdown") {
+          setMyAnswers(null);
+        }
         if (msg.state.phase !== "rolling") setDiePose(null);
       } else if (msg.type === "diePose") {
         setDiePose({ qx: msg.qx, qy: msg.qy, qz: msg.qz, qw: msg.qw });
@@ -92,14 +110,15 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
 
   const join = useCallback(
     (name: string) => {
+      const resumeId = code ? loadResumeId(code) ?? undefined : undefined;
       const ws = wsRef.current;
       if (ws && ws.readyState === WebSocket.OPEN) {
-        send({ type: "join", name });
+        send({ type: "join", name, resumeId });
       } else {
         pendingJoin.current = name;
       }
     },
-    [send],
+    [code, send],
   );
 
   const spectate = useCallback(() => {
@@ -149,6 +168,7 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     me,
     connected,
     diePose,
+    myAnswers,
     join,
     spectate,
     setPackTier,

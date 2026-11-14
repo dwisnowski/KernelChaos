@@ -94,7 +94,7 @@ export interface ScatterRoomState {
 export type DiePose = { qx: number; qy: number; qz: number; qw: number };
 
 export type ScatterClientMessage =
-  | { type: "join"; name: string }
+  | { type: "join"; name: string; resumeId?: string }
   | { type: "spectate" }
   | { type: "setPackTier"; packTier: PackTier }
   | { type: "setRoundSeconds"; roundSeconds: ScatterRoundSeconds }
@@ -114,6 +114,8 @@ export type ScatterServerMessage =
       playerId: string;
       state: ScatterRoomState;
       role?: "player" | "spectator";
+      /** Private answers for this seat — present when rejoining/resuming as a player. */
+      myAnswers?: string[];
     }
   | { type: "state"; state: ScatterRoomState }
   | { type: "diePose"; rollerId: string; qx: number; qy: number; qz: number; qw: number }

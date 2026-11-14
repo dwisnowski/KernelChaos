@@ -524,7 +524,7 @@ export class GameRoom extends DurableObject<Env> {
 
     switch (msg.type) {
       case "join":
-        await this.handleJoin(ws, msg.name);
+        await this.handleJoin(ws, msg.name, "resumeId" in msg ? msg.resumeId : undefined);
         break;
       case "spectate":
         await this.handleSpectate(ws);
@@ -698,12 +698,7 @@ export class GameRoom extends DurableObject<Env> {
     }
     const existing = ws.deserializeAttachment() as Attachment | null;
     if (existing?.playerId && this.players.has(existing.playerId)) {
-      this.send(ws, {
-        type: "welcome",
-        playerId: existing.playerId,
-        role: "player",
-        state: this.publicState(),
-      } as ServerMessage);
+      this.welcomePlayer(ws, existing.playerId);
       return;
     }
     ws.serializeAttachment({ spectator: true } satisfies Attachment);
@@ -715,7 +710,11 @@ export class GameRoom extends DurableObject<Env> {
     } as ServerMessage);
   }
 
-  private async handleJoin(ws: WebSocket, rawName: string): Promise<void> {
+  private async handleJoin(
+    ws: WebSocket,
+    rawName: string,
+    resumeId?: string,
+  ): Promise<void> {
     const name = rawName.trim().slice(0, 20);
     if (!name) {
       this.send(ws, { type: "error", message: "Enter a name" });
@@ -725,19 +724,22 @@ export class GameRoom extends DurableObject<Env> {
       this.send(ws, { type: "error", message: "Room not ready" });
       return;
     }
-    if (this.phase !== "lobby" && this.phase !== "results") {
-      this.send(ws, { type: "error", message: "Game already in progress" });
-      return;
-    }
 
     const existing = ws.deserializeAttachment() as Attachment | null;
     if (existing?.playerId && this.players.has(existing.playerId)) {
-      this.send(ws, {
-        type: "welcome",
-        playerId: existing.playerId,
-        role: "player",
-        state: this.publicState(),
-      } as ServerMessage);
+      this.welcomePlayer(ws, existing.playerId);
+      return;
+    }
+
+    // Reclaim a prior seat (spectator → player, refresh, second tab).
+    if (resumeId && this.players.has(resumeId)) {
+      this.takeOverPlayerSeat(ws, resumeId);
+      this.welcomePlayer(ws, resumeId);
+      return;
+    }
+
+    if (this.phase !== "lobby" && this.phase !== "results") {
+      this.send(ws, { type: "error", message: "Game already in progress" });
       return;
     }
 
@@ -754,13 +756,46 @@ export class GameRoom extends DurableObject<Env> {
     });
     ws.serializeAttachment({ playerId: id } satisfies Attachment);
     await this.persist();
+    this.welcomePlayer(ws, id);
+    this.broadcastState(ws);
+  }
+
+  /** Move a seat onto this socket; demote any other live sockets holding it. */
+  private takeOverPlayerSeat(ws: WebSocket, playerId: string): void {
+    for (const other of this.ctx.getWebSockets()) {
+      if (other === ws) continue;
+      const att = other.deserializeAttachment() as Attachment | null;
+      if (att?.playerId === playerId && !att.spectator) {
+        other.serializeAttachment({ spectator: true } satisfies Attachment);
+      }
+    }
+    ws.serializeAttachment({ playerId } satisfies Attachment);
+  }
+
+  private welcomePlayer(ws: WebSocket, playerId: string): void {
+    const player = this.players.get(playerId);
+    if (!player) return;
+    if (this.gameType === "scattergories") {
+      this.send(ws, {
+        type: "welcome",
+        playerId,
+        role: "player",
+        state: this.publicState(),
+        myAnswers: [...player.answers],
+      } as ServerMessage);
+      return;
+    }
     this.send(ws, {
       type: "welcome",
-      playerId: id,
+      playerId,
       role: "player",
       state: this.publicState(),
+      myWords: [...player.words.values()].map((w) => ({
+        word: w.word,
+        points: w.points,
+        bonuses: w.bonuses,
+      })),
     } as ServerMessage);
-    this.broadcastState(ws);
   }
 
   private async handleSetBoardSize(playerId: string | undefined, boardSize: BoardSize): Promise<void> {

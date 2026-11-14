@@ -46,6 +46,7 @@ export function ScattergoriesRoom() {
     me,
     connected,
     diePose,
+    myAnswers,
     join,
     setPackTier,
     setRoundSeconds,
@@ -72,6 +73,12 @@ export function ScattergoriesRoom() {
     join(name);
     setJoined(true);
   }, [join, joined, name]);
+
+  // Restore category answers after reclaiming a seat (e.g. back from spectator).
+  useEffect(() => {
+    if (!myAnswers) return;
+    setAnswers(myAnswers);
+  }, [myAnswers]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 200);
@@ -177,7 +184,15 @@ export function ScattergoriesRoom() {
   return (
     <Layout
       title="KernelChaos · Scattergories"
-      tvRoom={{ code: roomCode, game: "scattergories" }}
+      tvRoom={{
+        code: roomCode,
+        game: "scattergories",
+        roundActive:
+          state?.phase === "rolling" ||
+          state?.phase === "countdown" ||
+          state?.phase === "playing" ||
+          state?.phase === "review",
+      }}
     >
       {!connected ? <p className="muted connecting">Connecting…</p> : null}
       {error ? <p className="error">{error}</p> : null}

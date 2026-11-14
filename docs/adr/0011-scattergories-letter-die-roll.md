@@ -14,7 +14,7 @@ A true alphabet d26 would change scoring difficulty versus the classic game. Liv
 
 - **Keep classic 20 letters** on a regular **icosahedron** (one face per `LETTER_DIE` letter).
 - **New `rolling` phase** after host `start`: server picks a uniform random seated player as roller; letter and category list are not chosen yet.
-- **Interactive WebGL die** on the roller’s phone (drag + flick). Settle in **≤5 seconds**; face whose outward normal is closest to world up is the result.
+- **Interactive WebGL die** on the roller’s phone (drag + flick). Settle in **≤5 seconds**; face whose outward normal is closest to the camera view direction is the result (snapped face-on so the shown letter matches the round letter).
 - **Live mirror:** roller sends throttled `diePose` quaternions; server rebroadcasts to all sockets (TV and other phones) without persistence. Remote clients render the same die read-only.
 - **Commit:** roller `submitLetterRoll` with a letter in `LETTER_DIE`; server validates, `pickList`, sets letter, clears roller, enters countdown.
 - **AFK fallback:** if no commit within **30 seconds**, server `rollLetter()` and continues into countdown so the round cannot stall.

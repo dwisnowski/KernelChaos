@@ -2,17 +2,26 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { isMuted, setMuted, unlockAudio } from "../audio/sfx.ts";
 import { useState } from "react";
+import { BackToPlayerButton } from "./BackToPlayerButton.tsx";
 import { OpenTvButton } from "./OpenTvButton.tsx";
 
 export function Layout({
   children,
   title = "KernelChaos",
   tvRoom,
+  playerRoom,
 }: {
   children: ReactNode;
   title?: string;
   /** When set, shows “Open TV spectator” next to the mute control. */
-  tvRoom?: { code: string; game: "boggle" | "scattergories" };
+  tvRoom?: {
+    code: string;
+    game: "boggle" | "scattergories";
+    /** Confirm before opening while a round is underway. */
+    roundActive?: boolean;
+  };
+  /** When set, shows “Back to player mode” next to the mute control. */
+  playerRoom?: { code: string; game: "boggle" | "scattergories" };
 }) {
   const [mute, setMute] = useState(isMuted);
 
@@ -30,6 +39,14 @@ export function Layout({
             <OpenTvButton
               roomCode={tvRoom.code}
               game={tvRoom.game}
+              className="btn tv-link header-tv-link"
+              requireConfirm={tvRoom.roundActive === true}
+            />
+          ) : null}
+          {playerRoom ? (
+            <BackToPlayerButton
+              roomCode={playerRoom.code}
+              game={playerRoom.game}
               className="btn tv-link header-tv-link"
             />
           ) : null}

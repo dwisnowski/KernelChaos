@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { loadResumeId, saveResumeId } from "../lib/playerResume.ts";
 import type {
   BoardSize,
   BonusId,
@@ -82,7 +83,14 @@ export function useRoom({
         pendingSpectate.current = false;
         ws.send(JSON.stringify({ type: "spectate" } satisfies ClientMessage));
       } else if (pendingJoin.current) {
-        ws.send(JSON.stringify({ type: "join", name: pendingJoin.current } satisfies ClientMessage));
+        const resumeId = loadResumeId(code) ?? undefined;
+        ws.send(
+          JSON.stringify({
+            type: "join",
+            name: pendingJoin.current,
+            resumeId,
+          } satisfies ClientMessage),
+        );
         pendingJoin.current = null;
       }
     });
@@ -97,8 +105,30 @@ export function useRoom({
       if (msg.type === "welcome") {
         setPlayerId(msg.playerId || null);
         playerIdRef.current = msg.playerId || null;
+        if (msg.playerId && code) saveResumeId(code, msg.playerId);
         setState(msg.state);
-        setMyWords([]);
+        if (msg.myWords) {
+          setMyWords(
+            msg.myWords.map((w) => ({
+              word: w.word,
+              points: w.points,
+              bonuses: w.bonuses,
+            })),
+          );
+        } else if (msg.state.phase === "results" && msg.state.results && msg.playerId) {
+          const mine = msg.state.results.find((r) => r.id === msg.playerId);
+          setMyWords(
+            mine
+              ? mine.words.map((w) => ({
+                  word: w.word,
+                  points: w.points,
+                  bonuses: w.bonuses,
+                }))
+              : [],
+          );
+        } else {
+          setMyWords([]);
+        }
         if (msg.state.phase === "lobby" || msg.state.phase === "countdown") {
           setBadgeFeed([]);
         }
@@ -157,14 +187,15 @@ export function useRoom({
 
   const join = useCallback(
     (name: string) => {
+      const resumeId = code ? loadResumeId(code) ?? undefined : undefined;
       const ws = wsRef.current;
       if (ws && ws.readyState === WebSocket.OPEN) {
-        send({ type: "join", name });
+        send({ type: "join", name, resumeId });
       } else {
         pendingJoin.current = name;
       }
     },
-    [send],
+    [code, send],
   );
 
   const spectate = useCallback(() => {

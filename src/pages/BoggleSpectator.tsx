@@ -58,7 +58,10 @@ export function BoggleSpectator() {
   }, [state]);
 
   return (
-    <Layout title="KernelChaos · TV">
+    <Layout
+      title="KernelChaos · TV"
+      playerRoom={{ code: roomCode, game: "boggle" }}
+    >
       <section className="spectator-screen">
         {!connected ? <p className="muted connecting">Connecting…</p> : null}
         {error ? <p className="error">{error}</p> : null}

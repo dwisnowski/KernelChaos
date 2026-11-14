@@ -45,6 +45,10 @@ function vNorm(a: Vec3): Vec3 {
   return [a[0] / l, a[1] / l, a[2] / l];
 }
 
+/** Slightly elevated eye so the die reads in 3D; result face snaps toward this view. */
+const CAMERA_EYE: Vec3 = [0, 1.05, 2.95];
+const VIEW_DIR: Vec3 = vNorm(CAMERA_EYE);
+
 function qIdentity(): Quat {
   return [0, 0, 0, 1];
 }
@@ -366,13 +370,13 @@ function mat4Mul(a: Float32Array, b: Float32Array): Float32Array {
   return out;
 }
 
-function topFaceIndex(faces: FaceGeom[], q: Quat): number {
+/** Face whose outward normal points most toward the camera — what the player reads. */
+function resultFaceIndex(faces: FaceGeom[], q: Quat): number {
   let best = 0;
   let bestDot = -Infinity;
-  const up: Vec3 = [0, 1, 0];
   for (let i = 0; i < faces.length; i++) {
     const worldN = qRotate(q, faces[i]!.normal);
-    const d = vDot(worldN, up);
+    const d = vDot(worldN, VIEW_DIR);
     if (d > bestDot) {
       bestDot = d;
       best = i;
@@ -383,7 +387,7 @@ function topFaceIndex(faces: FaceGeom[], q: Quat): number {
 
 function snapQuatToFace(faces: FaceGeom[], q: Quat, faceIndex: number): Quat {
   const worldN = qRotate(q, faces[faceIndex]!.normal);
-  const align = qFromTo(worldN, [0, 1, 0]);
+  const align = qFromTo(worldN, VIEW_DIR);
   return qNormalize(qMul(align, q));
 }
 
@@ -488,7 +492,7 @@ export function LetterDie({
       spinning = false;
       snapping = false;
       angVel = [0, 0, 0];
-      const fi = topFaceIndex(faces, quat);
+      const fi = resultFaceIndex(faces, quat);
       quat = snapQuatToFace(faces, quat, fi);
       emitPose(true);
       onSettleRef.current?.(faces[fi]!.letter);
@@ -509,7 +513,7 @@ export function LetterDie({
     const draw = () => {
       const aspect = canvas.width / Math.max(canvas.height, 1);
       const proj = mat4Perspective((42 * Math.PI) / 180, aspect, 0.1, 20);
-      const view = mat4LookAt([0, 0.15, 3.1], [0, 0, 0], [0, 1, 0]);
+      const view = mat4LookAt(CAMERA_EYE, [0, 0, 0], [0, 1, 0]);
       const model = mat4FromQuat(quat);
       const mvp = mat4Mul(mat4Mul(proj, view), model);
 
@@ -555,7 +559,7 @@ export function LetterDie({
           }
           emitPose();
           if (elapsed >= MAX_ROLL_MS || vLen(angVel) < SETTLE_SPEED) {
-            const fi = topFaceIndex(faces, quat);
+            const fi = resultFaceIndex(faces, quat);
             snapFrom = quat;
             snapTo = snapQuatToFace(faces, quat, fi);
             snapping = true;
