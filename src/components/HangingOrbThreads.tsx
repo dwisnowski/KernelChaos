@@ -38,6 +38,8 @@ interface OrbLayout {
   vanish: boolean;
   hot: boolean;
   sparklePhase: number;
+  /** Unique phase seed for this bead's local sway. */
+  swayPhase: number;
 }
 
 interface ThreadLayout {
@@ -51,6 +53,15 @@ interface LayoutSnapshot {
   height: number;
   opponent: ThreadLayout;
   player: ThreadLayout;
+}
+
+interface SwayInput {
+  t: number;
+  /** Shared lean from pointer / device (-1..1-ish pixels contribution). */
+  lean: number;
+  reduceMotion: boolean;
+  /** Phase offset so the two threads don't move in lockstep. */
+  threadPhase: number;
 }
 
 const HIDDEN_HEX = "#6b7c8f";
@@ -69,7 +80,14 @@ function buildThreadOrbs(
   colors: OrbColor[] | null,
   vanishing: Set<number> | undefined,
   highlightBottom: boolean,
-): { color: string; hidden: boolean; vanish: boolean; hot: boolean; sparklePhase: number }[] {
+): {
+  color: string;
+  hidden: boolean;
+  vanish: boolean;
+  hot: boolean;
+  sparklePhase: number;
+  swayPhase: number;
+}[] {
   const n = Math.min(Math.max(0, count), MAX_ORBS);
   const out = [];
   for (let i = 0; i < n; i++) {
@@ -80,9 +98,60 @@ function buildThreadOrbs(
       vanish: vanishing?.has(i) ?? false,
       hot: highlightBottom && i === 0 && !(vanishing?.has(i) ?? false),
       sparklePhase: (i * 0.73) % (Math.PI * 2),
+      swayPhase: i * 1.6180339887 + 0.37,
     });
   }
   return out;
+}
+
+/**
+ * Hang each orb from the previous with its own flexible segment angle so the
+ * stack reads as linked beads, not a rigid column.
+ */
+function placeFlexibleThread(
+  specs: ReturnType<typeof buildThreadOrbs>,
+  baseX: number,
+  anchorY: number,
+  padTop: number,
+  gap: number,
+  r: number,
+  sway: SwayInput,
+): ThreadLayout {
+  // Indexed by bottom→top storage order for getOrbCenter / vanish.
+  const orbsByBottom: OrbLayout[] = [];
+  let prevX = baseX;
+  let prevY = anchorY;
+
+  // Walk top → bottom (high storage index first).
+  for (let fromTop = 0; fromTop < specs.length; fromTop++) {
+    const bottomIndex = specs.length - 1 - fromTop;
+    const spec = specs[bottomIndex]!;
+    const restY = padTop + gap * (fromTop + 0.55);
+    const segmentLen = Math.max(r * 1.6, restY - prevY);
+
+    let angle = 0;
+    if (!sway.reduceMotion) {
+      // Each link gets its own tempo + phase; amplitude grows gently down the chain.
+      const local =
+        Math.sin(sway.t * (1.05 + fromTop * 0.11) + spec.swayPhase + sway.threadPhase) *
+          (0.07 + fromTop * 0.012) +
+        Math.sin(sway.t * (1.85 + fromTop * 0.07) + spec.swayPhase * 1.7) *
+          (0.035 + fromTop * 0.006);
+      // Soft coupling: lean more as we hang farther from the anchor.
+      const leanScale = 0.012 + fromTop * 0.0045;
+      angle = local + sway.lean * leanScale;
+      // Keep segments from folding past ~28°.
+      angle = Math.max(-0.5, Math.min(0.5, angle));
+    }
+
+    const x = prevX + Math.sin(angle) * segmentLen;
+    const y = prevY + Math.cos(angle) * segmentLen;
+    orbsByBottom[bottomIndex] = { x, y, r, ...spec };
+    prevX = x;
+    prevY = y;
+  }
+
+  return { orbs: orbsByBottom, anchorX: baseX, anchorY };
 }
 
 function layoutThreads(
@@ -94,8 +163,8 @@ function layoutThreads(
   vanishingOpponent: Set<number> | undefined,
   vanishingPlayer: Set<number> | undefined,
   highlightPlayerBottom: boolean,
-  swayOpp: number,
-  swayPlayer: number,
+  swayOpp: SwayInput,
+  swayPlayer: SwayInput,
 ): LayoutSnapshot {
   const padTop = Math.max(12, height * 0.04);
   const padBottom = Math.max(16, height * 0.06);
@@ -117,30 +186,15 @@ function layoutThreads(
   const playerX = width * 0.68;
   const anchorY = padTop * 0.35;
 
-  function place(
-    specs: ReturnType<typeof buildThreadOrbs>,
-    baseX: number,
-    sway: number,
-  ): ThreadLayout {
-    const orbs: OrbLayout[] = [];
-    for (let i = 0; i < specs.length; i++) {
-      // Bottom index 0 at bottom of canvas; high index toward top (hanging down from anchor).
-      const fromTop = specs.length - 1 - i;
-      const y = padTop + gap * (fromTop + 0.55);
-      const x = baseX + sway * (0.55 + fromTop * 0.08);
-      orbs.push({ x, y, r, ...specs[i]! });
-    }
-    return { orbs, anchorX: baseX, anchorY };
-  }
-
   return {
     width,
     height,
-    opponent: place(oppSpecs, oppX, swayOpp),
-    player: place(playerSpecs, playerX, swayPlayer),
+    opponent: placeFlexibleThread(oppSpecs, oppX, anchorY, padTop, gap, r, swayOpp),
+    player: placeFlexibleThread(playerSpecs, playerX, anchorY, padTop, gap, r, swayPlayer),
   };
 }
 
+/** Draw each silk link as its own soft curve between consecutive hang points. */
 function drawSilk(
   ctx: CanvasRenderingContext2D,
   anchorX: number,
@@ -151,25 +205,44 @@ function drawSilk(
   const visible = orbs.filter((o) => !o.vanish);
   if (visible.length === 0) return;
 
+  const topFirst = [...visible].sort((a, b) => a.y - b.y);
+  const lineW = Math.max(1.2, Math.min(2.4, orbs[0]!.r * 0.18));
+
   ctx.save();
   ctx.strokeStyle = SILK;
-  ctx.lineWidth = Math.max(1.2, Math.min(2.4, orbs[0]!.r * 0.18));
+  ctx.lineWidth = lineW;
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.shadowColor = "rgba(212, 175, 55, 0.45)";
   ctx.shadowBlur = 6;
 
-  // Draw from top orb down to bottom.
-  const topFirst = [...visible].sort((a, b) => a.y - b.y);
-  ctx.beginPath();
-  ctx.moveTo(anchorX, anchorY);
+  let prevX = anchorX;
+  let prevY = anchorY;
   for (let i = 0; i < topFirst.length; i++) {
     const orb = topFirst[i]!;
-    const prev = i === 0 ? { x: anchorX, y: anchorY } : topFirst[i - 1]!;
-    const midY = (prev.y + orb.y) / 2;
-    const wobble = Math.sin(t * 1.4 + i * 0.7) * 2.2;
-    ctx.quadraticCurveTo(prev.x + wobble, midY, orb.x, orb.y - orb.r * 0.85);
+    const endX = orb.x;
+    const endY = orb.y - orb.r * 0.85;
+    const dx = endX - prevX;
+    const dy = endY - prevY;
+    const len = Math.hypot(dx, dy) || 1;
+    // Perpendicular bulge so each segment reads as a separate flexible thread.
+    const nx = -dy / len;
+    const ny = dx / len;
+    const bulge =
+      (3.5 + Math.min(8, len * 0.08)) *
+      Math.sin(t * (1.3 + i * 0.17) + orb.swayPhase) *
+      (i % 2 === 0 ? 1 : -0.85);
+    const cpx = (prevX + endX) / 2 + nx * bulge;
+    const cpy = (prevY + endY) / 2 + ny * bulge * 0.35;
+
+    ctx.beginPath();
+    ctx.moveTo(prevX, prevY);
+    ctx.quadraticCurveTo(cpx, cpy, endX, endY);
+    ctx.stroke();
+
+    prevX = endX;
+    prevY = endY;
   }
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -307,17 +380,17 @@ export const HangingOrbThreads = forwardRef<HangingOrbThreadsHandle, Props>(
         const p = propsRef.current;
         const tiltOn = p.enableTilt && !reduceMotion;
 
-        let swayBase = reduceMotion ? 0 : Math.sin(t * 1.15) * 5;
-        let swayOpp = swayBase;
-        let swayPlayer = -swayBase * 0.85;
-
-        if (tiltOn) {
-          const px = (pointerRef.current.x - 0.5) * 18;
-          const tx = tiltRef.current.x * 14;
-          swayOpp += px * 0.55 + tx;
-          swayPlayer += px * 0.85 + tx * 0.7;
-          swayOpp += Math.sin(t * 2.4 + 1) * 2.2;
-          swayPlayer += Math.sin(t * 2.1) * 2.5;
+        let leanOpp = 0;
+        let leanPlayer = 0;
+        if (!reduceMotion) {
+          leanOpp = Math.sin(t * 0.95) * 4.5;
+          leanPlayer = Math.sin(t * 1.05 + 1.2) * -4.2;
+          if (tiltOn) {
+            const px = (pointerRef.current.x - 0.5) * 22;
+            const tx = tiltRef.current.x * 16;
+            leanOpp += px * 0.55 + tx;
+            leanPlayer += px * 0.9 + tx * 0.75;
+          }
         }
 
         const layout = layoutThreads(
@@ -329,8 +402,8 @@ export const HangingOrbThreads = forwardRef<HangingOrbThreadsHandle, Props>(
           p.vanishingOpponent,
           p.vanishingPlayer,
           p.highlightPlayerBottom,
-          swayOpp,
-          swayPlayer,
+          { t, lean: leanOpp, reduceMotion, threadPhase: 0.4 },
+          { t, lean: leanPlayer, reduceMotion, threadPhase: 2.1 },
         );
         layoutRef.current = layout;
 
