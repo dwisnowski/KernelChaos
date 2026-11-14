@@ -2072,6 +2072,12 @@ input {
   z-index: 1;
 }
 
+.mmmms-boards.is-organize-solo {
+  grid-template-columns: 1fr;
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
 .mmmms-board h2 {
   margin: 0 0 0.25rem;
   font-size: 1.1rem;
@@ -2106,7 +2112,17 @@ input {
   border: 1px solid var(--stroke);
   border-radius: 16px;
   background: color-mix(in srgb, var(--card) 88%, transparent);
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.mmmms-boards.is-organize-solo .orb-list {
+  max-height: min(70dvh, 720px);
+}
+
+.orb-list.is-dragging-active {
   touch-action: none;
+  cursor: grabbing;
 }
 
 .orb-list.is-locked {
@@ -2116,12 +2132,14 @@ input {
 .orb-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.65rem;
   padding: 0.35rem 0.55rem;
   border-radius: 999px;
   border: 1px solid transparent;
   cursor: grab;
   user-select: none;
+  touch-action: pan-y;
 }
 
 .orb-list.is-locked .orb-item {
@@ -2129,13 +2147,53 @@ input {
 }
 
 .orb-item.is-dragging {
-  opacity: 0.55;
-  cursor: grabbing;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.orb-item.is-placeholder {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--stroke) 80%, var(--accent));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  min-height: 2.3rem;
+}
+
+.orb-item.is-placeholder .orb-bead,
+.orb-item.is-placeholder .orb-label {
+  visibility: hidden;
 }
 
 .orb-item.is-drop-target {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.orb-drag-ghost {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--orb-color, #888) 55%, var(--stroke));
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow:
+    0 10px 28px #0005,
+    0 0 0 1px color-mix(in srgb, var(--orb-color, #888) 25%, transparent);
+  transform: translate(-50%, -50%) scale(1.08);
+  pointer-events: none;
+  touch-action: none;
+}
+
+.orb-drag-ghost .orb-bead {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.orb-drag-ghost .orb-label {
+  font-size: 1rem;
 }
 
 .orb-item.is-vanishing {

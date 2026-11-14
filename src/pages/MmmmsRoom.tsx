@@ -259,10 +259,16 @@ export function MmmmsRoom() {
 
           <div className="mmmms-stage" ref={stageRef}>
             <BurstOverlay ref={burstRef} className="burst-overlay mmmms-burst" />
-            <div className="mmmms-boards">
+            <div
+              className={`mmmms-boards${state.phase === "organize" ? " is-organize-solo" : ""}`}
+            >
               <div className="mmmms-board mine">
                 <h2>Your stack</h2>
-                <p className="muted orb-stack-hint">Bottom explodes first</p>
+                <p className="muted orb-stack-hint">
+                  {state.phase === "organize"
+                    ? "Bottom explodes first · hold to drag"
+                    : "Bottom explodes first"}
+                </p>
                 <OrbList
                   orbs={localOrbs}
                   disabled={state.phase !== "organize" || ready}
@@ -294,11 +300,13 @@ export function MmmmsRoom() {
                 ) : null}
               </div>
 
-              <div className="mmmms-board theirs">
-                <h2>{opponent?.name ?? "Opponent"}</h2>
-                <p className="muted orb-stack-hint">Hidden colors · count only</p>
-                <HiddenOrbStack count={hiddenCount} />
-              </div>
+              {state.phase !== "organize" ? (
+                <div className="mmmms-board theirs">
+                  <h2>{opponent?.name ?? "Opponent"}</h2>
+                  <p className="muted orb-stack-hint">Hidden colors · count only</p>
+                  <HiddenOrbStack count={hiddenCount} />
+                </div>
+              ) : null}
             </div>
           </div>
 

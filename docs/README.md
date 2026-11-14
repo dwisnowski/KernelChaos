@@ -24,3 +24,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0013 – Player seat resume after spectator](adr/0013-player-seat-resume.md) — `resumeId` + private `myWords`/`myAnswers` on welcome so spectator → player keeps entries
 - [0014 – M&Ms Smash two-player orb duel](adr/0014-mmmms.md) — Exactly two seats; 12/20/30 orbs; organize → guess → attack; hidden stacks; inclusive explode path; correct-guess 50% halt saves; particle bursts
 - [0015 – M&Ms Smash Web Audio cues](adr/0015-mmmms-sfx.md) — Synthesized `playMmmms*` helpers; smash sting + per-step explode/halt; win vs defeat on phone; TV winner flourish
+- [0016 – M&Ms Smash organize drag UX](adr/0016-mmmms-organize-ux.md) — Solo organize board; scrollable full stack; long-press floating ghost + edge auto-scroll; centered orb rows
