@@ -15,6 +15,10 @@ import { BurstOverlay, type BurstOverlayHandle } from "../components/BurstOverla
 import { ColorPalette } from "../components/ColorPalette.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { MmmmsLobby } from "../components/MmmmsLobby.tsx";
+import {
+  MmmmsOutcomeOverlay,
+  resolveMmmmsOutcome,
+} from "../components/MmmmsOutcomeOverlay.tsx";
 import { HiddenOrbStack, OrbList } from "../components/OrbList.tsx";
 import { useMmmmsRoom } from "../hooks/useMmmmsRoom.ts";
 import {
@@ -48,6 +52,7 @@ export function MmmmsRoom() {
   const [localOrbs, setLocalOrbs] = useState<OrbColor[]>([]);
   const [vanishing, setVanishing] = useState<Set<number>>(() => new Set());
   const [animExploded, setAnimExploded] = useState<number | null>(null);
+  const [selectedColor, setSelectedColor] = useState<OrbColor | null>(null);
   const phaseRef = useRef<string | null>(null);
   const resolveKeyRef = useRef<string | null>(null);
   const burstRef = useRef<BurstOverlayHandle>(null);
@@ -86,6 +91,10 @@ export function MmmmsRoom() {
     if (state?.phase === "resolving") return;
     setLocalOrbs(myOrbs);
   }, [myOrbs, state?.phase]);
+
+  useEffect(() => {
+    setSelectedColor(null);
+  }, [state?.phase, state?.round]);
 
   useEffect(() => {
     if (!state) return;
@@ -192,10 +201,24 @@ export function MmmmsRoom() {
   const amDefender = playerId != null && playerId === state?.defenderId;
   const ready = me?.ready ?? false;
 
+  const isPickPhase = state?.phase === "guess" || state?.phase === "attack";
+  const isActivePicker =
+    (state?.phase === "guess" && amDefender) || (state?.phase === "attack" && amAttacker);
+  const showOwnBoard =
+    state?.phase === "organize" || (state?.phase === "resolving" && amDefender);
+  const showOpponentBoard = state?.phase === "resolving" && amAttacker;
+
   const hiddenCount =
     state?.phase === "resolving" && state.lastAttack && playerId === state.lastAttack.attackerId
       ? (opponent?.remainingCount ?? 0) + state.lastAttack.explodedCount
       : (opponent?.remainingCount ?? 0);
+
+  const phoneOutcome =
+    state?.phase === "resolving" && state.lastAttack
+      ? resolveMmmmsOutcome(state.lastAttack)
+      : null;
+  const showBlockedOverlay = phoneOutcome === "blocked" && amDefender;
+  const showGoFishOverlay = phoneOutcome === "go-fish" && amAttacker;
 
   return (
     <Layout
@@ -259,73 +282,104 @@ export function MmmmsRoom() {
 
           <div className="mmmms-stage" ref={stageRef}>
             <BurstOverlay ref={burstRef} className="burst-overlay mmmms-burst" />
-            <div
-              className={`mmmms-boards${state.phase === "organize" ? " is-organize-solo" : ""}`}
-            >
-              <div className="mmmms-board mine">
-                <h2>Your stack</h2>
-                <p className="muted orb-stack-hint">
-                  {state.phase === "organize"
-                    ? "Bottom explodes first · hold to drag"
-                    : "Bottom explodes first"}
+
+            {showBlockedOverlay ? <MmmmsOutcomeOverlay kind="blocked" /> : null}
+            {showGoFishOverlay ? <MmmmsOutcomeOverlay kind="go-fish" /> : null}
+
+            {isPickPhase && !isActivePicker ? (
+              <div className="mmmms-pick-wait" aria-live="polite">
+                <p>
+                  {state.phase === "guess"
+                    ? "Opponent is guessing…"
+                    : "Opponent is attacking…"}
                 </p>
-                <OrbList
-                  orbs={localOrbs}
-                  disabled={state.phase !== "organize" || ready}
-                  vanishing={vanishing}
-                  highlightBottom={state.phase === "resolving" && amDefender}
-                  onReorder={(next) => {
-                    setLocalOrbs(next);
-                    reorder(next);
+              </div>
+            ) : null}
+
+            {isActivePicker ? (
+              <div className="mmmms-palette-wrap">
+                <ColorPalette
+                  label={state.phase === "guess" ? "Guess color" : "Attack color"}
+                  selected={selectedColor}
+                  onSelect={(color) => {
+                    unlockAudio();
+                    setSelectedColor(color);
                   }}
                 />
-                {state.phase === "organize" ? (
-                  <div className="mmmms-organize-actions">
-                    {ready ? (
-                      <p className="waiting">Locked in — waiting for opponent…</p>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn primary"
-                        onClick={() => {
-                          unlockAudio();
-                          playMmmmsLock();
-                          submitOrder();
-                        }}
-                      >
-                        Submit order
-                      </button>
-                    )}
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={selectedColor == null}
+                  onClick={() => {
+                    if (selectedColor == null) return;
+                    unlockAudio();
+                    if (state.phase === "guess") {
+                      playMmmmsGuess();
+                      guessColor(selectedColor);
+                    } else {
+                      attackColor(selectedColor);
+                    }
+                  }}
+                >
+                  Submit
+                </button>
+              </div>
+            ) : null}
+
+            {showOwnBoard || showOpponentBoard ? (
+              <div
+                className={`mmmms-boards${state.phase === "organize" || state.phase === "resolving" ? " is-organize-solo" : ""}`}
+              >
+                {showOwnBoard ? (
+                  <div className="mmmms-board mine">
+                    <h2>Your stack</h2>
+                    <p className="muted orb-stack-hint">
+                      {state.phase === "organize"
+                        ? "Bottom explodes first · hold to drag"
+                        : "Bottom explodes first"}
+                    </p>
+                    <OrbList
+                      orbs={localOrbs}
+                      disabled={state.phase !== "organize" || ready}
+                      vanishing={vanishing}
+                      highlightBottom={state.phase === "resolving" && amDefender}
+                      onReorder={(next) => {
+                        setLocalOrbs(next);
+                        reorder(next);
+                      }}
+                    />
+                    {state.phase === "organize" ? (
+                      <div className="mmmms-organize-actions">
+                        {ready ? (
+                          <p className="waiting">Locked in — waiting for opponent…</p>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn primary"
+                            onClick={() => {
+                              unlockAudio();
+                              playMmmmsLock();
+                              submitOrder();
+                            }}
+                          >
+                            Submit order
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {showOpponentBoard ? (
+                  <div className="mmmms-board theirs">
+                    <h2>{opponent?.name ?? "Opponent"}</h2>
+                    <p className="muted orb-stack-hint">Hidden colors · count only</p>
+                    <HiddenOrbStack count={hiddenCount} />
                   </div>
                 ) : null}
               </div>
-
-              {state.phase !== "organize" ? (
-                <div className="mmmms-board theirs">
-                  <h2>{opponent?.name ?? "Opponent"}</h2>
-                  <p className="muted orb-stack-hint">Hidden colors · count only</p>
-                  <HiddenOrbStack count={hiddenCount} />
-                </div>
-              ) : null}
-            </div>
+            ) : null}
           </div>
-
-          {(state.phase === "guess" && amDefender) || (state.phase === "attack" && amAttacker) ? (
-            <div className="mmmms-palette-wrap">
-              <ColorPalette
-                label={state.phase === "guess" ? "Guess color" : "Attack color"}
-                onSelect={(color) => {
-                  unlockAudio();
-                  if (state.phase === "guess") {
-                    playMmmmsGuess();
-                    guessColor(color);
-                  } else {
-                    attackColor(color);
-                  }
-                }}
-              />
-            </div>
-          ) : null}
 
           {state.phase === "resolving" && state.lastAttack ? (
             <div className="mmmms-attack-result" aria-live="polite">

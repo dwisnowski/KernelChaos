@@ -28,5 +28,5 @@ Attack resolution is intentional and mind-game heavy: the defender’s remaining
 - Domain logic lives under `worker/mmmms/`; `GameRoom` only dispatches.
 - Two-player cap is M&Ms Smash-specific; Boggle/Scattergories remain unbounded.
 - Organize phone UI hides the opponent board (counts remain in the HUD); drag/scroll details in [0016](./0016-mmmms-organize-ux.md).
-- Cross-links: extends [0009](./0009-scattergories-and-game-shell.md), [0003](./0003-tv-spectator-screen.md), [0007](./0007-spectator-room-entry.md). SFX cues: [0015](./0015-mmmms-sfx.md). Organize UX: [0016](./0016-mmmms-organize-ux.md).
+- Cross-links: extends [0009](./0009-scattergories-and-game-shell.md), [0003](./0003-tv-spectator-screen.md), [0007](./0007-spectator-room-entry.md). SFX cues: [0015](./0015-mmmms-sfx.md). Organize UX: [0016](./0016-mmmms-organize-ux.md). Guess/attack UX: [0017](./0017-mmmms-guess-attack-ux.md).
 

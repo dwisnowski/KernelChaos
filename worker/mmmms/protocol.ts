@@ -27,6 +27,8 @@ export interface MmmmsAttackResult {
   guessCorrect: boolean;
   explodedCount: number;
   steps: AttackStep[];
+  /** False when the attack color was absent from the defender stack (go fish). */
+  colorInStack: boolean;
 }
 
 export interface MmmmsRoomState {

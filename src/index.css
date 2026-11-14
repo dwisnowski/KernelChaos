@@ -2238,6 +2238,86 @@ input {
   margin-top: 0.85rem;
 }
 
+.mmmms-palette-wrap {
+  display: grid;
+  gap: 1rem;
+  max-width: 28rem;
+  margin-inline: auto;
+  padding: 0.5rem 0 0.25rem;
+  position: relative;
+  z-index: 1;
+}
+
+.mmmms-palette-wrap .btn {
+  justify-self: stretch;
+}
+
+.mmmms-pick-wait {
+  display: grid;
+  place-items: center;
+  min-height: min(40dvh, 280px);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.mmmms-pick-wait p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  color: var(--muted);
+}
+
+.mmmms-outcome-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg0) 55%, transparent);
+  animation: mmmms-outcome-in 0.45s ease-out both;
+}
+
+.mmmms-outcome-title {
+  margin: 0;
+  padding: 0.85rem 1.25rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 6vw, 2.75rem);
+  letter-spacing: 0.02em;
+  text-align: center;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow: 0 12px 32px #0004;
+}
+
+.mmmms-outcome-overlay.is-blocked .mmmms-outcome-title {
+  border-color: color-mix(in srgb, #43a047 55%, var(--stroke));
+  color: #2e7d32;
+}
+
+.mmmms-outcome-overlay.is-go-fish .mmmms-outcome-title {
+  border-color: color-mix(in srgb, #fb8c00 55%, var(--stroke));
+  color: #ef6c00;
+}
+
+.mmmms-outcome-overlay.is-tv .mmmms-outcome-title {
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  padding: 1.1rem 1.75rem;
+}
+
+@keyframes mmmms-outcome-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .color-palette {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));

@@ -33,6 +33,8 @@ export interface AttackResolution {
   remaining: OrbColor[];
   steps: AttackStep[];
   explodedCount: number;
+  /** False when the attack color was absent from the defender stack (go fish). */
+  colorInStack: boolean;
 }
 
 /**
@@ -48,7 +50,8 @@ export function resolveAttack(
   rng: () => number = Math.random,
 ): AttackResolution {
   const matchIdx = stack.findIndex((c) => c === attackColor);
-  const pathEnd = matchIdx === -1 ? stack.length - 1 : matchIdx;
+  const colorInStack = matchIdx !== -1;
+  const pathEnd = colorInStack ? matchIdx : stack.length - 1;
 
   const steps: AttackStep[] = [];
   const remaining: OrbColor[] = [];
@@ -71,5 +74,5 @@ export function resolveAttack(
     explodedCount += 1;
   }
 
-  return { remaining, steps, explodedCount };
+  return { remaining, steps, explodedCount, colorInStack };
 }

@@ -11,6 +11,10 @@ import {
 } from "../audio/sfx.ts";
 import { BurstOverlay, type BurstOverlayHandle } from "../components/BurstOverlay.tsx";
 import { Layout } from "../components/Layout.tsx";
+import {
+  MmmmsOutcomeOverlay,
+  resolveMmmmsOutcome,
+} from "../components/MmmmsOutcomeOverlay.tsx";
 import { HiddenOrbStack } from "../components/OrbList.tsx";
 import { useMmmmsRoom } from "../hooks/useMmmmsRoom.ts";
 import { ORB_COLOR_HEX, ORB_COLOR_LABELS } from "../mmmmsTypes.ts";
@@ -107,6 +111,11 @@ export function MmmmsSpectator() {
     return `${origin}/mmmms/join?code=${roomCode}`;
   }, [roomCode]);
 
+  const tvOutcome =
+    state?.phase === "resolving" && state.lastAttack
+      ? resolveMmmmsOutcome(state.lastAttack)
+      : null;
+
   return (
     <Layout title="KernelChaos · TV" playerRoom={{ code: roomCode, game: "mmmms" }}>
       <section className="spectator-screen">
@@ -163,6 +172,7 @@ export function MmmmsSpectator() {
 
             <div className="mmmms-stage mmmms-tv-stage" ref={stageRef}>
               <BurstOverlay ref={burstRef} className="burst-overlay mmmms-burst" />
+              {tvOutcome ? <MmmmsOutcomeOverlay kind={tvOutcome} className="is-tv" /> : null}
               <div className="mmmms-boards mmmms-tv-boards">
                 {state.players.map((p) => {
                   const role =

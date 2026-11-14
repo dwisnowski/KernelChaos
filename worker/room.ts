@@ -1221,6 +1221,7 @@ export class GameRoom extends DurableObject<Env> {
       guessCorrect,
       explodedCount: resolution.explodedCount,
       steps: resolution.steps,
+      colorInStack: resolution.colorInStack,
     };
 
     if (defender.orbs.length === 0) {
