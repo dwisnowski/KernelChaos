@@ -121,8 +121,8 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
   );
   const reviewNext = useCallback(() => send({ type: "reviewNext" }), [send]);
   const reviewPrev = useCallback(() => send({ type: "reviewPrev" }), [send]);
-  const toggleAnswerInvalid = useCallback(
-    (playerId: string) => send({ type: "toggleAnswerInvalid", playerId }),
+  const submitReviewVotes = useCallback(
+    (votes: Record<string, "in" | "out">) => send({ type: "submitReviewVotes", votes }),
     [send],
   );
   const finishReview = useCallback(() => send({ type: "finishReview" }), [send]);
@@ -143,7 +143,7 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     submitAnswers,
     reviewNext,
     reviewPrev,
-    toggleAnswerInvalid,
+    submitReviewVotes,
     finishReview,
   };
 }

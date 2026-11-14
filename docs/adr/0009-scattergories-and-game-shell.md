@@ -28,4 +28,4 @@ Scattergories also needs a **review** phase after the timer: the TV reveals one 
 - Room codes do not encode game type; joining the wrong game’s UI against a room of the other type must surface a clear error from state/`gameType`.
 - Pack content is original and MIT-safe; future community packs can be added without touching Hasbro lists.
 - `GameRoom` grows a dispatch layer; further games should keep domain logic under `worker/{game}/` rather than inlining into the DO.
-- Cross-links: extends [0001](./0001-family-games-architecture.md), [0003](./0003-tv-spectator-screen.md), [0007](./0007-spectator-room-entry.md).
+- Cross-links: extends [0001](./0001-family-games-architecture.md), [0003](./0003-tv-spectator-screen.md), [0007](./0007-spectator-room-entry.md). Review voting replaces host invalid toggle — see [0010](./0010-scattergories-review-voting.md).

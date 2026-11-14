@@ -18,3 +18,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0007 – Spectator room entry](adr/0007-spectator-room-entry.md) — Create for TV / Spectate on TV from entry; no name; first player remains host
 - [0008 – Results word coverage](adr/0008-results-word-coverage.md) — Board `possibleWordCount` + by-length; phone found-vs-possible bars; TV possible-by-length chart
 - [0009 – Scattergories + game shell](adr/0009-scattergories-and-game-shell.md) — Polymorphic rooms; TV/player + QR/code + SFX as shared shell; original family/kids/adult packs; review-phase scoring
+- [0010 – Scattergories review voting](adr/0010-scattergories-review-voting.md) — Batch In/Out ballots per category; majority rejects; TV shows pending voters; host Next gated on full ballot

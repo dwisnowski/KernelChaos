@@ -31,6 +31,8 @@ export interface ScatterPlayerPublic {
 
 export type AnswerStatus = "unique" | "duplicate" | "invalidLetter" | "empty" | "rejected";
 
+export type ReviewVote = "in" | "out";
+
 export interface CategoryAnswerView {
   playerId: string;
   playerName: string;
@@ -38,8 +40,16 @@ export interface CategoryAnswerView {
   normalized: string;
   status: AnswerStatus;
   points: number;
-  /** Host marked invalid after debate. */
+  /** Majority voted out (or legacy host reject). */
   hostRejected: boolean;
+  /** Ballot tallies; 0 while voting is still open. */
+  votesIn: number;
+  votesOut: number;
+}
+
+export interface ReviewPendingVoter {
+  id: string;
+  name: string;
 }
 
 export interface ScatterPlayerResult extends ScatterPlayerPublic {
@@ -63,6 +73,12 @@ export interface ScatterRoomState {
   reviewIndex: number | null;
   /** Present in review/results — answers for current review category when in review. */
   reviewAnswers: CategoryAnswerView[] | null;
+  /** Voter ids who submitted a ballot for the current review category. */
+  reviewSubmittedBy: string[];
+  /** Seated players who have not yet submitted for the current category. */
+  reviewPendingVoters: ReviewPendingVoter[];
+  /** True when every seated player has balloted the current category. */
+  reviewVotingComplete: boolean;
   results: ScatterPlayerResult[] | null;
   winners: string[] | null;
   round: number;
@@ -77,7 +93,7 @@ export type ScatterClientMessage =
   | { type: "submitAnswers"; answers: string[] }
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
-  | { type: "toggleAnswerInvalid"; playerId: string }
+  | { type: "submitReviewVotes"; votes: Record<string, ReviewVote> }
   | { type: "finishReview" }
   | { type: "playAgain" };
 

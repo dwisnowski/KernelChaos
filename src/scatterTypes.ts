@@ -3,6 +3,7 @@ export type ScatterRoundSeconds = 120 | 150 | 180;
 export type ScatterPhase = "lobby" | "countdown" | "playing" | "review" | "results";
 
 export type AnswerStatus = "unique" | "duplicate" | "invalidLetter" | "empty" | "rejected";
+export type ReviewVote = "in" | "out";
 
 export interface ScatterPlayerPublic {
   id: string;
@@ -20,6 +21,13 @@ export interface CategoryAnswerView {
   status: AnswerStatus;
   points: number;
   hostRejected: boolean;
+  votesIn: number;
+  votesOut: number;
+}
+
+export interface ReviewPendingVoter {
+  id: string;
+  name: string;
 }
 
 export interface ScatterPlayerResult extends ScatterPlayerPublic {
@@ -41,6 +49,9 @@ export interface ScatterRoomState {
   players: ScatterPlayerPublic[];
   reviewIndex: number | null;
   reviewAnswers: CategoryAnswerView[] | null;
+  reviewSubmittedBy: string[];
+  reviewPendingVoters: ReviewPendingVoter[];
+  reviewVotingComplete: boolean;
   results: ScatterPlayerResult[] | null;
   winners: string[] | null;
   round: number;
@@ -55,7 +66,7 @@ export type ScatterClientMessage =
   | { type: "submitAnswers"; answers: string[] }
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
-  | { type: "toggleAnswerInvalid"; playerId: string }
+  | { type: "submitReviewVotes"; votes: Record<string, ReviewVote> }
   | { type: "finishReview" }
   | { type: "playAgain" };
 

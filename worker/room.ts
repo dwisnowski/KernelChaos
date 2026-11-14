@@ -36,6 +36,7 @@ import {
   isPackTier,
   isScatterRoundSeconds,
   type PackTier,
+  type ReviewVote,
   type ScatterClientMessage,
   type ScatterPhase,
   type ScatterPlayerPublic,
@@ -45,6 +46,11 @@ import {
   type ScatterServerMessage,
 } from "./scattergories/protocol.ts";
 import { scoreCategory, scorePlayerAcrossCategories } from "./scattergories/scoring.ts";
+
+/** Per-category: voterId → (targetPlayerId → in|out). */
+type ReviewBallotMaps = Array<Map<string, Record<string, ReviewVote>>>;
+/** Persistable form of ReviewBallotMaps. */
+type StoredReviewBallots = Array<Record<string, Record<string, ReviewVote>>>;
 
 export type GameType = "boggle" | "scattergories";
 
@@ -102,6 +108,34 @@ function emptyAnswers(): string[] {
 
 function emptyRejected(): boolean[] {
   return Array.from({ length: CATEGORIES_PER_LIST }, () => false);
+}
+
+function emptyReviewBallots(): ReviewBallotMaps {
+  return Array.from({ length: CATEGORIES_PER_LIST }, () => new Map());
+}
+
+function serializeReviewBallots(ballots: ReviewBallotMaps): StoredReviewBallots {
+  return ballots.map((m) => Object.fromEntries(m.entries()));
+}
+
+function loadReviewBallots(raw: unknown): ReviewBallotMaps {
+  const out = emptyReviewBallots();
+  if (!Array.isArray(raw)) return out;
+  for (let i = 0; i < CATEGORIES_PER_LIST; i++) {
+    const cat = raw[i];
+    if (!cat || typeof cat !== "object") continue;
+    const map = new Map<string, Record<string, ReviewVote>>();
+    for (const [voterId, ballot] of Object.entries(cat as Record<string, unknown>)) {
+      if (!ballot || typeof ballot !== "object") continue;
+      const cleaned: Record<string, ReviewVote> = {};
+      for (const [targetId, v] of Object.entries(ballot as Record<string, unknown>)) {
+        if (v === "in" || v === "out") cleaned[targetId] = v;
+      }
+      map.set(voterId, cleaned);
+    }
+    out[i] = map;
+  }
+  return out;
 }
 
 function isBoardSize(n: unknown): n is BoardSize {
@@ -174,6 +208,7 @@ export class GameRoom extends DurableObject<Env> {
   private listId: string | null = null;
   private usedListIds: string[] = [];
   private reviewIndex: number | null = null;
+  private reviewBallots: ReviewBallotMaps = emptyReviewBallots();
 
   private loaded = false;
 
@@ -202,6 +237,7 @@ export class GameRoom extends DurableObject<Env> {
       listId?: string | null;
       usedListIds?: string[];
       reviewIndex?: number | null;
+      reviewBallots?: StoredReviewBallots;
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -233,6 +269,7 @@ export class GameRoom extends DurableObject<Env> {
       this.listId = stored.listId ?? null;
       this.usedListIds = stored.usedListIds ?? [];
       this.reviewIndex = stored.reviewIndex ?? null;
+      this.reviewBallots = loadReviewBallots(stored.reviewBallots);
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -274,6 +311,7 @@ export class GameRoom extends DurableObject<Env> {
       listId: this.listId,
       usedListIds: this.usedListIds,
       reviewIndex: this.reviewIndex,
+      reviewBallots: serializeReviewBallots(this.reviewBallots),
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -366,9 +404,9 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "scattergories") break;
         await this.handleReviewPrev(attachment?.playerId);
         break;
-      case "toggleAnswerInvalid":
+      case "submitReviewVotes":
         if (this.gameType !== "scattergories") break;
-        await this.handleToggleInvalid(attachment?.playerId, msg.playerId);
+        await this.handleSubmitReviewVotes(attachment?.playerId, msg.votes);
         break;
       case "finishReview":
         if (this.gameType !== "scattergories") break;
@@ -420,6 +458,10 @@ export class GameRoom extends DurableObject<Env> {
       if (this.gameType === "scattergories") {
         this.phase = "review";
         this.reviewIndex = 0;
+        this.reviewBallots = emptyReviewBallots();
+        for (const p of this.players.values()) {
+          p.hostRejected = emptyRejected();
+        }
         await this.persist();
         this.broadcastState();
         return;
@@ -577,6 +619,7 @@ export class GameRoom extends DurableObject<Env> {
       p.answers = emptyAnswers();
       p.hostRejected = emptyRejected();
     }
+    this.reviewBallots = emptyReviewBallots();
 
     this.round += 1;
     this.countdownEndsAt =
@@ -631,6 +674,7 @@ export class GameRoom extends DurableObject<Env> {
     this.categories = null;
     this.listId = null;
     this.reviewIndex = null;
+    this.reviewBallots = emptyReviewBallots();
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
@@ -662,6 +706,7 @@ export class GameRoom extends DurableObject<Env> {
   private async handleReviewNext(playerId: string | undefined): Promise<void> {
     if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
     const idx = this.reviewIndex ?? 0;
+    if (!this.isReviewVotingComplete(idx)) return;
     if (idx >= CATEGORIES_PER_LIST - 1) return;
     this.reviewIndex = idx + 1;
     await this.persist();
@@ -677,24 +722,94 @@ export class GameRoom extends DurableObject<Env> {
     this.broadcastState();
   }
 
-  private async handleToggleInvalid(playerId: string | undefined, targetId: string): Promise<void> {
-    if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
+  private async handleSubmitReviewVotes(
+    playerId: string | undefined,
+    votes: Record<string, ReviewVote>,
+  ): Promise<void> {
+    if (!playerId || this.phase !== "review") return;
+    if (!this.players.has(playerId)) return;
     const idx = this.reviewIndex;
     if (idx == null || idx < 0 || idx >= CATEGORIES_PER_LIST) return;
-    const target = this.players.get(targetId);
-    if (!target) return;
-    target.hostRejected[idx] = !target.hostRejected[idx];
+    if (this.isReviewVotingComplete(idx)) return;
+    if (!votes || typeof votes !== "object") return;
+
+    const validTargets = new Set(
+      [...this.players.values()]
+        .filter((p) => (p.answers[idx] ?? "").trim().length > 0)
+        .map((p) => p.id),
+    );
+
+    const cleaned: Record<string, ReviewVote> = {};
+    for (const targetId of validTargets) {
+      cleaned[targetId] = votes[targetId] === "out" ? "out" : "in";
+    }
+
+    const map = this.reviewBallots[idx] ?? new Map();
+    map.set(playerId, cleaned);
+    this.reviewBallots[idx] = map;
+
+    if (this.isReviewVotingComplete(idx)) {
+      this.applyReviewMajority(idx);
+    }
+
     await this.persist();
     this.broadcastState();
   }
 
   private async handleFinishReview(playerId: string | undefined): Promise<void> {
     if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
+    const idx = this.reviewIndex;
+    if (idx == null || !this.isReviewVotingComplete(idx)) return;
     this.phase = "results";
     this.reviewIndex = null;
     this.scoresFinalized = true;
     await this.persist();
     this.broadcastState();
+  }
+
+  private isReviewVotingComplete(idx: number): boolean {
+    if (this.players.size === 0) return true;
+    const ballots = this.reviewBallots[idx];
+    if (!ballots) return false;
+    for (const p of this.players.values()) {
+      if (!ballots.has(p.id)) return false;
+    }
+    return true;
+  }
+
+  private applyReviewMajority(idx: number): void {
+    const ballots = this.reviewBallots[idx];
+    if (!ballots) return;
+
+    for (const target of this.players.values()) {
+      const raw = (target.answers[idx] ?? "").trim();
+      if (!raw) {
+        target.hostRejected[idx] = false;
+        continue;
+      }
+      let votesIn = 0;
+      let votesOut = 0;
+      for (const ballot of ballots.values()) {
+        const v = ballot[target.id];
+        if (v === "in") votesIn += 1;
+        else if (v === "out") votesOut += 1;
+      }
+      target.hostRejected[idx] = votesOut > votesIn;
+    }
+  }
+
+  private reviewVoteTallies(idx: number, targetId: string): { votesIn: number; votesOut: number } {
+    if (!this.isReviewVotingComplete(idx)) return { votesIn: 0, votesOut: 0 };
+    const ballots = this.reviewBallots[idx];
+    if (!ballots) return { votesIn: 0, votesOut: 0 };
+    let votesIn = 0;
+    let votesOut = 0;
+    for (const ballot of ballots.values()) {
+      const v = ballot[targetId];
+      if (v === "in") votesIn += 1;
+      else if (v === "out") votesOut += 1;
+    }
+    return { votesIn, votesOut };
   }
 
   private async handleSubmit(
@@ -880,17 +995,32 @@ export class GameRoom extends DurableObject<Env> {
     }));
 
     let reviewAnswers: ScatterRoomState["reviewAnswers"] = null;
+    let reviewSubmittedBy: string[] = [];
+    let reviewPendingVoters: ScatterRoomState["reviewPendingVoters"] = [];
+    let reviewVotingComplete = false;
+
     if (this.phase === "review" && this.letter != null && this.reviewIndex != null) {
       const idx = this.reviewIndex;
+      reviewVotingComplete = this.isReviewVotingComplete(idx);
+      const ballots = this.reviewBallots[idx];
+      reviewSubmittedBy = ballots ? [...ballots.keys()] : [];
+      reviewPendingVoters = [...this.players.values()]
+        .filter((p) => !ballots?.has(p.id))
+        .map((p) => ({ id: p.id, name: p.name }));
+
+      // Until ballots are complete, do not apply reject flags to live scores.
       reviewAnswers = scoreCategory(
         this.letter,
         [...this.players.values()].map((p) => ({
           playerId: p.id,
           playerName: p.name,
           raw: p.answers[idx] ?? "",
-          hostRejected: p.hostRejected[idx] ?? false,
+          hostRejected: reviewVotingComplete ? (p.hostRejected[idx] ?? false) : false,
         })),
-      );
+      ).map((view) => {
+        const tallies = this.reviewVoteTallies(idx, view.playerId);
+        return { ...view, votesIn: tallies.votesIn, votesOut: tallies.votesOut };
+      });
     }
 
     let results: ScatterPlayerResult[] | null = null;
@@ -937,6 +1067,9 @@ export class GameRoom extends DurableObject<Env> {
       players,
       reviewIndex: this.phase === "review" ? this.reviewIndex : null,
       reviewAnswers,
+      reviewSubmittedBy,
+      reviewPendingVoters,
+      reviewVotingComplete,
       results,
       winners,
       round: this.round,

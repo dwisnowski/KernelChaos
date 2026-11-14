@@ -168,15 +168,19 @@ export function ScattergoriesSpectator() {
         state.reviewIndex != null &&
         state.reviewAnswers ? (
           <ScatterReview
+            key={state.reviewIndex}
             category={state.categories[state.reviewIndex] ?? ""}
             letter={state.letter}
             index={state.reviewIndex}
             total={state.categories.length}
             answers={state.reviewAnswers}
             me={null}
+            reviewSubmittedBy={state.reviewSubmittedBy}
+            reviewPendingVoters={state.reviewPendingVoters}
+            reviewVotingComplete={state.reviewVotingComplete}
             onPrev={() => undefined}
             onNext={() => undefined}
-            onToggleInvalid={() => undefined}
+            onSubmitVotes={() => undefined}
             onFinish={() => undefined}
             variant="tv"
           />

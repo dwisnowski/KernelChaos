@@ -49,6 +49,8 @@ export function scoreCategory(
       status,
       points,
       hostRejected: p.hostRejected,
+      votesIn: 0,
+      votesOut: 0,
     };
   });
 }

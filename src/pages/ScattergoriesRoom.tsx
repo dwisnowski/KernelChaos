@@ -11,6 +11,7 @@ import {
   playWinner,
   unlockAudio,
 } from "../audio/sfx.ts";
+import type { ReviewVote } from "../scatterTypes.ts";
 import { Layout } from "../components/Layout.tsx";
 import { OpenTvButton } from "../components/OpenTvButton.tsx";
 import { ScatterLobby } from "../components/ScatterLobby.tsx";
@@ -49,7 +50,7 @@ export function ScattergoriesRoom() {
     submitAnswers,
     reviewNext,
     reviewPrev,
-    toggleAnswerInvalid,
+    submitReviewVotes,
     finishReview,
   } = useScattergoriesRoom({
     code: roomCode,
@@ -157,10 +158,10 @@ export function ScattergoriesRoom() {
     });
   }
 
-  function onToggle(playerId: string) {
+  function onSubmitVotes(votes: Record<string, ReviewVote>) {
     unlockAudio();
     playInvalidToggle();
-    toggleAnswerInvalid(playerId);
+    submitReviewVotes(votes);
   }
 
   return (
@@ -206,7 +207,13 @@ export function ScattergoriesRoom() {
               <p className="scatter-letter-sm">{state.letter}</p>
             </div>
             <div
-              className={`timer${playLeft <= 5 ? " is-urgent" : ""}`}
+              className={`timer${
+                playLeft <= 5
+                  ? " is-urgent"
+                  : playLeft <= 30
+                    ? " is-warning"
+                    : ""
+              }`}
               aria-live="polite"
             >
               {formatClock(playLeft)}
@@ -249,12 +256,16 @@ export function ScattergoriesRoom() {
       state.reviewIndex != null &&
       state.reviewAnswers ? (
         <ScatterReview
+          key={state.reviewIndex}
           category={state.categories[state.reviewIndex] ?? ""}
           letter={state.letter}
           index={state.reviewIndex}
           total={state.categories.length}
           answers={state.reviewAnswers}
           me={me}
+          reviewSubmittedBy={state.reviewSubmittedBy}
+          reviewPendingVoters={state.reviewPendingVoters}
+          reviewVotingComplete={state.reviewVotingComplete}
           onPrev={() => {
             unlockAudio();
             reviewPrev();
@@ -263,7 +274,7 @@ export function ScattergoriesRoom() {
             unlockAudio();
             reviewNext();
           }}
-          onToggleInvalid={onToggle}
+          onSubmitVotes={onSubmitVotes}
           onFinish={() => {
             unlockAudio();
             finishReview();

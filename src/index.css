@@ -1711,9 +1711,60 @@ input {
   font-size: 0.9rem;
 }
 
-.scatter-invalid-btn {
-  padding: 0.35rem 0.7rem;
+.scatter-review-waiting {
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 184, 77, 0.4);
+  background: rgba(255, 184, 77, 0.12);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.scatter-review-waiting.is-complete {
+  border-color: rgba(62, 207, 142, 0.4);
+  background: rgba(62, 207, 142, 0.12);
+}
+
+.scatter-vote-toggle {
+  display: inline-flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--stroke);
+}
+
+.scatter-vote-btn {
+  padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.scatter-vote-btn + .scatter-vote-btn {
+  border-left: 1px solid var(--stroke);
+}
+
+.scatter-vote-btn.is-active {
+  background: rgba(62, 207, 142, 0.25);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.scatter-vote-btn.is-active.out {
+  background: rgba(255, 107, 107, 0.28);
+}
+
+.scatter-vote-tally {
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.scatter-vote-actions {
+  display: grid;
+  gap: 0.5rem;
 }
 
 .scatter-review-nav {
@@ -1722,8 +1773,18 @@ input {
   flex-wrap: wrap;
 }
 
+.scatter-review-nav .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .scatter-review-tv .scatter-answer-raw {
   font-size: clamp(1.2rem, 3vw, 1.8rem);
+}
+
+.scatter-review-tv .scatter-review-waiting {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  text-align: center;
 }
 
 .spectator-scatter-play {
