@@ -1,14 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ActiveRooms } from "../components/ActiveRooms.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { unlockAudio } from "../audio/sfx.ts";
 
 export function ScattergoriesEntry() {
   const [params] = useSearchParams();
-  const location = useLocation();
   const navigate = useNavigate();
-  const isJoinFocus =
-    location.pathname.endsWith("/join") || Boolean(params.get("code"));
   const [name, setName] = useState(() => localStorage.getItem("kernelchaos.name") ?? "");
   const [code, setCode] = useState(() => (params.get("code") ?? "").toUpperCase());
   const [busy, setBusy] = useState(false);
@@ -58,21 +56,25 @@ export function ScattergoriesEntry() {
     navigate(`/scattergories/room/${roomCode}/tv`);
   }
 
-  function joinRoom(e: FormEvent) {
-    e.preventDefault();
+  function joinWithCode(room: string) {
     unlockAudio();
     const trimmed = name.trim();
-    const room = code.trim().toUpperCase();
+    const normalized = room.trim().toUpperCase();
     if (!trimmed) {
       setError("Enter your name");
       return;
     }
-    if (!/^[A-Z1-9]{4}$/.test(room)) {
+    if (!/^[A-Z1-9]{4}$/.test(normalized)) {
       setError("Room code is 4 characters (A–Z, 1–9)");
       return;
     }
     localStorage.setItem("kernelchaos.name", trimmed);
-    navigate(`/scattergories/room/${room}`, { state: { name: trimmed } });
+    navigate(`/scattergories/room/${normalized}`, { state: { name: trimmed } });
+  }
+
+  function joinRoom(e: FormEvent) {
+    e.preventDefault();
+    joinWithCode(code);
   }
 
   function spectateRoom() {
@@ -85,49 +87,6 @@ export function ScattergoriesEntry() {
     setError(null);
     navigate(`/scattergories/room/${room}/tv`);
   }
-
-  const createCard = (
-    <form className="entry-card" onSubmit={(e) => void createRoom(e)}>
-      <h2>Start a session</h2>
-      <p>Create a room and share the code or QR with family.</p>
-      <button className={`btn${isJoinFocus ? "" : " primary"}`} type="submit" disabled={busy}>
-        {busy ? "Creating…" : "Create room"}
-      </button>
-      <div className="entry-tv-actions">
-        <button className="btn" type="button" disabled={busy} onClick={() => void createRoomForTv()}>
-          {busy ? "Creating…" : "Create for TV"}
-        </button>
-        <p className="entry-tv-hint">Big screen shows the lobby QR; phones join to play.</p>
-      </div>
-    </form>
-  );
-
-  const joinCard = (
-    <form className="entry-card" onSubmit={joinRoom}>
-      <h2>Join a session</h2>
-      <label className="field">
-        <span>Room code</span>
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          maxLength={4}
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="A7K3"
-        />
-      </label>
-      <button className={`btn${isJoinFocus ? " primary" : ""}`} type="submit">
-        Join room
-      </button>
-      <div className="entry-tv-actions">
-        <button className="btn" type="button" onClick={spectateRoom}>
-          Spectate on TV
-        </button>
-        <p className="entry-tv-hint">Watch this room on the living-room display.</p>
-      </div>
-    </form>
-  );
 
   return (
     <Layout title="KernelChaos · Scattergories">
@@ -149,17 +108,51 @@ export function ScattergoriesEntry() {
           />
         </label>
 
-        {isJoinFocus ? (
-          <>
-            {joinCard}
-            {createCard}
-          </>
-        ) : (
-          <>
-            {createCard}
-            {joinCard}
-          </>
-        )}
+        <form className="entry-card" onSubmit={joinRoom}>
+          <h2>Join a session</h2>
+          <ActiveRooms
+            game="scattergories"
+            onSelect={(roomCode) => {
+              setCode(roomCode);
+              joinWithCode(roomCode);
+            }}
+          />
+          <label className="field">
+            <span>Room code</span>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              maxLength={4}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="A7K3"
+            />
+          </label>
+          <button className="btn primary" type="submit">
+            Join room
+          </button>
+          <div className="entry-tv-actions">
+            <button className="btn" type="button" onClick={spectateRoom}>
+              Spectate on TV
+            </button>
+            <p className="entry-tv-hint">Watch this room on the living-room display.</p>
+          </div>
+        </form>
+
+        <form className="entry-card" onSubmit={(e) => void createRoom(e)}>
+          <h2>Start a session</h2>
+          <p>Create a room and share the code or QR with family.</p>
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? "Creating…" : "Create room"}
+          </button>
+          <div className="entry-tv-actions">
+            <button className="btn" type="button" disabled={busy} onClick={() => void createRoomForTv()}>
+              {busy ? "Creating…" : "Create for TV"}
+            </button>
+            <p className="entry-tv-hint">Big screen shows the lobby QR; phones join to play.</p>
+          </div>
+        </form>
 
         {error ? <p className="error">{error}</p> : null}
       </section>

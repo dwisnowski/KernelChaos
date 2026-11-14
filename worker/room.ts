@@ -27,6 +27,7 @@ import {
 } from "./boggle/scoring.ts";
 import { computeBoardCoverage } from "./boggle/solver.ts";
 import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
+import { deleteActiveRoom, upsertActiveRoom } from "./activeRooms.ts";
 import { isLetterDie, rollLetter } from "./scattergories/letter.ts";
 import { pickList } from "./scattergories/packs.ts";
 import {
@@ -56,6 +57,13 @@ type StoredReviewBallots = Array<Record<string, Record<string, ReviewVote>>>;
 export type GameType = "boggle" | "scattergories";
 
 type AnyPhase = BogglePhase | ScatterPhase;
+
+/** Brief window so a refresh does not destroy the room immediately. */
+const EMPTY_GRACE_MS = 30_000;
+
+function isJoinablePhase(phase: AnyPhase): boolean {
+  return phase === "lobby" || phase === "results";
+}
 
 interface WordRecord {
   word: string;
@@ -212,6 +220,8 @@ export class GameRoom extends DurableObject<Env> {
   private rollerName: string | null = null;
   private reviewIndex: number | null = null;
   private reviewBallots: ReviewBallotMaps = emptyReviewBallots();
+  private rollEndsAt: number | null = null;
+  private emptyGraceEndsAt: number | null = null;
 
   private loaded = false;
 
@@ -243,6 +253,8 @@ export class GameRoom extends DurableObject<Env> {
       rollerName?: string | null;
       reviewIndex?: number | null;
       reviewBallots?: StoredReviewBallots;
+      rollEndsAt?: number | null;
+      emptyGraceEndsAt?: number | null;
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -277,6 +289,8 @@ export class GameRoom extends DurableObject<Env> {
       this.rollerName = stored.rollerName ?? null;
       this.reviewIndex = stored.reviewIndex ?? null;
       this.reviewBallots = loadReviewBallots(stored.reviewBallots);
+      this.rollEndsAt = stored.rollEndsAt ?? null;
+      this.emptyGraceEndsAt = stored.emptyGraceEndsAt ?? null;
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -321,6 +335,8 @@ export class GameRoom extends DurableObject<Env> {
       rollerName: this.rollerName,
       reviewIndex: this.reviewIndex,
       reviewBallots: serializeReviewBallots(this.reviewBallots),
+      rollEndsAt: this.rollEndsAt,
+      emptyGraceEndsAt: this.emptyGraceEndsAt,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -331,6 +347,130 @@ export class GameRoom extends DurableObject<Env> {
         hostRejected: p.hostRejected,
       })),
     });
+    await this.syncActiveDirectory();
+  }
+
+  private hostName(): string | null {
+    for (const p of this.players.values()) {
+      if (p.isHost) return p.name;
+    }
+    const first = this.players.values().next().value as PlayerRecord | undefined;
+    return first?.name ?? null;
+  }
+
+  private hasPresence(): boolean {
+    // Live sockets only — seats left after mid-round disconnect must not keep
+    // an empty room in the public directory.
+    return this.ctx.getWebSockets().length > 0;
+  }
+
+  private async syncActiveDirectory(): Promise<void> {
+    if (!this.code) return;
+    try {
+      if (isJoinablePhase(this.phase) && this.hasPresence()) {
+        await upsertActiveRoom(this.env.STATS_DB, {
+          code: this.code,
+          game: this.gameType,
+          phase: this.phase,
+          playerCount: this.players.size,
+          hostName: this.hostName(),
+          updatedAt: Date.now(),
+        });
+      } else {
+        await deleteActiveRoom(this.env.STATS_DB, this.code);
+      }
+    } catch (err) {
+      console.error("syncActiveDirectory failed", err);
+    }
+  }
+
+  private async scheduleEmptyGrace(): Promise<void> {
+    const endsAt = Date.now() + EMPTY_GRACE_MS;
+    this.emptyGraceEndsAt = endsAt;
+    await this.ctx.storage.setAlarm(endsAt);
+    await this.persist();
+  }
+
+  private async cancelEmptyGrace(): Promise<void> {
+    if (this.emptyGraceEndsAt == null) return;
+    this.emptyGraceEndsAt = null;
+    await this.restorePhaseAlarm();
+    await this.persist();
+  }
+
+  private async restorePhaseAlarm(): Promise<void> {
+    const candidates: number[] = [];
+    if (this.phase === "countdown" && this.countdownEndsAt != null) {
+      candidates.push(this.countdownEndsAt);
+    }
+    if (this.phase === "playing" && this.endsAt != null) {
+      candidates.push(this.endsAt);
+    }
+    if (this.phase === "rolling" && this.rollEndsAt != null) {
+      candidates.push(this.rollEndsAt);
+    }
+    if (candidates.length === 0) {
+      await this.ctx.storage.deleteAlarm();
+      return;
+    }
+    const next = Math.min(...candidates);
+    if (next <= Date.now()) {
+      await this.ctx.storage.setAlarm(Date.now());
+      return;
+    }
+    await this.ctx.storage.setAlarm(next);
+  }
+
+  private async destroyRoom(): Promise<void> {
+    const code = this.code;
+    try {
+      await this.ctx.storage.deleteAlarm();
+    } catch {
+      /* ignore */
+    }
+    if (code) {
+      try {
+        await deleteActiveRoom(this.env.STATS_DB, code);
+      } catch (err) {
+        console.error("deleteActiveRoom on destroy failed", err);
+      }
+    }
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.close(1000, "Room closed");
+      } catch {
+        /* ignore */
+      }
+    }
+    await this.ctx.storage.deleteAll();
+    this.gameType = "boggle";
+    this.code = "";
+    this.phase = "lobby";
+    this.boardSize = 4;
+    this.roundSeconds = DEFAULT_ROUND_SECONDS;
+    this.board = null;
+    this.countdownEndsAt = null;
+    this.endsAt = null;
+    this.round = 0;
+    this.players = new Map();
+    this.globalAcceptCount = 0;
+    this.lastAccept = null;
+    this.scoresFinalized = false;
+    this.missedWords = null;
+    this.possibleWordCount = null;
+    this.possibleByLength = null;
+    this.packTier = "family";
+    this.letter = null;
+    this.categories = null;
+    this.listId = null;
+    this.usedListIds = [];
+    this.rollerId = null;
+    this.rollerName = null;
+    this.reviewIndex = null;
+    this.reviewBallots = emptyReviewBallots();
+    this.rollEndsAt = null;
+    this.emptyGraceEndsAt = null;
+    this.loaded = true;
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -361,6 +501,12 @@ export class GameRoom extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
+    // Accept first so presence is live before canceling empty-grace teardown.
+    if (this.emptyGraceEndsAt != null) {
+      await this.cancelEmptyGrace();
+    } else if (this.code) {
+      await this.syncActiveDirectory();
+    }
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -440,25 +586,46 @@ export class GameRoom extends DurableObject<Env> {
   async webSocketClose(ws: WebSocket, _code: number, _reason: string, _wasClean: boolean): Promise<void> {
     await this.ensureLoaded();
     const attachment = ws.deserializeAttachment() as Attachment | null;
-    if (!attachment?.playerId || attachment.spectator) return;
 
-    const player = this.players.get(attachment.playerId);
-    if (!player) return;
-
-    if (this.phase === "lobby") {
-      this.players.delete(attachment.playerId);
-      if (player.isHost) {
-        const next = this.players.values().next().value as PlayerRecord | undefined;
-        if (next) next.isHost = true;
+    if (attachment?.playerId && !attachment.spectator) {
+      const player = this.players.get(attachment.playerId);
+      if (player && this.phase === "lobby") {
+        this.players.delete(attachment.playerId);
+        if (player.isHost) {
+          const next = this.players.values().next().value as PlayerRecord | undefined;
+          if (next) next.isHost = true;
+        }
+        await this.persist();
+        this.broadcastState();
       }
-      await this.persist();
-      this.broadcastState();
+    }
+
+    // Closing socket is already gone from getWebSockets(); schedule teardown if empty.
+    if (this.ctx.getWebSockets().length === 0 && this.code) {
+      await this.scheduleEmptyGrace();
     }
   }
 
   async alarm(): Promise<void> {
     await this.ensureLoaded();
     const now = Date.now();
+
+    if (this.emptyGraceEndsAt != null && now >= this.emptyGraceEndsAt) {
+      if (this.ctx.getWebSockets().length === 0) {
+        await this.destroyRoom();
+        return;
+      }
+      this.emptyGraceEndsAt = null;
+      await this.restorePhaseAlarm();
+      await this.persist();
+      return;
+    }
+
+    if (this.emptyGraceEndsAt != null && now < this.emptyGraceEndsAt) {
+      // Spurious / early alarm while grace is pending — reschedule grace.
+      await this.ctx.storage.setAlarm(this.emptyGraceEndsAt);
+      return;
+    }
 
     if (this.phase === "rolling" && this.gameType === "scattergories") {
       await this.beginScatterCountdown(rollLetter());
@@ -664,7 +831,8 @@ export class GameRoom extends DurableObject<Env> {
       this.rollerId = roller.id;
       this.rollerName = roller.name;
       this.phase = "rolling";
-      await this.ctx.storage.setAlarm(Date.now() + SCATTER_ROLL_TIMEOUT_MS);
+      this.rollEndsAt = Date.now() + SCATTER_ROLL_TIMEOUT_MS;
+      await this.ctx.storage.setAlarm(this.rollEndsAt);
       await this.persist();
       this.broadcastState();
       return;
@@ -735,6 +903,7 @@ export class GameRoom extends DurableObject<Env> {
     this.usedListIds = [...this.usedListIds, list.id];
     this.rollerId = null;
     this.rollerName = null;
+    this.rollEndsAt = null;
     this.countdownEndsAt = Date.now() + SCATTER_COUNTDOWN_MS;
     this.phase = "countdown";
     await this.ctx.storage.setAlarm(this.countdownEndsAt);

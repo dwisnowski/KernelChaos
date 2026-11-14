@@ -1,3 +1,4 @@
+import { listActiveRooms, type ActiveRoomGame } from "./activeRooms.ts";
 import { CODE_ALPHABET } from "./boggle/protocol.ts";
 import { fetchBoggleStats } from "./boggle/stats.ts";
 import { GameRoom } from "./room.ts";
@@ -28,6 +29,19 @@ export default {
       } catch (err) {
         console.error("boggle stats failed", err);
         return Response.json({ error: "Could not load stats" }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/rooms" && request.method === "GET") {
+      const raw = url.searchParams.get("game");
+      const game: ActiveRoomGame =
+        raw === "scattergories" || raw === "boggle" ? raw : "boggle";
+      try {
+        const rooms = await listActiveRooms(env.STATS_DB, game);
+        return Response.json({ rooms, game });
+      } catch (err) {
+        console.error("list active rooms failed", err);
+        return Response.json({ error: "Could not list rooms" }, { status: 500 });
       }
     }
 

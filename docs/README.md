@@ -20,3 +20,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0009 – Scattergories + game shell](adr/0009-scattergories-and-game-shell.md) — Polymorphic rooms; TV/player + QR/code + SFX as shared shell; original family/kids/adult packs; review-phase scoring
 - [0010 – Scattergories review voting](adr/0010-scattergories-review-voting.md) — Batch In/Out ballots per category; majority rejects; TV shows pending voters; host Next gated on full ballot
 - [0011 – Scattergories letter die roll](adr/0011-scattergories-letter-die-roll.md) — Rolling phase; random roller; classic 20-face WebGL icosahedron; live pose mirror; ≤5s settle; AFK server fallback
+- [0012 – Active room directory + empty-room teardown](adr/0012-active-room-directory.md) — Join-first entry; D1 open-lobby list; ~30s empty grace then clear DO storage / free code
