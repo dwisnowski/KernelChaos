@@ -56,6 +56,14 @@ export function ScattergoriesSpectator() {
     if (phaseRef.current && phaseRef.current !== "review" && state.phase === "review") {
       playRoundEnd();
     }
+    if (
+      phaseRef.current &&
+      phaseRef.current === "playing" &&
+      state.phase === "results" &&
+      state.playMode === "hunt"
+    ) {
+      playRoundEnd();
+    }
     if (phaseRef.current && phaseRef.current !== "results" && state.phase === "results") {
       playWinner();
     }
@@ -102,7 +110,10 @@ export function ScattergoriesSpectator() {
               <p className="room-code" aria-label={`Room code ${state.code}`}>
                 {state.code}
               </p>
-              <p className="spectator-tag">TV spectator · Scattergories</p>
+              <p className="spectator-tag">
+                TV spectator · Scattergories
+                {state.playMode === "hunt" ? " · Picture hunt" : ""}
+              </p>
               <div className="qr-wrap">
                 <QRCodeSVG
                   value={joinUrl}
@@ -143,11 +154,45 @@ export function ScattergoriesSpectator() {
           <div className="spectator-countdown rise">
             <p className="lobby-label">Letter</p>
             <p className="scatter-letter">{state.letter}</p>
+            {state.playMode === "hunt" && state.sceneTitle ? (
+              <p className="muted">{state.sceneTitle}</p>
+            ) : null}
             <p className="timer">{countdownLeft || "…"}</p>
           </div>
         ) : null}
 
-        {state?.phase === "playing" && state.categories ? (
+        {state?.phase === "playing" && state.playMode === "hunt" && state.sceneImageUrl ? (
+          <div className="spectator-scatter-play spectator-hunt-play">
+            <header className="spectator-scatter-header">
+              <div>
+                <p className="lobby-label">Letter</p>
+                <p className="scatter-letter">{state.letter}</p>
+              </div>
+              <div className={`timer${playLeft <= 5 ? " is-urgent" : ""}`}>
+                {formatClock(playLeft)}
+              </div>
+            </header>
+            <figure className="hunt-scene hunt-scene-tv">
+              <img
+                src={state.sceneImageUrl}
+                alt={state.sceneTitle ?? "Hidden object scene"}
+                className="hunt-scene-img"
+              />
+            </figure>
+            <ul className="spectator-progress" aria-label="Player progress">
+              {[...state.players]
+                .sort((a, b) => b.answerCount - a.answerCount || a.name.localeCompare(b.name))
+                .map((p) => (
+                  <li key={p.id}>
+                    <span>{p.name}</span>
+                    <strong>{p.answerCount}</strong>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {state?.phase === "playing" && state.playMode !== "hunt" && state.categories ? (
           <div className="spectator-scatter-play">
             <header className="spectator-scatter-header">
               <div>

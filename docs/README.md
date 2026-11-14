@@ -27,3 +27,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0016 – M&Ms Smash organize drag UX](adr/0016-mmmms-organize-ux.md) — Solo organize board; scrollable full stack; long-press floating ghost + edge auto-scroll; centered orb rows
 - [0017 – M&Ms Smash guess/attack UX](adr/0017-mmmms-guess-attack-ux.md) — Palette-only pick phases; select-then-submit; role-specific resolve boards; Blocked / Go Fish overlays on phone + TV; `colorInStack` (pick layout superseded by [0018](adr/0018-mmmms-combat-hanging-threads.md))
 - [0018 – M&Ms Smash combat hanging threads](adr/0018-mmmms-combat-hanging-threads.md) — Dual silk orb canvas in combat; left action prompt; `@dnd-kit` organize handles; TV anonymous threads
+- [0019 – Scattergories Picture Hunt](adr/0019-scattergories-picture-hunt.md) — Lobby Categories vs Hunt; curated scene synonym keys; skip review; shared letter die + 120/150/180 timers

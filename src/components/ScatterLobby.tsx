@@ -3,8 +3,11 @@ import { OpenTvButton } from "./OpenTvButton.tsx";
 import {
   PACK_TIERS,
   PACK_TIER_LABELS,
+  PLAY_MODE_LABELS,
+  SCATTER_PLAY_MODES,
   SCATTER_ROUND_SECONDS_OPTIONS,
   type PackTier,
+  type ScatterPlayMode,
   type ScatterPlayerPublic,
   type ScatterRoundSeconds,
   type ScatterRoomState,
@@ -15,6 +18,8 @@ interface Props {
   me: ScatterPlayerPublic | null;
   joinUrl: string;
   onSetPackTier: (tier: PackTier) => void;
+  onSetPlayMode: (mode: ScatterPlayMode) => void;
+  onSetPreferredScene: (sceneId: string | null) => void;
   onSetRoundSeconds: (seconds: ScatterRoundSeconds) => void;
   onStart: () => void;
 }
@@ -30,12 +35,16 @@ export function ScatterLobby({
   me,
   joinUrl,
   onSetPackTier,
+  onSetPlayMode,
+  onSetPreferredScene,
   onSetRoundSeconds,
   onStart,
 }: Props) {
   const isHost = me?.isHost ?? false;
   const roundSeconds = state.roundSeconds ?? 150;
   const sliderIndex = Math.max(0, SCATTER_ROUND_SECONDS_OPTIONS.indexOf(roundSeconds));
+  const playMode = state.playMode ?? "categories";
+  const isHunt = playMode === "hunt";
 
   return (
     <section className="lobby">
@@ -65,21 +74,65 @@ export function ScatterLobby({
         </div>
 
         <div className="board-size">
-          <h2>Category pack</h2>
-          <div className="size-pills" role="group" aria-label="Category pack">
-            {PACK_TIERS.map((tier) => (
+          <h2>Mode</h2>
+          <div className="size-pills" role="group" aria-label="Play mode">
+            {SCATTER_PLAY_MODES.map((mode) => (
               <button
-                key={tier}
+                key={mode}
                 type="button"
-                className={`size-pill${state.packTier === tier ? " is-active" : ""}`}
+                className={`size-pill${playMode === mode ? " is-active" : ""}`}
                 disabled={!isHost}
-                onClick={() => onSetPackTier(tier)}
+                onClick={() => onSetPlayMode(mode)}
               >
-                {PACK_TIER_LABELS[tier]}
+                {PLAY_MODE_LABELS[mode]}
               </button>
             ))}
           </div>
         </div>
+
+        {!isHunt ? (
+          <div className="board-size">
+            <h2>Category pack</h2>
+            <div className="size-pills" role="group" aria-label="Category pack">
+              {PACK_TIERS.map((tier) => (
+                <button
+                  key={tier}
+                  type="button"
+                  className={`size-pill${state.packTier === tier ? " is-active" : ""}`}
+                  disabled={!isHost}
+                  onClick={() => onSetPackTier(tier)}
+                >
+                  {PACK_TIER_LABELS[tier]}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="board-size">
+            <h2>Picture</h2>
+            <div className="size-pills" role="group" aria-label="Picture scene">
+              <button
+                type="button"
+                className={`size-pill${state.preferredSceneId == null ? " is-active" : ""}`}
+                disabled={!isHost}
+                onClick={() => onSetPreferredScene(null)}
+              >
+                Random
+              </button>
+              {(state.huntScenes ?? []).map((scene) => (
+                <button
+                  key={scene.id}
+                  type="button"
+                  className={`size-pill${state.preferredSceneId === scene.id ? " is-active" : ""}`}
+                  disabled={!isHost}
+                  onClick={() => onSetPreferredScene(scene.id)}
+                >
+                  {scene.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="round-time">
           <div className="round-time-header">
@@ -106,7 +159,9 @@ export function ScatterLobby({
               <span key={s}>{formatRoundLabel(s)}</span>
             ))}
           </div>
-          {!isHost ? <p className="muted">Only the host can change pack and time.</p> : null}
+          {!isHost ? (
+            <p className="muted">Only the host can change mode and time.</p>
+          ) : null}
         </div>
 
         {isHost ? (

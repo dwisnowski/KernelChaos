@@ -29,18 +29,23 @@ import { computeBoardCoverage } from "./boggle/solver.ts";
 import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
 import { deleteActiveRoom, upsertActiveRoom } from "./activeRooms.ts";
 import { isLetterDie, rollLetter } from "./scattergories/letter.ts";
+import { getScene, isHuntSceneId, pickScene, HUNT_MAX_ANSWERS, scenesCatalog } from "./scattergories/hunt/scenes.ts";
+import { scoreHuntPlayer } from "./scattergories/hunt/scoring.ts";
 import { pickList } from "./scattergories/packs.ts";
 import {
   CATEGORIES_PER_LIST,
+  DEFAULT_SCATTER_PLAY_MODE,
   DEFAULT_SCATTER_ROUND_SECONDS,
   SCATTER_COUNTDOWN_MS,
   SCATTER_ROLL_TIMEOUT_MS,
   isPackTier,
+  isScatterPlayMode,
   isScatterRoundSeconds,
   type PackTier,
   type ReviewVote,
   type ScatterClientMessage,
   type ScatterPhase,
+  type ScatterPlayMode,
   type ScatterPlayerPublic,
   type ScatterPlayerResult,
   type ScatterRoomState,
@@ -237,11 +242,17 @@ export class GameRoom extends DurableObject<Env> {
   private possibleByLength: LengthCount[] | null = null;
 
   // Scattergories
+  private playMode: ScatterPlayMode = DEFAULT_SCATTER_PLAY_MODE;
   private packTier: PackTier = "family";
   private letter: string | null = null;
   private categories: string[] | null = null;
   private listId: string | null = null;
   private usedListIds: string[] = [];
+  private preferredSceneId: string | null = null;
+  private sceneId: string | null = null;
+  private sceneTitle: string | null = null;
+  private sceneImageUrl: string | null = null;
+  private usedSceneIds: string[] = [];
   private rollerId: string | null = null;
   private rollerName: string | null = null;
   private reviewIndex: number | null = null;
@@ -280,11 +291,17 @@ export class GameRoom extends DurableObject<Env> {
       missedWords?: string[] | null;
       possibleWordCount?: number | null;
       possibleByLength?: LengthCount[] | null;
+      playMode?: ScatterPlayMode;
       packTier?: PackTier;
       letter?: string | null;
       categories?: string[] | null;
       listId?: string | null;
       usedListIds?: string[];
+      preferredSceneId?: string | null;
+      sceneId?: string | null;
+      sceneTitle?: string | null;
+      sceneImageUrl?: string | null;
+      usedSceneIds?: string[];
       rollerId?: string | null;
       rollerName?: string | null;
       reviewIndex?: number | null;
@@ -326,11 +343,20 @@ export class GameRoom extends DurableObject<Env> {
       this.missedWords = stored.missedWords ?? null;
       this.possibleWordCount = stored.possibleWordCount ?? null;
       this.possibleByLength = stored.possibleByLength ?? null;
+      this.playMode = isScatterPlayMode(stored.playMode) ? stored.playMode : DEFAULT_SCATTER_PLAY_MODE;
       this.packTier = isPackTier(stored.packTier) ? stored.packTier : "family";
       this.letter = stored.letter ?? null;
       this.categories = stored.categories ?? null;
       this.listId = stored.listId ?? null;
       this.usedListIds = stored.usedListIds ?? [];
+      this.preferredSceneId =
+        stored.preferredSceneId && isHuntSceneId(stored.preferredSceneId)
+          ? stored.preferredSceneId
+          : null;
+      this.sceneId = stored.sceneId ?? null;
+      this.sceneTitle = stored.sceneTitle ?? null;
+      this.sceneImageUrl = stored.sceneImageUrl ?? null;
+      this.usedSceneIds = stored.usedSceneIds ?? [];
       this.rollerId = stored.rollerId ?? null;
       this.rollerName = stored.rollerName ?? null;
       this.reviewIndex = stored.reviewIndex ?? null;
@@ -354,7 +380,7 @@ export class GameRoom extends DurableObject<Env> {
             isHost: p.isHost,
             words: loadWords(p.words),
             roundAwards: p.roundAwards ?? [],
-            answers: padAnswers(p.answers),
+            answers: padAnswers(p.answers, this.playMode),
             hostRejected: padRejected(p.hostRejected),
             orbs: loadOrbs(p.orbs),
             mmmmsReady: Boolean(p.mmmmsReady),
@@ -382,11 +408,17 @@ export class GameRoom extends DurableObject<Env> {
       missedWords: this.missedWords,
       possibleWordCount: this.possibleWordCount,
       possibleByLength: this.possibleByLength,
+      playMode: this.playMode,
       packTier: this.packTier,
       letter: this.letter,
       categories: this.categories,
       listId: this.listId,
       usedListIds: this.usedListIds,
+      preferredSceneId: this.preferredSceneId,
+      sceneId: this.sceneId,
+      sceneTitle: this.sceneTitle,
+      sceneImageUrl: this.sceneImageUrl,
+      usedSceneIds: this.usedSceneIds,
       rollerId: this.rollerId,
       rollerName: this.rollerName,
       reviewIndex: this.reviewIndex,
@@ -528,11 +560,17 @@ export class GameRoom extends DurableObject<Env> {
     this.missedWords = null;
     this.possibleWordCount = null;
     this.possibleByLength = null;
+    this.playMode = DEFAULT_SCATTER_PLAY_MODE;
     this.packTier = "family";
     this.letter = null;
     this.categories = null;
     this.listId = null;
     this.usedListIds = [];
+    this.preferredSceneId = null;
+    this.sceneId = null;
+    this.sceneTitle = null;
+    this.sceneImageUrl = null;
+    this.usedSceneIds = [];
     this.rollerId = null;
     this.rollerName = null;
     this.reviewIndex = null;
@@ -615,6 +653,14 @@ export class GameRoom extends DurableObject<Env> {
       case "setPackTier":
         if (this.gameType !== "scattergories") break;
         await this.handleSetPackTier(attachment?.playerId, msg.packTier);
+        break;
+      case "setPlayMode":
+        if (this.gameType !== "scattergories") break;
+        await this.handleSetPlayMode(attachment?.playerId, msg.playMode);
+        break;
+      case "setPreferredScene":
+        if (this.gameType !== "scattergories") break;
+        await this.handleSetPreferredScene(attachment?.playerId, msg.sceneId);
         break;
       case "setRoundSeconds":
         await this.handleSetRoundSeconds(attachment?.playerId, msg.roundSeconds);
@@ -748,6 +794,14 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase === "playing" && this.endsAt != null && now >= this.endsAt) {
       this.endsAt = null;
       if (this.gameType === "scattergories") {
+        if (this.playMode === "hunt") {
+          this.phase = "results";
+          this.reviewIndex = null;
+          this.scoresFinalized = true;
+          await this.persist();
+          this.broadcastState();
+          return;
+        }
         this.phase = "review";
         this.reviewIndex = 0;
         this.reviewBallots = emptyReviewBallots();
@@ -869,7 +923,10 @@ export class GameRoom extends DurableObject<Env> {
       isHost,
       words: new Map(),
       roundAwards: [],
-      answers: emptyAnswers(),
+      answers:
+        this.gameType === "scattergories" && this.playMode === "hunt"
+          ? []
+          : emptyAnswers(),
       hostRejected: emptyRejected(),
       orbs: [],
       mmmmsReady: false,
@@ -940,8 +997,40 @@ export class GameRoom extends DurableObject<Env> {
   private async handleSetPackTier(playerId: string | undefined, packTier: PackTier): Promise<void> {
     if (!playerId || !this.isHost(playerId)) return;
     if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (this.playMode === "hunt") return;
     if (!isPackTier(packTier)) return;
     this.packTier = packTier;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetPlayMode(
+    playerId: string | undefined,
+    playMode: ScatterPlayMode,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isScatterPlayMode(playMode)) return;
+    this.playMode = playMode;
+    if (playMode === "categories") {
+      this.preferredSceneId = null;
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
+    }
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetPreferredScene(
+    playerId: string | undefined,
+    sceneId: string | null,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (this.playMode !== "hunt") return;
+    if (sceneId != null && !isHuntSceneId(sceneId)) return;
+    this.preferredSceneId = sceneId;
     await this.persist();
     this.broadcastState();
   }
@@ -974,7 +1063,7 @@ export class GameRoom extends DurableObject<Env> {
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
-      p.answers = emptyAnswers();
+      p.answers = this.gameType === "scattergories" && this.playMode === "hunt" ? [] : emptyAnswers();
       p.hostRejected = emptyRejected();
       p.orbs = [];
       p.mmmmsReady = false;
@@ -999,6 +1088,9 @@ export class GameRoom extends DurableObject<Env> {
       this.letter = null;
       this.categories = null;
       this.listId = null;
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
       this.countdownEndsAt = null;
       this.rollerId = null;
       this.rollerName = null;
@@ -1025,6 +1117,9 @@ export class GameRoom extends DurableObject<Env> {
       this.letter = null;
       this.categories = null;
       this.listId = null;
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
       this.countdownEndsAt = null;
 
       const ids = [...this.players.keys()];
@@ -1049,6 +1144,9 @@ export class GameRoom extends DurableObject<Env> {
     this.letter = null;
     this.categories = null;
     this.listId = null;
+    this.sceneId = null;
+    this.sceneTitle = null;
+    this.sceneImageUrl = null;
     this.rollerId = null;
     this.rollerName = null;
     this.countdownEndsAt = Date.now() + COUNTDOWN_MS;
@@ -1097,12 +1195,24 @@ export class GameRoom extends DurableObject<Env> {
 
   private async beginScatterCountdown(letter: string): Promise<void> {
     if (this.phase !== "rolling") return;
-    const used = new Set(this.usedListIds);
-    const list = pickList(this.packTier, used);
-    this.listId = list.id;
-    this.categories = list.categories;
     this.letter = letter.toUpperCase();
-    this.usedListIds = [...this.usedListIds, list.id];
+    if (this.playMode === "hunt") {
+      const scene = pickScene(new Set(this.usedSceneIds), this.preferredSceneId);
+      this.sceneId = scene.id;
+      this.sceneTitle = scene.title;
+      this.sceneImageUrl = scene.imageUrl;
+      this.usedSceneIds = [...this.usedSceneIds, scene.id];
+      this.listId = null;
+      this.categories = null;
+    } else {
+      const list = pickList(this.packTier, new Set(this.usedListIds));
+      this.listId = list.id;
+      this.categories = list.categories;
+      this.usedListIds = [...this.usedListIds, list.id];
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
+    }
     this.rollerId = null;
     this.rollerName = null;
     this.rollEndsAt = null;
@@ -1129,6 +1239,9 @@ export class GameRoom extends DurableObject<Env> {
     this.letter = null;
     this.categories = null;
     this.listId = null;
+    this.sceneId = null;
+    this.sceneTitle = null;
+    this.sceneImageUrl = null;
     this.rollerId = null;
     this.rollerName = null;
     this.reviewIndex = null;
@@ -1143,7 +1256,7 @@ export class GameRoom extends DurableObject<Env> {
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
-      p.answers = emptyAnswers();
+      p.answers = this.gameType === "scattergories" && this.playMode === "hunt" ? [] : emptyAnswers();
       p.hostRejected = emptyRejected();
       p.orbs = [];
       p.mmmmsReady = false;
@@ -1281,17 +1394,27 @@ export class GameRoom extends DurableObject<Env> {
     if (!player) return;
     if (!Array.isArray(answers)) return;
 
-    const next = emptyAnswers();
-    for (let i = 0; i < CATEGORIES_PER_LIST; i++) {
-      const raw = answers[i];
-      next[i] = typeof raw === "string" ? raw.slice(0, 80) : "";
+    if (this.playMode === "hunt") {
+      const next: string[] = [];
+      for (let i = 0; i < Math.min(answers.length, HUNT_MAX_ANSWERS); i++) {
+        const raw = answers[i];
+        next.push(typeof raw === "string" ? raw.slice(0, 80) : "");
+      }
+      player.answers = next;
+    } else {
+      const next = emptyAnswers();
+      for (let i = 0; i < CATEGORIES_PER_LIST; i++) {
+        const raw = answers[i];
+        next[i] = typeof raw === "string" ? raw.slice(0, 80) : "";
+      }
+      player.answers = next;
     }
-    player.answers = next;
     await this.persist();
     this.broadcastState();
   }
 
   private async handleReviewNext(playerId: string | undefined): Promise<void> {
+    if (this.playMode === "hunt") return;
     if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
     const idx = this.reviewIndex ?? 0;
     if (!this.isReviewVotingComplete(idx)) return;
@@ -1302,6 +1425,7 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private async handleReviewPrev(playerId: string | undefined): Promise<void> {
+    if (this.playMode === "hunt") return;
     if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
     const idx = this.reviewIndex ?? 0;
     if (idx <= 0) return;
@@ -1314,6 +1438,7 @@ export class GameRoom extends DurableObject<Env> {
     playerId: string | undefined,
     votes: Record<string, ReviewVote>,
   ): Promise<void> {
+    if (this.playMode === "hunt") return;
     if (!playerId || this.phase !== "review") return;
     if (!this.players.has(playerId)) return;
     const idx = this.reviewIndex;
@@ -1345,6 +1470,7 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private async handleFinishReview(playerId: string | undefined): Promise<void> {
+    if (this.playMode === "hunt") return;
     if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
     const idx = this.reviewIndex;
     if (idx == null || !this.isReviewVotingComplete(idx)) return;
@@ -1560,6 +1686,15 @@ export class GameRoom extends DurableObject<Env> {
 
   private scatterPlayerScore(p: PlayerRecord): number {
     if (!this.letter) return 0;
+    if (this.playMode === "hunt") {
+      const scene = this.sceneId ? getScene(this.sceneId) : undefined;
+      if (!scene) return 0;
+      const all = [...this.players.values()].map((x) => ({
+        id: x.id,
+        answers: x.answers,
+      }));
+      return scoreHuntPlayer(p.id, this.letter, scene, all).total;
+    }
     const all = [...this.players.values()].map((x) => ({
       id: x.id,
       name: x.name,
@@ -1615,24 +1750,46 @@ export class GameRoom extends DurableObject<Env> {
     let winners: string[] | null = null;
 
     if (this.phase === "results" && this.letter) {
-      const all = [...this.players.values()].map((x) => ({
-        id: x.id,
-        name: x.name,
-        answers: x.answers,
-        hostRejected: x.hostRejected,
-      }));
-      results = [...this.players.values()].map((p) => {
-        const scored = scorePlayerAcrossCategories(p.id, this.letter!, all);
-        return {
-          id: p.id,
-          name: p.name,
-          isHost: p.isHost,
-          answerCount: p.answers.filter((a) => a.trim().length > 0).length,
-          score: scored.total,
-          answers: [...p.answers],
-          categoryPoints: scored.categoryPoints,
-        };
-      });
+      if (this.playMode === "hunt") {
+        const scene = this.sceneId ? getScene(this.sceneId) : undefined;
+        const all = [...this.players.values()].map((x) => ({
+          id: x.id,
+          answers: x.answers,
+        }));
+        results = [...this.players.values()].map((p) => {
+          const scored = scene
+            ? scoreHuntPlayer(p.id, this.letter!, scene, all)
+            : { total: 0, findPoints: [] };
+          return {
+            id: p.id,
+            name: p.name,
+            isHost: p.isHost,
+            answerCount: p.answers.filter((a) => a.trim().length > 0).length,
+            score: scored.total,
+            answers: [...p.answers],
+            categoryPoints: scored.findPoints,
+          };
+        });
+      } else {
+        const all = [...this.players.values()].map((x) => ({
+          id: x.id,
+          name: x.name,
+          answers: x.answers,
+          hostRejected: x.hostRejected,
+        }));
+        results = [...this.players.values()].map((p) => {
+          const scored = scorePlayerAcrossCategories(p.id, this.letter!, all);
+          return {
+            id: p.id,
+            name: p.name,
+            isHost: p.isHost,
+            answerCount: p.answers.filter((a) => a.trim().length > 0).length,
+            score: scored.total,
+            answers: [...p.answers],
+            categoryPoints: scored.categoryPoints,
+          };
+        });
+      }
       results.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
       const top = results[0]?.score ?? 0;
       winners = results.filter((r) => r.score === top && top > 0).map((r) => r.id);
@@ -1642,26 +1799,33 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     const hideRoundSetup = this.phase === "lobby" || this.phase === "rolling";
+    const huntCatalog = scenesCatalog().map((s) => ({ id: s.id, title: s.title }));
 
     return {
       game: "scattergories",
       code: this.code,
       phase: this.phase as ScatterPhase,
+      playMode: this.playMode,
       packTier: this.packTier,
       roundSeconds: this.roundSeconds as ScatterRoundSeconds,
       letter: hideRoundSetup ? null : this.letter,
-      categories: hideRoundSetup ? null : this.categories,
-      listId: hideRoundSetup ? null : this.listId,
+      categories: hideRoundSetup || this.playMode === "hunt" ? null : this.categories,
+      listId: hideRoundSetup || this.playMode === "hunt" ? null : this.listId,
+      preferredSceneId: this.preferredSceneId,
+      sceneId: hideRoundSetup || this.playMode !== "hunt" ? null : this.sceneId,
+      sceneTitle: hideRoundSetup || this.playMode !== "hunt" ? null : this.sceneTitle,
+      sceneImageUrl: hideRoundSetup || this.playMode !== "hunt" ? null : this.sceneImageUrl,
+      huntScenes: huntCatalog,
       countdownEndsAt: this.countdownEndsAt,
       endsAt: this.endsAt,
       players,
       rollerId: this.phase === "rolling" ? this.rollerId : null,
       rollerName: this.phase === "rolling" ? this.rollerName : null,
-      reviewIndex: this.phase === "review" ? this.reviewIndex : null,
-      reviewAnswers,
-      reviewSubmittedBy,
-      reviewPendingVoters,
-      reviewVotingComplete,
+      reviewIndex: this.phase === "review" && this.playMode !== "hunt" ? this.reviewIndex : null,
+      reviewAnswers: this.playMode === "hunt" ? null : reviewAnswers,
+      reviewSubmittedBy: this.playMode === "hunt" ? [] : reviewSubmittedBy,
+      reviewPendingVoters: this.playMode === "hunt" ? [] : reviewPendingVoters,
+      reviewVotingComplete: this.playMode === "hunt" ? false : reviewVotingComplete,
       results,
       winners,
       round: this.round,
@@ -1836,7 +2000,13 @@ export class GameRoom extends DurableObject<Env> {
   }
 }
 
-function padAnswers(raw: string[] | undefined): string[] {
+function padAnswers(raw: string[] | undefined, playMode: ScatterPlayMode = "categories"): string[] {
+  if (playMode === "hunt") {
+    if (!raw) return [];
+    return raw
+      .slice(0, HUNT_MAX_ANSWERS)
+      .map((a) => (typeof a === "string" ? a : ""));
+  }
   const out = emptyAnswers();
   if (!raw) return out;
   for (let i = 0; i < CATEGORIES_PER_LIST; i++) {

@@ -1,4 +1,5 @@
 export type PackTier = "family" | "kids" | "adult";
+export type ScatterPlayMode = "categories" | "hunt";
 export type ScatterRoundSeconds = 120 | 150 | 180;
 export type ScatterPhase =
   | "lobby"
@@ -8,7 +9,13 @@ export type ScatterPhase =
   | "review"
   | "results";
 
-export type AnswerStatus = "unique" | "duplicate" | "invalidLetter" | "empty" | "rejected";
+export type AnswerStatus =
+  | "unique"
+  | "duplicate"
+  | "invalidLetter"
+  | "empty"
+  | "rejected"
+  | "unknown";
 export type ReviewVote = "in" | "out";
 
 /** Classic Scattergories letter die — mirrors worker/scattergories/letter.ts */
@@ -67,15 +74,26 @@ export interface ScatterPlayerResult extends ScatterPlayerPublic {
   categoryPoints: number[];
 }
 
+export interface HuntScenePublic {
+  id: string;
+  title: string;
+}
+
 export interface ScatterRoomState {
   game: "scattergories";
   code: string;
   phase: ScatterPhase;
+  playMode: ScatterPlayMode;
   packTier: PackTier;
   roundSeconds: ScatterRoundSeconds;
   letter: string | null;
   categories: string[] | null;
   listId: string | null;
+  preferredSceneId: string | null;
+  sceneId: string | null;
+  sceneTitle: string | null;
+  sceneImageUrl: string | null;
+  huntScenes: HuntScenePublic[];
   countdownEndsAt: number | null;
   endsAt: number | null;
   players: ScatterPlayerPublic[];
@@ -97,6 +115,8 @@ export type ScatterClientMessage =
   | { type: "join"; name: string; resumeId?: string }
   | { type: "spectate" }
   | { type: "setPackTier"; packTier: PackTier }
+  | { type: "setPlayMode"; playMode: ScatterPlayMode }
+  | { type: "setPreferredScene"; sceneId: string | null }
   | { type: "setRoundSeconds"; roundSeconds: ScatterRoundSeconds }
   | { type: "start" }
   | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }
@@ -122,13 +142,20 @@ export type ScatterServerMessage =
   | { type: "error"; message: string };
 
 export const CATEGORIES_PER_LIST = 12;
+export const HUNT_MAX_ANSWERS = 40;
 export const SCATTER_ROUND_SECONDS_OPTIONS: ScatterRoundSeconds[] = [120, 150, 180];
 export const PACK_TIERS: PackTier[] = ["family", "kids", "adult"];
+export const SCATTER_PLAY_MODES: ScatterPlayMode[] = ["categories", "hunt"];
 
 export const PACK_TIER_LABELS: Record<PackTier, string> = {
   family: "Family",
   kids: "Kids",
   adult: "Adult",
+};
+
+export const PLAY_MODE_LABELS: Record<ScatterPlayMode, string> = {
+  categories: "Categories",
+  hunt: "Picture hunt",
 };
 
 export const ANSWER_STATUS_LABELS: Record<AnswerStatus, string> = {
@@ -137,4 +164,5 @@ export const ANSWER_STATUS_LABELS: Record<AnswerStatus, string> = {
   invalidLetter: "Wrong letter",
   empty: "Blank",
   rejected: "Out",
+  unknown: "Not in picture",
 };

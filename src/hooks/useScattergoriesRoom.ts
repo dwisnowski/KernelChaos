@@ -4,11 +4,12 @@ import type {
   DiePose,
   PackTier,
   ScatterClientMessage,
+  ScatterPlayMode,
   ScatterRoundSeconds,
   ScatterRoomState,
   ScatterServerMessage,
 } from "../scatterTypes.ts";
-import { CATEGORIES_PER_LIST } from "../scatterTypes.ts";
+import { CATEGORIES_PER_LIST, HUNT_MAX_ANSWERS } from "../scatterTypes.ts";
 
 interface Options {
   code: string | null;
@@ -76,8 +77,15 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
         if (msg.playerId && code) saveResumeId(code, msg.playerId);
         setState(msg.state);
         if (msg.myAnswers) {
-          const padded = Array.from({ length: CATEGORIES_PER_LIST }, (_, i) => msg.myAnswers![i] ?? "");
-          setMyAnswers(padded);
+          if (msg.state.playMode === "hunt") {
+            setMyAnswers(msg.myAnswers.slice(0, HUNT_MAX_ANSWERS));
+          } else {
+            const padded = Array.from(
+              { length: CATEGORIES_PER_LIST },
+              (_, i) => msg.myAnswers![i] ?? "",
+            );
+            setMyAnswers(padded);
+          }
         } else if (msg.state.phase === "lobby" || msg.state.phase === "rolling" || msg.state.phase === "countdown") {
           setMyAnswers(null);
         }
@@ -134,6 +142,14 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     (packTier: PackTier) => send({ type: "setPackTier", packTier }),
     [send],
   );
+  const setPlayMode = useCallback(
+    (playMode: ScatterPlayMode) => send({ type: "setPlayMode", playMode }),
+    [send],
+  );
+  const setPreferredScene = useCallback(
+    (sceneId: string | null) => send({ type: "setPreferredScene", sceneId }),
+    [send],
+  );
   const setRoundSeconds = useCallback(
     (roundSeconds: ScatterRoundSeconds) => send({ type: "setRoundSeconds", roundSeconds }),
     [send],
@@ -172,6 +188,8 @@ export function useScattergoriesRoom({ code, role = "player", onError }: Options
     join,
     spectate,
     setPackTier,
+    setPlayMode,
+    setPreferredScene,
     setRoundSeconds,
     start,
     playAgain,

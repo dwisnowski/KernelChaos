@@ -2,6 +2,9 @@ export type GameType = "boggle" | "scattergories";
 
 export type PackTier = "family" | "kids" | "adult";
 
+/** Categories = classic lists; hunt = Picture Hunt synonym-key scenes. */
+export type ScatterPlayMode = "categories" | "hunt";
+
 export type ScatterPhase =
   | "lobby"
   | "rolling"
@@ -19,6 +22,7 @@ export const SCATTER_COUNTDOWN_MS = 3000;
 /** Max wait for the chosen roller to submit a letter before server rolls. */
 export const SCATTER_ROLL_TIMEOUT_MS = 30_000;
 export const CATEGORIES_PER_LIST = 12;
+export const DEFAULT_SCATTER_PLAY_MODE: ScatterPlayMode = "categories";
 
 export function isScatterRoundSeconds(n: unknown): n is ScatterRoundSeconds {
   return n === 120 || n === 150 || n === 180;
@@ -26,6 +30,10 @@ export function isScatterRoundSeconds(n: unknown): n is ScatterRoundSeconds {
 
 export function isPackTier(v: unknown): v is PackTier {
   return v === "family" || v === "kids" || v === "adult";
+}
+
+export function isScatterPlayMode(v: unknown): v is ScatterPlayMode {
+  return v === "categories" || v === "hunt";
 }
 
 export interface ScatterPlayerPublic {
@@ -37,7 +45,13 @@ export interface ScatterPlayerPublic {
   score: number;
 }
 
-export type AnswerStatus = "unique" | "duplicate" | "invalidLetter" | "empty" | "rejected";
+export type AnswerStatus =
+  | "unique"
+  | "duplicate"
+  | "invalidLetter"
+  | "empty"
+  | "rejected"
+  | "unknown";
 
 export type ReviewVote = "in" | "out";
 
@@ -65,15 +79,29 @@ export interface ScatterPlayerResult extends ScatterPlayerPublic {
   categoryPoints: number[];
 }
 
+export interface HuntScenePublic {
+  id: string;
+  title: string;
+}
+
 export interface ScatterRoomState {
   game: "scattergories";
   code: string;
   phase: ScatterPhase;
+  playMode: ScatterPlayMode;
   packTier: PackTier;
   roundSeconds: ScatterRoundSeconds;
   letter: string | null;
   categories: string[] | null;
   listId: string | null;
+  /** Lobby preference; null = random unused scene. */
+  preferredSceneId: string | null;
+  /** Active hunt scene for the round (null in categories mode / before pick). */
+  sceneId: string | null;
+  sceneTitle: string | null;
+  sceneImageUrl: string | null;
+  /** Catalog for lobby scene picker. */
+  huntScenes: HuntScenePublic[];
   countdownEndsAt: number | null;
   endsAt: number | null;
   players: ScatterPlayerPublic[];
@@ -101,6 +129,8 @@ export type ScatterClientMessage =
   | { type: "join"; name: string; resumeId?: string }
   | { type: "spectate" }
   | { type: "setPackTier"; packTier: PackTier }
+  | { type: "setPlayMode"; playMode: ScatterPlayMode }
+  | { type: "setPreferredScene"; sceneId: string | null }
   | { type: "setRoundSeconds"; roundSeconds: ScatterRoundSeconds }
   | { type: "start" }
   | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }

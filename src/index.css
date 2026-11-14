@@ -1810,6 +1810,96 @@ input {
   gap: 0.65rem;
 }
 
+.hunt-scene {
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.4rem;
+  justify-items: center;
+}
+
+.hunt-scene-img {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: #fff;
+}
+
+.hunt-scene-tv .hunt-scene-img {
+  max-width: min(96vw, 1100px);
+}
+
+.hunt-scene-results .hunt-scene-img {
+  max-width: 420px;
+}
+
+.hunt-find-form {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+}
+
+.hunt-find-form .scatter-field {
+  margin: 0;
+}
+
+.hunt-find-count {
+  margin: 0;
+  width: 100%;
+  text-align: right;
+}
+
+.hunt-find-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.hunt-find-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: var(--card);
+}
+
+.hunt-find-list.is-results .is-scored strong {
+  color: var(--accent);
+}
+
+.hunt-find-list.is-results .is-miss {
+  opacity: 0.72;
+}
+
+.hunt-result-block {
+  margin-top: 1rem;
+}
+
+.hunt-result-block h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+.spectator-hunt-play {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 0.2rem 0.35rem;
+  font-size: 0.85rem;
+}
+
 .scatter-field {
   display: grid;
   gap: 0.3rem;
