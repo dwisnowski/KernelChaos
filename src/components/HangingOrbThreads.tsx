@@ -55,10 +55,21 @@ interface LayoutSnapshot {
   player: ThreadLayout;
 }
 
+interface PointerGrab {
+  thread: HangingThread;
+  /** Bottom→top index of the grabbed orb, or -1 when only silk was hit. */
+  bottomIndex: number;
+  /** Pointer position in canvas pixels. */
+  x: number;
+  y: number;
+}
+
 interface SwayInput {
   t: number;
-  /** Shared lean from pointer / device (-1..1-ish pixels contribution). */
-  lean: number;
+  /** Ambient lean from device tilt only (not pointer). */
+  deviceLean: number;
+  /** Active pointer grab for this thread, if any. */
+  grab: PointerGrab | null;
   reduceMotion: boolean;
   /** Phase offset so the two threads don't move in lockstep. */
   threadPhase: number;
@@ -67,6 +78,9 @@ interface SwayInput {
 const HIDDEN_HEX = "#6b7c8f";
 const SILK = "#d4af37";
 const MAX_ORBS = 30;
+/** Hit padding beyond orb radius / silk half-width (px). */
+const ORB_HIT_PAD = 1.35;
+const SILK_HIT_PX = 10;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -122,6 +136,13 @@ function placeFlexibleThread(
   let prevX = baseX;
   let prevY = anchorY;
 
+  const grabFromTop =
+    sway.grab && specs.length > 0
+      ? sway.grab.bottomIndex < 0
+        ? 0
+        : specs.length - 1 - sway.grab.bottomIndex
+      : null;
+
   // Walk top → bottom (high storage index first).
   for (let fromTop = 0; fromTop < specs.length; fromTop++) {
     const bottomIndex = specs.length - 1 - fromTop;
@@ -137,11 +158,19 @@ function placeFlexibleThread(
           (0.07 + fromTop * 0.012) +
         Math.sin(sway.t * (1.85 + fromTop * 0.07) + spec.swayPhase * 1.7) *
           (0.035 + fromTop * 0.006);
-      // Soft coupling: lean more as we hang farther from the anchor.
-      const leanScale = 0.012 + fromTop * 0.0045;
-      angle = local + sway.lean * leanScale;
-      // Keep segments from folding past ~28°.
-      angle = Math.max(-0.5, Math.min(0.5, angle));
+      const deviceScale = 0.01 + fromTop * 0.0035;
+      angle = local + sway.deviceLean * deviceScale;
+
+      // Pointer only bends this thread from the grabbed link downward.
+      if (sway.grab && grabFromTop != null && fromTop >= grabFromTop) {
+        const toward = Math.atan2(sway.grab.x - prevX, Math.max(12, sway.grab.y - prevY));
+        const depth = fromTop - grabFromTop;
+        const strength = depth === 0 ? 0.55 : Math.max(0.12, 0.42 - depth * 0.05);
+        angle += toward * strength;
+      }
+
+      // Keep segments from folding past ~32°.
+      angle = Math.max(-0.56, Math.min(0.56, angle));
     }
 
     const x = prevX + Math.sin(angle) * segmentLen;
@@ -152,6 +181,71 @@ function placeFlexibleThread(
   }
 
   return { orbs: orbsByBottom, anchorX: baseX, anchorY };
+}
+
+function distToSegment(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1e-6) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+/** Hit-test orbs first, then silk segments. Returns null when empty space. */
+function hitTestThreads(layout: LayoutSnapshot, x: number, y: number): PointerGrab | null {
+  type Hit = PointerGrab & { score: number };
+  const hits: Hit[] = [];
+
+  for (const thread of ["player", "opponent"] as const) {
+    const stack = thread === "player" ? layout.player : layout.opponent;
+    for (let i = 0; i < stack.orbs.length; i++) {
+      const orb = stack.orbs[i]!;
+      if (orb.vanish) continue;
+      const d = Math.hypot(x - orb.x, y - orb.y);
+      if (d <= orb.r * ORB_HIT_PAD) {
+        hits.push({ thread, bottomIndex: i, x, y, score: d });
+      }
+    }
+  }
+
+  if (hits.length === 0) {
+    for (const thread of ["player", "opponent"] as const) {
+      const stack = thread === "player" ? layout.player : layout.opponent;
+      const visible = stack.orbs
+        .map((orb, bottomIndex) => ({ orb, bottomIndex }))
+        .filter((row) => !row.orb.vanish)
+        .sort((a, b) => a.orb.y - b.orb.y);
+      if (visible.length === 0) continue;
+
+      let prevX = stack.anchorX;
+      let prevY = stack.anchorY;
+      for (const row of visible) {
+        const endX = row.orb.x;
+        const endY = row.orb.y - row.orb.r * 0.85;
+        const d = distToSegment(x, y, prevX, prevY, endX, endY);
+        if (d <= SILK_HIT_PX) {
+          // Silk hit attaches to the orb below this segment; score prefers orbs.
+          hits.push({ thread, bottomIndex: row.bottomIndex, x, y, score: 1000 + d });
+        }
+        prevX = endX;
+        prevY = endY;
+      }
+    }
+  }
+
+  if (hits.length === 0) return null;
+  hits.sort((a, b) => a.score - b.score);
+  const best = hits[0]!;
+  return { thread: best.thread, bottomIndex: best.bottomIndex, x: best.x, y: best.y };
 }
 
 function layoutThreads(
@@ -312,9 +406,12 @@ export const HangingOrbThreads = forwardRef<HangingOrbThreadsHandle, Props>(
     const wrapRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const layoutRef = useRef<LayoutSnapshot | null>(null);
-    const pointerRef = useRef({ x: 0.5, y: 0.5 });
+    const grabRef = useRef<PointerGrab | null>(null);
+    /** Once a press starts on an orb/silk, stay attached until release. */
+    const stickyGrabRef = useRef<Omit<PointerGrab, "x" | "y"> | null>(null);
     const tiltRef = useRef({ x: 0, y: 0 });
     const rafRef = useRef<number | null>(null);
+    const cursorHotRef = useRef(false);
     const propsRef = useRef({
       playerOrbs,
       playerCount,
@@ -380,18 +477,9 @@ export const HangingOrbThreads = forwardRef<HangingOrbThreadsHandle, Props>(
         const p = propsRef.current;
         const tiltOn = p.enableTilt && !reduceMotion;
 
-        let leanOpp = 0;
-        let leanPlayer = 0;
-        if (!reduceMotion) {
-          leanOpp = Math.sin(t * 0.95) * 4.5;
-          leanPlayer = Math.sin(t * 1.05 + 1.2) * -4.2;
-          if (tiltOn) {
-            const px = (pointerRef.current.x - 0.5) * 22;
-            const tx = tiltRef.current.x * 16;
-            leanOpp += px * 0.55 + tx;
-            leanPlayer += px * 0.9 + tx * 0.75;
-          }
-        }
+        // Device tilt is ambient; pointer only affects a hit-tested grab.
+        const deviceLean = tiltOn ? tiltRef.current.x * 10 : 0;
+        const grab = p.enableTilt && !reduceMotion ? grabRef.current : null;
 
         const layout = layoutThreads(
           width,
@@ -402,8 +490,20 @@ export const HangingOrbThreads = forwardRef<HangingOrbThreadsHandle, Props>(
           p.vanishingOpponent,
           p.vanishingPlayer,
           p.highlightPlayerBottom,
-          { t, lean: leanOpp, reduceMotion, threadPhase: 0.4 },
-          { t, lean: leanPlayer, reduceMotion, threadPhase: 2.1 },
+          {
+            t,
+            deviceLean: deviceLean * 0.55 + (reduceMotion ? 0 : Math.sin(t * 0.95) * 3.2),
+            grab: grab?.thread === "opponent" ? grab : null,
+            reduceMotion,
+            threadPhase: 0.4,
+          },
+          {
+            t,
+            deviceLean: deviceLean * 0.75 + (reduceMotion ? 0 : Math.sin(t * 1.05 + 1.2) * -3),
+            grab: grab?.thread === "player" ? grab : null,
+            reduceMotion,
+            threadPhase: 2.1,
+          },
         );
         layoutRef.current = layout;
 
@@ -492,20 +592,85 @@ export const HangingOrbThreads = forwardRef<HangingOrbThreadsHandle, Props>(
       };
     }, [enableTilt]);
 
+    function canvasPoint(e: ReactPointerEvent): { x: number; y: number } | null {
+      const wrap = wrapRef.current;
+      if (!wrap) return null;
+      const rect = wrap.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return null;
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function setCursorHot(hot: boolean) {
+      if (hot === cursorHotRef.current || !wrapRef.current) return;
+      wrapRef.current.style.cursor = hot ? (stickyGrabRef.current ? "grabbing" : "grab") : "";
+      cursorHotRef.current = hot;
+    }
+
+    function clearGrab() {
+      grabRef.current = null;
+      stickyGrabRef.current = null;
+      setCursorHot(false);
+    }
+
+    function applyHoverOrSticky(pt: { x: number; y: number }) {
+      if (stickyGrabRef.current) {
+        grabRef.current = { ...stickyGrabRef.current, x: pt.x, y: pt.y };
+        setCursorHot(true);
+        return;
+      }
+      const layout = layoutRef.current;
+      if (!layout) {
+        grabRef.current = null;
+        setCursorHot(false);
+        return;
+      }
+      const hit = hitTestThreads(layout, pt.x, pt.y);
+      grabRef.current = hit;
+      setCursorHot(hit != null);
+    }
+
     function onPointerMove(e: ReactPointerEvent) {
       if (!enableTilt) return;
-      const wrap = wrapRef.current;
-      if (!wrap) return;
-      const rect = wrap.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      pointerRef.current = {
-        x: (e.clientX - rect.left) / rect.width,
-        y: (e.clientY - rect.top) / rect.height,
-      };
+      const pt = canvasPoint(e);
+      if (!pt) return;
+
+      // Touch with no contact: ignore (and clear).
+      if (e.pointerType === "touch" && e.buttons === 0 && !stickyGrabRef.current) {
+        clearGrab();
+        return;
+      }
+      applyHoverOrSticky(pt);
+    }
+
+    function onPointerDown(e: ReactPointerEvent) {
+      if (!enableTilt) return;
+      const pt = canvasPoint(e);
+      if (!pt) return;
+      const layout = layoutRef.current;
+      const hit = layout ? hitTestThreads(layout, pt.x, pt.y) : null;
+      if (!hit) {
+        // Pressed empty canvas — do not affect sway.
+        clearGrab();
+        return;
+      }
+      stickyGrabRef.current = { thread: hit.thread, bottomIndex: hit.bottomIndex };
+      grabRef.current = hit;
+      setCursorHot(true);
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function onPointerUp() {
+      if (!enableTilt) return;
+      clearGrab();
     }
 
     function onPointerLeave() {
-      pointerRef.current = { x: 0.5, y: 0.5 };
+      // Keep sticky grabs (captured); only clear hover when not pressing.
+      if (!stickyGrabRef.current) clearGrab();
     }
 
     const playerShown = playerOrbs?.length ?? playerCount;
@@ -517,6 +682,9 @@ export const HangingOrbThreads = forwardRef<HangingOrbThreadsHandle, Props>(
         className={`hanging-orb-threads${className ? ` ${className}` : ""}`}
         aria-label={label}
         onPointerMove={onPointerMove}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onPointerLeave={onPointerLeave}
       >
         <canvas ref={canvasRef} />

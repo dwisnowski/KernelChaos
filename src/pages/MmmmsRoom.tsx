@@ -138,11 +138,11 @@ export function MmmmsRoom() {
       if (playerId != null && state.winnerId === playerId) playWinner();
       else playMmmmsDefeat();
     }
-    if (state.phase === "lobby" || state.phase === "organize") {
+    if (state.phase === "lobby" || state.phase === "organize" || state.phase === "guess") {
       setVanishingPlayer(new Set());
       setVanishingOpponent(new Set());
       setAnimExploded(null);
-      resolveKeyRef.current = null;
+      if (state.phase !== "guess") resolveKeyRef.current = null;
     }
     phaseRef.current = state.phase;
   }, [state, playerId]);
@@ -199,6 +199,10 @@ export function MmmmsRoom() {
         await new Promise((r) => setTimeout(r, STEP_MS));
       }
       if (cancelled) return;
+      // Clear vanish masks before swapping to post-attack stacks; otherwise
+      // indices 0..n still hide the new bottom orbs (looks like over-clear).
+      setVanishingPlayer(new Set());
+      setVanishingOpponent(new Set());
       if (isDefender && myOrbs) setLocalOrbs(myOrbs);
       if (isAttacker) setAnimExploded(attack.explodedCount);
       resolveDone();

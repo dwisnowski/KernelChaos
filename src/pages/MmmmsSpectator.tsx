@@ -62,10 +62,10 @@ export function MmmmsSpectator() {
     if (prev && prev !== "results" && state.phase === "results") {
       playWinner();
     }
-    if (state.phase === "lobby" || state.phase === "organize") {
+    if (state.phase === "lobby" || state.phase === "organize" || state.phase === "guess") {
       setVanishingDefender(new Set());
       setAnimExploded(null);
-      resolveKeyRef.current = null;
+      if (state.phase !== "guess") resolveKeyRef.current = null;
     }
     phaseRef.current = state.phase;
   }, [state]);
@@ -109,7 +109,12 @@ export function MmmmsSpectator() {
         }
         await new Promise((r) => setTimeout(r, STEP_MS));
       }
-      if (!cancelled) setAnimExploded(attack.explodedCount);
+      if (!cancelled) {
+        // Drop vanish masks before the count shrinks to post-attack remaining;
+        // stale indices would hide the new bottom beads on the shorter thread.
+        setVanishingDefender(new Set());
+        setAnimExploded(attack.explodedCount);
+      }
     })();
 
     return () => {
