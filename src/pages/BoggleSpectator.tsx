@@ -8,6 +8,7 @@ import { Layout } from "../components/Layout.tsx";
 import { WordLengthPie } from "../components/WordLengthPie.tsx";
 import { WordLengthPossibleBars } from "../components/WordLengthPossibleBars.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
+import { useWordDefinition } from "../hooks/useWordDefinition.ts";
 import { findWordPath } from "../lib/findWordPath.ts";
 import { bucketKeyForLength, bucketLabel } from "../lib/wordLengthBuckets.ts";
 import type { LengthBucketKey } from "../types.ts";
@@ -84,6 +85,8 @@ export function BoggleSpectator() {
     if (!selectedWord || !state?.board) return [];
     return findWordPath(state.board, state.boardSize, selectedWord) ?? [];
   }, [selectedWord, state?.board, state?.boardSize]);
+
+  const wordDefinition = useWordDefinition(selectedWord);
 
   const selectLength = (key: LengthBucketKey) => {
     setLengthKey(key);
@@ -196,6 +199,35 @@ export function BoggleSpectator() {
                 highlightLabel={selectedWord}
                 onSubmitPath={() => undefined}
               />
+              {selectedWord ? (
+                <div className="spectator-word-definition" aria-live="polite">
+                  <p className="spectator-word-definition-term">
+                    <strong>{selectedWord}</strong>
+                    {wordDefinition.definition?.phonetic ? (
+                      <span className="muted">{wordDefinition.definition.phonetic}</span>
+                    ) : null}
+                  </p>
+                  {wordDefinition.status === "loading" ? (
+                    <p className="muted">Looking up definition…</p>
+                  ) : null}
+                  {wordDefinition.status === "ready" && wordDefinition.definition ? (
+                    <ul className="spectator-word-definition-senses">
+                      {wordDefinition.definition.senses.map((sense) => (
+                        <li key={`${sense.partOfSpeech}:${sense.definition}`}>
+                          <em>{sense.partOfSpeech}</em>
+                          <span>{sense.definition}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {wordDefinition.status === "missing" ? (
+                    <p className="muted">No definition found for this word.</p>
+                  ) : null}
+                  {wordDefinition.status === "error" ? (
+                    <p className="muted">Couldn’t load a definition right now.</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="spectator-results-main">
@@ -248,7 +280,7 @@ export function BoggleSpectator() {
                       </em>
                     </h2>
                     <p className="muted">
-                      Tap a word to trace it.{" "}
+                      Tap a word to trace it and see its definition.{" "}
                       <span className="spectator-word-legend">
                         <span className="is-found">Found</span>
                         <span className="is-missed">Missed</span>
