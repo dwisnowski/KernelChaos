@@ -60,37 +60,31 @@ export function Home() {
           Shared boards, short room codes, and a living-room-friendly screen for the whole crew.
         </p>
         <div className="hero-games" aria-label="Games">
-          <article className="game-card">
+          <Link className="game-card" to="/boggle" onClick={() => unlockAudio()}>
             <BoggleIcon />
             <h2>Boggle</h2>
             <p>
               Drag adjacent letters on a shared timed board. Short room codes and a TV-friendly view for
               the whole crew.
             </p>
-            <Link className="btn primary" to="/boggle" onClick={() => unlockAudio()}>
-              Play
-            </Link>
-          </article>
-          <article className="game-card">
+            <span className="btn primary">Play</span>
+          </Link>
+          <Link className="game-card" to="/scattergories" onClick={() => unlockAudio()}>
             <ScattergoriesIcon />
             <h2>Scattergories</h2>
             <p>
               Fill categories for a rolled letter. The TV reveals answers and scores the round together.
             </p>
-            <Link className="btn primary" to="/scattergories" onClick={() => unlockAudio()}>
-              Play
-            </Link>
-          </article>
-          <article className="game-card">
+            <span className="btn primary">Play</span>
+          </Link>
+          <Link className="game-card" to="/mmmms" onClick={() => unlockAudio()}>
             <MmmmsIcon />
             <h2>M&Ms Smash</h2>
             <p>
               Two players stack colored orbs, guess the attack, and explode from the bottom up.
             </p>
-            <Link className="btn primary" to="/mmmms" onClick={() => unlockAudio()}>
-              Play
-            </Link>
-          </article>
+            <span className="btn primary">Play</span>
+          </Link>
         </div>
         <Link className="btn hero-settings" to="/settings">
           Color palettes
