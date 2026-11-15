@@ -178,9 +178,8 @@ const ICOSA_FACES: [number, number, number][] = [
 interface FaceGeom {
   letter: LetterDieFace;
   normal: Vec3;
-  /** 9 floats: 3 vertices × xyz */
-  positions: Float32Array;
-  uvs: Float32Array;
+  verts: [Vec3, Vec3, Vec3];
+  fill: string;
 }
 
 function buildFaces(letters: readonly LetterDieFace[]): FaceGeom[] {
@@ -190,105 +189,16 @@ function buildFaces(letters: readonly LetterDieFace[]): FaceGeom[] {
     const b = verts[idx[1]]!;
     const c = verts[idx[2]]!;
     const normal = vNorm(vCross(vSub(b, a), vSub(c, a)));
-    // Ensure outward (away from origin)
     const mid = vNorm(vAdd(vAdd(a, b), c));
     const n = vDot(normal, mid) < 0 ? vScale(normal, -1) : normal;
-    const tri = vDot(normal, mid) < 0 ? [a, c, b] : [a, b, c];
-    const positions = new Float32Array([
-      tri[0]![0],
-      tri[0]![1],
-      tri[0]![2],
-      tri[1]![0],
-      tri[1]![1],
-      tri[1]![2],
-      tri[2]![0],
-      tri[2]![1],
-      tri[2]![2],
-    ]);
-    // Atlas UV: 5 columns × 4 rows — triangle covering the letter cell
-    const col = fi % 5;
-    const row = Math.floor(fi / 5);
-    const u0 = col / 5;
-    const u1 = (col + 1) / 5;
-    const v0 = 1 - (row + 1) / 4;
-    const v1 = 1 - row / 4;
-    const um = (u0 + u1) / 2;
-    const vm = (v0 + v1) / 2;
-    const uvs = new Float32Array([
-      um,
-      vm + (v1 - vm) * 0.55,
-      um + (u1 - u0) * 0.38,
-      vm - (vm - v0) * 0.35,
-      um - (u1 - u0) * 0.38,
-      vm - (vm - v0) * 0.35,
-    ]);
-
+    const tri = (vDot(normal, mid) < 0 ? [a, c, b] : [a, b, c]) as [Vec3, Vec3, Vec3];
     return {
       letter: letters[fi]!,
       normal: n,
-      positions,
-      uvs,
+      verts: tri,
+      fill: fi % 2 === 0 ? "#245a8a" : "#1e4d78",
     };
   });
-}
-
-function bakeAtlas(letters: readonly LetterDieFace[]): HTMLCanvasElement {
-  const cell = 128;
-  const cols = 5;
-  const rows = 4;
-  const canvas = document.createElement("canvas");
-  canvas.width = cell * cols;
-  canvas.height = cell * rows;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#1a3a5c";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (let i = 0; i < letters.length; i++) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = col * cell;
-    const y = row * cell;
-    ctx.fillStyle = i % 2 === 0 ? "#245a8a" : "#1e4d78";
-    ctx.beginPath();
-    ctx.moveTo(x + cell / 2, y + 10);
-    ctx.lineTo(x + cell - 10, y + cell - 14);
-    ctx.lineTo(x + 10, y + cell - 14);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#f4f7fb";
-    ctx.font = `bold ${Math.floor(cell * 0.48)}px "Space Grotesk", system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(letters[i]!, x + cell / 2, y + cell * 0.52);
-  }
-  return canvas;
-}
-
-const VERT_SRC = `
-attribute vec3 aPos;
-attribute vec2 aUv;
-uniform mat4 uMVP;
-varying vec2 vUv;
-varying vec3 vN;
-void main() {
-  vUv = aUv;
-  gl_Position = uMVP * vec4(aPos, 1.0);
-}
-`;
-
-const FRAG_SRC = `
-precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uTex;
-void main() {
-  gl_FragColor = texture2D(uTex, vUv);
-}
-`;
-
-function compile(gl: WebGLRenderingContext, type: number, src: string): WebGLShader {
-  const s = gl.createShader(type)!;
-  gl.shaderSource(s, src);
-  gl.compileShader(s);
-  return s;
 }
 
 function mat4Perspective(fovy: number, aspect: number, near: number, far: number): Float32Array {
@@ -335,7 +245,6 @@ function mat4FromQuat(q: Quat): Float32Array {
   const wx = w * x,
     wy = w * y,
     wz = w * z;
-  // Column-major 4×4 rotation
   const out = new Float32Array(16);
   out[0] = 1 - 2 * (yy + zz);
   out[1] = 2 * (xy + wz);
@@ -370,6 +279,19 @@ function mat4Mul(a: Float32Array, b: Float32Array): Float32Array {
   return out;
 }
 
+function project(mvp: Float32Array, v: Vec3, width: number, height: number): { x: number; y: number; z: number } {
+  const x = mvp[0]! * v[0] + mvp[4]! * v[1] + mvp[8]! * v[2] + mvp[12]!;
+  const y = mvp[1]! * v[0] + mvp[5]! * v[1] + mvp[9]! * v[2] + mvp[13]!;
+  const z = mvp[2]! * v[0] + mvp[6]! * v[1] + mvp[10]! * v[2] + mvp[14]!;
+  const w = mvp[3]! * v[0] + mvp[7]! * v[1] + mvp[11]! * v[2] + mvp[15]!;
+  const inv = 1 / (w || 1);
+  return {
+    x: (x * inv * 0.5 + 0.5) * width,
+    y: (1 - (y * inv * 0.5 + 0.5)) * height,
+    z: z * inv,
+  };
+}
+
 /** Face whose outward normal points most toward the camera — what the player reads. */
 function resultFaceIndex(faces: FaceGeom[], q: Quat): number {
   let best = 0;
@@ -389,6 +311,75 @@ function snapQuatToFace(faces: FaceGeom[], q: Quat, faceIndex: number): Quat {
   const worldN = qRotate(q, faces[faceIndex]!.normal);
   const align = qFromTo(worldN, VIEW_DIR);
   return qNormalize(qMul(align, q));
+}
+
+function drawDie(
+  ctx: CanvasRenderingContext2D,
+  faces: FaceGeom[],
+  quat: Quat,
+  width: number,
+  height: number,
+): void {
+  const aspect = width / Math.max(height, 1);
+  const proj = mat4Perspective((42 * Math.PI) / 180, aspect, 0.1, 20);
+  const view = mat4LookAt(CAMERA_EYE, [0, 0, 0], [0, 1, 0]);
+  const model = mat4FromQuat(quat);
+  const mvp = mat4Mul(mat4Mul(proj, view), model);
+
+  type Drawn = {
+    depth: number;
+    pts: [{ x: number; y: number }, { x: number; y: number }, { x: number; y: number }];
+    letter: LetterDieFace;
+    fill: string;
+    facing: number;
+  };
+  const visible: Drawn[] = [];
+
+  for (const face of faces) {
+    const worldN = qRotate(quat, face.normal);
+    const facing = vDot(worldN, VIEW_DIR);
+    if (facing <= 0.02) continue;
+    const p0 = project(mvp, qRotate(quat, face.verts[0]), width, height);
+    const p1 = project(mvp, qRotate(quat, face.verts[1]), width, height);
+    const p2 = project(mvp, qRotate(quat, face.verts[2]), width, height);
+    visible.push({
+      depth: (p0.z + p1.z + p2.z) / 3,
+      pts: [p0, p1, p2],
+      letter: face.letter,
+      fill: face.fill,
+      facing,
+    });
+  }
+
+  visible.sort((a, b) => b.depth - a.depth);
+
+  ctx.clearRect(0, 0, width, height);
+  for (const face of visible) {
+    const [a, b, c] = face.pts;
+    const shade = 0.72 + face.facing * 0.28;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.closePath();
+    ctx.fillStyle = face.fill;
+    ctx.globalAlpha = Math.min(1, shade);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(8, 20, 36, 0.55)";
+    ctx.lineWidth = Math.max(1, width * 0.004);
+    ctx.stroke();
+
+    const cx = (a.x + b.x + c.x) / 3;
+    const cy = (a.y + b.y + c.y) / 3;
+    const edge = Math.hypot(a.x - b.x, a.y - b.y);
+    const fontPx = Math.max(12, Math.min(edge * 0.55, width * 0.14));
+    ctx.fillStyle = "#f4f7fb";
+    ctx.font = `700 ${fontPx}px "Space Grotesk", system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(face.letter, cx, cy + fontPx * 0.04);
+  }
 }
 
 export function LetterDie({
@@ -417,51 +408,10 @@ export function LetterDie({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const gl = canvas.getContext("webgl", { antialias: true, alpha: true });
-    if (!gl) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     const faces = buildFaces(LETTER_DIE);
-    const atlas = bakeAtlas(LETTER_DIE);
-
-    const prog = gl.createProgram()!;
-    gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VERT_SRC));
-    gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FRAG_SRC));
-    gl.linkProgram(prog);
-    gl.useProgram(prog);
-
-    const aPos = gl.getAttribLocation(prog, "aPos");
-    const aUv = gl.getAttribLocation(prog, "aUv");
-    const uMVP = gl.getUniformLocation(prog, "uMVP");
-    const uTex = gl.getUniformLocation(prog, "uTex");
-
-    const posData = new Float32Array(faces.length * 9);
-    const uvData = new Float32Array(faces.length * 6);
-    for (let i = 0; i < faces.length; i++) {
-      posData.set(faces[i]!.positions, i * 9);
-      uvData.set(faces[i]!.uvs, i * 6);
-    }
-
-    const posBuf = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, posData, gl.STATIC_DRAW);
-
-    const uvBuf = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, uvData, gl.STATIC_DRAW);
-
-    const tex = gl.createTexture()!;
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.BACK);
-    gl.clearColor(0, 0, 0, 0);
 
     let quat = qIdentity();
     let angVel: Vec3 = [0, 0, 0];
@@ -478,6 +428,8 @@ export function LetterDie({
     let lastPoseSent = 0;
     let raf = 0;
     let lastTs = performance.now();
+    let cssW = size;
+    let cssH = size;
 
     const emitPose = (force = false) => {
       const now = performance.now();
@@ -500,38 +452,15 @@ export function LetterDie({
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = canvas.clientWidth || size;
-      const h = canvas.clientHeight || size;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      gl.viewport(0, 0, canvas.width, canvas.height);
+      cssW = canvas.clientWidth || size;
+      cssH = canvas.clientHeight || size;
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
-
-    const draw = () => {
-      const aspect = canvas.width / Math.max(canvas.height, 1);
-      const proj = mat4Perspective((42 * Math.PI) / 180, aspect, 0.1, 20);
-      const view = mat4LookAt(CAMERA_EYE, [0, 0, 0], [0, 1, 0]);
-      const model = mat4FromQuat(quat);
-      const mvp = mat4Mul(mat4Mul(proj, view), model);
-
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.useProgram(prog);
-      gl.uniformMatrix4fv(uMVP, false, mvp);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.uniform1i(uTex, 0);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-      gl.enableVertexAttribArray(aPos);
-      gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-      gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
-      gl.enableVertexAttribArray(aUv);
-      gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
-      gl.drawArrays(gl.TRIANGLES, 0, faces.length * 3);
-    };
 
     const tick = (ts: number) => {
       const dt = Math.min(0.05, (ts - lastTs) / 1000);
@@ -549,7 +478,6 @@ export function LetterDie({
         } else if (spinning && !dragging) {
           const elapsed = ts - spinStartedAt;
           const speed = vLen(angVel);
-          // integrate angular velocity in world space → local
           if (speed > 1e-4) {
             const axis = vNorm(angVel);
             const angle = speed * dt;
@@ -570,7 +498,7 @@ export function LetterDie({
         }
       }
 
-      draw();
+      drawDie(ctx, faces, quat, cssW, cssH);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -617,9 +545,7 @@ export function LetterDie({
       }
       const flick = Math.hypot(velSample.x, velSample.y);
       if (flick > 0.15 && !settled) {
-        // Map screen flick to angular velocity (world axes)
         angVel = [-velSample.y * 18, -velSample.x * 18, (velSample.x - velSample.y) * 4];
-        // Cap so settle stays within 5s
         const s = vLen(angVel);
         if (s > 22) angVel = vScale(angVel, 22 / s);
         spinning = true;

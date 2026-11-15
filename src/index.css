@@ -1761,6 +1761,20 @@ input {
   text-align: center;
 }
 
+/* Transform-only enter animation — avoid opacity on ancestors of canvases (Chrome compositing). */
+.rise {
+  animation: rise-y 0.45s ease both;
+}
+
+@keyframes rise-y {
+  from {
+    transform: translateY(12px);
+  }
+  to {
+    transform: none;
+  }
+}
+
 .letter-die {
   display: block;
   margin-inline: auto;
@@ -1772,6 +1786,8 @@ input {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   cursor: grab;
   touch-action: none;
+  /* Promote layer so the die bitmap composites reliably in Chromium. */
+  transform: translateZ(0);
 }
 
 .letter-die:active {

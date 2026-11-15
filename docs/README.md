@@ -5,6 +5,7 @@ Architecture decisions and project notes for KernelChaos.
 ## Contributing
 
 - [Agent notes](../AGENTS.md) — repo map, non-negotiables, verify checklist (AI coding agents)
+- [Screen reference](./screens.md) — URL routes, in-room phases, chat shorthand
 - [README](../readme.md) — features, develop, deploy
 
 ## Architecture Decision Records
@@ -19,7 +20,7 @@ Architecture decisions and project notes for KernelChaos.
 - [0008 – Results word coverage](adr/0008-results-word-coverage.md) — Board `possibleWordCount` + by-length; phone found-vs-possible bars; TV possible-by-length chart
 - [0009 – Scattergories + game shell](adr/0009-scattergories-and-game-shell.md) — Polymorphic rooms; TV/player + QR/code + SFX as shared shell; original family/kids/adult packs; review-phase scoring
 - [0010 – Scattergories review voting](adr/0010-scattergories-review-voting.md) — Batch In/Out ballots per category; majority rejects; TV shows pending voters; host Next gated on full ballot
-- [0011 – Scattergories letter die roll](adr/0011-scattergories-letter-die-roll.md) — Rolling phase; random roller; classic 20-face WebGL icosahedron; live pose mirror; ≤5s settle; AFK server fallback
+- [0011 – Scattergories letter die roll](adr/0011-scattergories-letter-die-roll.md) — Rolling phase; random roller; classic 20-face Canvas 2D icosahedron; live pose mirror; ≤5s settle; AFK server fallback
 - [0012 – Active room directory + empty-room teardown](adr/0012-active-room-directory.md) — Join-first entry; D1 open-lobby list; ~30s empty grace then clear DO storage / free code
 - [0013 – Player seat resume after spectator](adr/0013-player-seat-resume.md) — `resumeId` + private `myWords`/`myAnswers` on welcome so spectator → player keeps entries
 - [0014 – M&Ms Smash two-player orb duel](adr/0014-mmmms.md) — Exactly two seats; 12/20/30 orbs; organize → guess → attack; hidden stacks; inclusive explode path; correct-guess 50% halt saves; particle bursts

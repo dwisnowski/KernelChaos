@@ -14,6 +14,10 @@ Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos
 
 When a change records a product or architecture decision: add/update `docs/adr/NNNN-slug.md` (**Status**, **Context**, **Decision**, **Consequences**) and update the index in `docs/README.md`. Do not treat `.cursor/plans/` as project documentation.
 
+## Screens / routes
+
+URL routes and in-room phases (lobby, playing, review, …) are catalogued in [`docs/screens.md`](./docs/screens.md). Use that vocabulary when discussing UI. Routes live in `src/App.tsx`; phases are WebSocket `state.phase`, not path segments.
+
 ## Repo map
 
 | Path | Role |
@@ -24,6 +28,7 @@ When a change records a product or architecture decision: add/update `docs/adr/N
 | `worker/boggle/` | Dice, path, scoring, dictionary |
 | `worker/scattergories/` | Letter die, packs, normalize/scoring, protocol |
 | `worker/mmmms/` | Orb colors, deal/resolve attack, protocol |
+| `docs/screens.md` | Screen / route / phase reference for chat |
 | `docs/adr/` | Architecture Decision Records |
 | `Makefile` | Canonical local commands |
 
