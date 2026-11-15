@@ -33,3 +33,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0021 – Picture Hunt find feedback + boxes](adr/0021-hunt-find-feedback-and-boxes.md) — Green/red flash + SFX; personal remaining rail; normalized metadata boxes on results review
 - [0022 – Host skip review voter](adr/0022-host-skip-review-voter.md) — Host Pass on pending review voters; empty ballot unblocks majority without inventing In/Out
 - [0023 – TV results board word explorer](adr/0023-tv-results-board-word-explorer.md) — Full `possibleWords`; TV keeps board; length bars open word list; click word to highlight path
+- [0024 – App color palette settings](adr/0024-app-color-palettes.md) — `/settings` with 5 presets + custom chrome tokens; localStorage; game pieces unchanged

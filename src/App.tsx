@@ -9,11 +9,13 @@ import { MmmmsSpectator } from "./pages/MmmmsSpectator.tsx";
 import { ScattergoriesEntry } from "./pages/ScattergoriesEntry.tsx";
 import { ScattergoriesRoom } from "./pages/ScattergoriesRoom.tsx";
 import { ScattergoriesSpectator } from "./pages/ScattergoriesSpectator.tsx";
+import { Settings } from "./pages/Settings.tsx";
 
 export function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/settings" element={<Settings />} />
       <Route path="/boggle" element={<BoggleEntry />} />
       <Route path="/boggle/join" element={<BoggleEntry />} />
       <Route path="/boggle/room/:code" element={<BoggleRoom />} />

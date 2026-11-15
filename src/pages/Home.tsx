@@ -92,6 +92,9 @@ export function Home() {
             </Link>
           </article>
         </div>
+        <Link className="btn hero-settings" to="/settings">
+          Color palettes
+        </Link>
       </section>
     </Layout>
   );

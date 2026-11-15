@@ -11,6 +11,7 @@ Games: `boggle` | `scattergories` | `mmmms`. Picture Hunt is Scattergories with 
 | Path | Component | File | Role |
 | --- | --- | --- | --- |
 | `/` | `Home` | `src/pages/Home.tsx` | Game picker |
+| `/settings` | `Settings` | `src/pages/Settings.tsx` | Color palettes (presets + custom) |
 | `/boggle` | `BoggleEntry` | `src/pages/BoggleEntry.tsx` | Create / join / spectate |
 | `/boggle/join?code=` | `BoggleEntry` | same | QR / deep-link join |
 | `/boggle/room/:code` | `BoggleRoom` | `src/pages/BoggleRoom.tsx` | Player |
@@ -78,6 +79,7 @@ Prefer route + phase (and mode when needed):
 | Say | Means |
 | --- | --- |
 | home | `/` |
+| settings / colors | `/settings` |
 | boggle entry / scatter entry / mmmms entry | `/{game}` |
 | boggle join | `/boggle/join?code=` |
 | boggle room lobby | `/boggle/room/:code` + `phase=lobby` |

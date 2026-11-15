@@ -50,6 +50,9 @@ export function Layout({
               className="btn tv-link header-tv-link"
             />
           ) : null}
+          <Link to="/settings" className="settings-link" title="Color palettes">
+            Colors
+          </Link>
           <button
             type="button"
             className="mute-btn"
