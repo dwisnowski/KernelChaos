@@ -221,7 +221,10 @@ export function BoggleSpectator() {
                     </ul>
                   ) : null}
                   {wordDefinition.status === "missing" ? (
-                    <p className="muted">No definition found for this word.</p>
+                    <p className="muted">
+                      This word has been recorded as having no definition and will be
+                      removed from the word list in a future release.
+                    </p>
                   ) : null}
                   {wordDefinition.status === "error" ? (
                     <p className="muted">Couldn’t load a definition right now.</p>

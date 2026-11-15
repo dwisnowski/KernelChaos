@@ -1,6 +1,7 @@
 import { listActiveRooms, type ActiveRoomGame } from "./activeRooms.ts";
 import { CODE_ALPHABET } from "./boggle/protocol.ts";
 import { fetchBoggleStats } from "./boggle/stats.ts";
+import { listUndefinedWords, reportUndefinedWord } from "./boggle/undefinedWords.ts";
 import { GameRoom } from "./room.ts";
 
 export { GameRoom };
@@ -29,6 +30,40 @@ export default {
       } catch (err) {
         console.error("boggle stats failed", err);
         return Response.json({ error: "Could not load stats" }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/boggle/undefined-words" && request.method === "GET") {
+      try {
+        const rows = await listUndefinedWords(env.STATS_DB);
+        return Response.json({
+          words: rows.map((r) => r.word),
+          entries: rows,
+        });
+      } catch (err) {
+        console.error("list undefined words failed", err);
+        return Response.json({ error: "Could not load undefined words" }, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/api/boggle/undefined-words" && request.method === "POST") {
+      let word = "";
+      try {
+        const body = (await request.json()) as { word?: unknown };
+        if (typeof body.word === "string") word = body.word;
+      } catch {
+        return Response.json({ error: "Expected JSON body with word" }, { status: 400 });
+      }
+      try {
+        const result = await reportUndefinedWord(env.STATS_DB, word);
+        if (!result.ok) {
+          const status = result.reason === "invalid" ? 400 : 404;
+          return Response.json({ error: result.reason }, { status });
+        }
+        return Response.json({ ok: true });
+      } catch (err) {
+        console.error("report undefined word failed", err);
+        return Response.json({ error: "Could not record word" }, { status: 500 });
       }
     }
 

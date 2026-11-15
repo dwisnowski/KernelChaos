@@ -1,0 +1,7 @@
+Run the KernelChaos cleanup-undefined-boggle-words skill end-to-end:
+
+1. Read `.cursor/skills/cleanup-undefined-boggle-words/SKILL.md` and follow it.
+2. Fetch the undefined-word queue from production (`GET https://kernelchaos.wildideazone.com/api/boggle/undefined-words` or wrangler D1 remote).
+3. Remove those words from `worker/boggle/words.ts` with `scripts/remove-boggle-words.ts`.
+4. Delete the processed rows from the production D1 table `undefined_boggle_words`.
+5. Run `make lint` and `make build`, then commit, push, and deploy.

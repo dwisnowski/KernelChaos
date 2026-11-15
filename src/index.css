@@ -3067,6 +3067,47 @@ input {
   align-items: center;
 }
 
+.admin-section {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--stroke);
+}
+
+.admin-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.admin-undefined-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  max-height: min(40vh, 22rem);
+  overflow: auto;
+  border: 1px solid var(--stroke);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--card);
+  padding: 0.65rem 0.85rem;
+}
+
+.admin-undefined-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  align-items: baseline;
+  font-size: 0.92rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.admin-undefined-list strong {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+
 .hero-settings {
   margin-top: 0.35rem;
 }

@@ -1,4 +1,4 @@
-.PHONY: install run build deploy lint types clean help hunt-coverage
+.PHONY: install run build deploy lint types clean help hunt-coverage undef-words-cleanup-prompt
 
 NPM ?= npm
 DEV_PORT ?= 5173
@@ -8,14 +8,15 @@ DEV_PORT ?= 5173
 help:
 	@echo "KernelChaos"
 	@echo ""
-	@echo "  make install         Install npm dependencies"
-	@echo "  make run             Start Vite + Worker dev server (port $(DEV_PORT))"
-	@echo "  make build           Production build"
-	@echo "  make deploy          Build and deploy to kernelchaos.wildideazone.com"
-	@echo "  make lint            Run oxlint"
-	@echo "  make hunt-coverage   Check Picture Hunt catalog floors (ADR 0020)"
-	@echo "  make types           Regenerate worker-configuration.d.ts"
-	@echo "  make clean           Remove node_modules, dist, and .wrangler"
+	@echo "  make install                       Install npm dependencies"
+	@echo "  make run                           Start Vite + Worker dev server (port $(DEV_PORT))"
+	@echo "  make build                         Production build"
+	@echo "  make deploy                        Build and deploy to kernelchaos.wildideazone.com"
+	@echo "  make lint                          Run oxlint"
+	@echo "  make hunt-coverage                 Check Picture Hunt catalog floors (ADR 0020)"
+	@echo "  make undef-words-cleanup-prompt    Print Cursor prompt to clean undefined Boggle words (ADR 0025)"
+	@echo "  make types                         Regenerate worker-configuration.d.ts"
+	@echo "  make clean                         Remove node_modules, dist, and .wrangler"
 
 install:
 	$(NPM) install
@@ -34,6 +35,9 @@ lint:
 
 hunt-coverage:
 	$(NPM) run hunt:coverage
+
+undef-words-cleanup-prompt:
+	@cat scripts/undef-words-cleanup-prompt.txt
 
 types:
 	$(NPM) run cf-typegen

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { reportUndefinedWord } from "../lib/reportUndefinedWord.ts";
 import {
   fetchWordDefinition,
   type WordDefinition,
@@ -29,11 +30,12 @@ export function useWordDefinition(word: string | null): WordDefinitionState {
     void fetchWordDefinition(word, controller.signal)
       .then((definition) => {
         if (controller.signal.aborted) return;
-        setState(
-          definition
-            ? { status: "ready", definition }
-            : { status: "missing", definition: null },
-        );
+        if (definition) {
+          setState({ status: "ready", definition });
+          return;
+        }
+        setState({ status: "missing", definition: null });
+        reportUndefinedWord(word);
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;

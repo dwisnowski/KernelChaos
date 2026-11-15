@@ -17,6 +17,6 @@ TV results already show how many dictionary words were on the board by length (`
 ## Consequences
 
 - WebSocket results payloads grow with the full board word list (dense 6×6 boards can be large); acceptable for a one-shot results broadcast.
-- Definition lookup depends on a third-party HTTP API and may be missing or fail offline; the path highlight still works without it.
+- Definition lookup depends on a third-party HTTP API and may be missing or fail offline; the path highlight still works without it. Missing hits are queued for dictionary cleanup (ADR 0025).
 - Extends ADR 0008; phone results unchanged.
 - Code anchors: `worker/boggle/solver.ts`, `worker/room.ts`, `src/lib/findWordPath.ts`, `src/lib/wordDefinition.ts`, `src/hooks/useWordDefinition.ts`, `src/components/BoggleBoard.tsx`, `src/components/WordLengthPossibleBars.tsx`, `src/pages/BoggleSpectator.tsx`.

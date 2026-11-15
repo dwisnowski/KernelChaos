@@ -30,7 +30,8 @@ URL routes and in-room phases (lobby, playing, review, …) are catalogued in [`
 | `worker/mmmms/` | Orb colors, deal/resolve attack, protocol |
 | `docs/screens.md` | Screen / route / phase reference for chat |
 | `docs/adr/` | Architecture Decision Records |
-| `Makefile` | Canonical local commands |
+| `Makefile` | Canonical local commands (`make undef-words-cleanup-prompt` for ADR 0025) |
+| `.cursor/skills/` | Agent skills (e.g. ship-plan-adr, cleanup-undefined-boggle-words) |
 
 ## Non-negotiables
 
