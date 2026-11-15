@@ -7,6 +7,10 @@ interface Props {
   board: string[];
   size: number;
   disabled?: boolean;
+  /** External highlight (TV results explorer); skips drag dimming when set. */
+  highlightPath?: number[] | null;
+  /** Label under the board when using highlightPath (defaults to path letters). */
+  highlightLabel?: string | null;
   /** Latest server verdict for the submitted path; `seq` must change each time. */
   wordOutcome?: WordOutcome | null;
   onSubmitPath: (path: number[]) => void;
@@ -151,12 +155,16 @@ export function BoggleBoard({
   board,
   size,
   disabled,
+  highlightPath = null,
+  highlightLabel = null,
   wordOutcome = null,
   onSubmitPath,
   onInvalid,
 }: Props) {
   const [path, setPath] = useState<number[]>([]);
   const [flash, setFlash] = useState<"ok" | "bad" | null>(null);
+  const reviewMode = highlightPath != null;
+  const displayPath = reviewMode ? highlightPath : path;
   const pathRef = useRef<number[]>([]);
   const dragging = useRef(false);
   const awaitingResult = useRef(false);
@@ -281,21 +289,28 @@ export function BoggleBoard({
     [clearFlashTimer, disabled, flash, refreshCenters, setPathBoth],
   );
 
+  const preview = reviewMode
+    ? highlightLabel ||
+      (displayPath.length ? pathToWord(board, displayPath) : "Pick a word to see it on the board")
+    : path.length
+      ? pathToWord(board, path)
+      : "Drag letters to make a word";
+
   return (
-    <div className="board-wrap">
+    <div className={`board-wrap${reviewMode ? " is-review" : ""}`}>
       <div
         ref={boardRef}
-        className={`boggle-board size-${size}${disabled ? " is-disabled" : ""}${
-          flash ? ` is-flash-${flash}` : ""
-        }`}
+        className={`boggle-board size-${size}${
+          disabled && !reviewMode ? " is-disabled" : ""
+        }${reviewMode ? " is-review" : ""}${flash ? ` is-flash-${flash}` : ""}`}
         style={{ ["--n" as string]: size }}
         onPointerDown={(e) => {
-          if (disabled || flash || e.button !== 0) return;
+          if (disabled || reviewMode || flash || e.button !== 0) return;
           e.preventDefault();
           startAt(e.clientX, e.clientY, e.pointerId, e.target);
         }}
         onPointerMove={(e) => {
-          if (!dragging.current || disabled || flash) return;
+          if (!dragging.current || disabled || reviewMode || flash) return;
           if (pointerIdRef.current != null && e.pointerId !== pointerIdRef.current) return;
           e.preventDefault();
           extendAt(e.clientX, e.clientY);
@@ -319,9 +334,9 @@ export function BoggleBoard({
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          {path.length > 1
-            ? path.slice(1).map((idx, i) => {
-                const prev = path[i]!;
+          {displayPath.length > 1
+            ? displayPath.slice(1).map((idx, i) => {
+                const prev = displayPath[i]!;
                 const x1 = (prev % size) + 0.5;
                 const y1 = Math.floor(prev / size) + 0.5;
                 const x2 = (idx % size) + 0.5;
@@ -338,7 +353,7 @@ export function BoggleBoard({
                 );
               })
             : null}
-          {path.map((idx, order) => {
+          {displayPath.map((idx, order) => {
             const cx = (idx % size) + 0.5;
             const cy = Math.floor(idx / size) + 0.5;
             return (
@@ -346,8 +361,10 @@ export function BoggleBoard({
                 key={`node-${idx}-${order}`}
                 cx={cx}
                 cy={cy}
-                r={order === path.length - 1 ? 0.18 : 0.12}
-                className={`path-connector-node${order === path.length - 1 ? " is-tip" : ""}`}
+                r={order === displayPath.length - 1 ? 0.18 : 0.12}
+                className={`path-connector-node${
+                  order === displayPath.length - 1 ? " is-tip" : ""
+                }`}
               />
             );
           })}
@@ -356,10 +373,10 @@ export function BoggleBoard({
           <div
             key={i}
             data-cell={i}
-            className={`board-cell${path.includes(i) ? " is-selected" : ""}${
-              path[path.length - 1] === i ? " is-tip" : ""
-            }${path.includes(i) && flash === "ok" ? " is-flash-ok" : ""}${
-              path.includes(i) && flash === "bad" ? " is-flash-bad" : ""
+            className={`board-cell${displayPath.includes(i) ? " is-selected" : ""}${
+              displayPath[displayPath.length - 1] === i ? " is-tip" : ""
+            }${displayPath.includes(i) && flash === "ok" ? " is-flash-ok" : ""}${
+              displayPath.includes(i) && flash === "bad" ? " is-flash-bad" : ""
             }`}
           >
             <span>{letter}</span>
@@ -367,7 +384,7 @@ export function BoggleBoard({
         ))}
       </div>
       <p className="path-preview" aria-live="polite">
-        {path.length ? pathToWord(board, path) : "Drag letters to make a word"}
+        {preview}
       </p>
     </div>
   );

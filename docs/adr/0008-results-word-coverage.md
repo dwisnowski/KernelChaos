@@ -12,7 +12,7 @@ ADR 0004 publishes a capped `missedWords` list and per-player length donuts of w
 
 - At results finalize, the same board solve that builds missed words also publishes **`possibleWordCount`** (all unique dictionary words on the board, length ≥ 3) and **`possibleByLength`** (counts for buckets 3, 4, 5, 6, 7, 8+).
 - Phone results replace the per-player length pie with **horizontal found-vs-possible bars** per length bucket, and show **`found / possible`** next to each player’s score.
-- TV results keep per-player length pies and the missed-word cloud, and add a board-wide **vertical bar chart of possible words by length**, plus **`n / possible`** on the scoreboard.
+- TV results keep per-player length pies and add a board-wide **vertical bar chart of possible words by length**, plus **`n / possible`** on the scoreboard. (TV board explorer + full `possibleWords` list: [0023](./0023-tv-results-board-word-explorer.md).)
 
 ## Consequences
 

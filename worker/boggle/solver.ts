@@ -107,22 +107,24 @@ export const MISSED_WORDS_CAP = 120;
 
 export interface BoardWordCoverage {
   missedWords: string[];
+  possibleWords: string[];
   possibleWordCount: number;
   possibleByLength: LengthCount[];
 }
 
-/** One solve pass: capped misses + full board coverage totals. */
+/** One solve pass: capped misses + full board word list + coverage totals. */
 export function computeBoardCoverage(
   board: string[],
   size: BoardSize,
   foundByPlayers: Iterable<string>,
 ): BoardWordCoverage {
   const all = findAllWords(board, size);
+  all.sort((a, b) => b.length - a.length || a.localeCompare(b));
   const found = new Set(foundByPlayers);
   const missed = all.filter((w) => !found.has(w));
-  missed.sort((a, b) => b.length - a.length || a.localeCompare(b));
   return {
     missedWords: missed.slice(0, MISSED_WORDS_CAP),
+    possibleWords: all,
     possibleWordCount: all.length,
     possibleByLength: countByLength(all),
   };

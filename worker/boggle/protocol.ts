@@ -52,6 +52,8 @@ export interface RoomState {
   winners: string[] | null;
   /** Board dictionary words nobody found; results only */
   missedWords: string[] | null;
+  /** All unique board dictionary words (length ≥ 3), longest-first; results only */
+  possibleWords: string[] | null;
   /** Full unique board dictionary words (length ≥ 3); results only */
   possibleWordCount: number | null;
   /** Board dictionary words by length bucket; results only */

@@ -37,7 +37,7 @@ Pattern shorthand: `/{game}`, `/{game}/join?code=`, `/{game}/room/:code`, `/{gam
 | `lobby` | Lobby (size, timer, start, QR) | Lobby / waiting |
 | `countdown` | Get ready | Same |
 | `playing` | Drag board | Board + live counts |
-| `results` | Scores / bonuses | Same (with scores) |
+| `results` | Scores / bonuses | Board + scores; tap length bars for word list / path highlight |
 
 ### Scattergories (+ Picture Hunt)
 

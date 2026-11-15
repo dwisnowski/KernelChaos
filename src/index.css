@@ -862,6 +862,11 @@ input {
   pointer-events: none;
 }
 
+.boggle-board.is-review {
+  opacity: 1;
+  pointer-events: none;
+}
+
 .path-preview {
   margin: 0;
   min-height: 1.4em;
@@ -1239,6 +1244,36 @@ input {
   min-width: 0;
 }
 
+.word-length-possible-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.2rem 0.15rem;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(5.5rem, 1fr) auto;
+  justify-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.word-length-possible-col.is-interactive .word-length-possible-btn:hover,
+.word-length-possible-col.is-interactive .word-length-possible-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+.word-length-possible-col.is-selected .word-length-possible-btn {
+  background: rgba(240, 162, 2, 0.14);
+  box-shadow: 0 0 0 1px rgba(240, 162, 2, 0.45);
+}
+
 .word-length-possible-value {
   font-family: var(--font-display);
   font-size: 0.95rem;
@@ -1509,6 +1544,22 @@ input {
   align-items: start;
 }
 
+.spectator-results-board {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  padding: 0.85rem;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  position: sticky;
+  top: 0.75rem;
+}
+
+.spectator-results-board .boggle-board {
+  width: min(100%, 520px);
+}
+
 .spectator-results-main {
   display: grid;
   gap: 0.85rem;
@@ -1520,18 +1571,119 @@ input {
   max-width: 28rem;
 }
 
-.spectator-missed {
-  padding: 0.85rem;
+.spectator-word-hint {
+  max-width: 28rem;
+}
+
+.spectator-word-explorer {
+  width: min(640px, 100%);
+  text-align: left;
+  padding: 0.85rem 1rem;
   border-radius: var(--radius);
   background: var(--card);
   border: 1px solid var(--stroke);
-  min-height: min(52dvh, 480px);
+  display: grid;
+  gap: 0.65rem;
 }
 
-.spectator-missed-title {
+.spectator-word-explorer-head h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.2rem, 2.4vw, 1.7rem);
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.75rem;
+}
+
+.spectator-word-explorer-head h2 em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 0.78em;
+  font-weight: 500;
+}
+
+.spectator-word-explorer-head p {
+  margin: 0.35rem 0 0;
+}
+
+.spectator-word-legend {
+  display: inline-flex;
+  gap: 0.65rem;
+  margin-left: 0.35rem;
+}
+
+.spectator-word-legend .is-found,
+.spectator-word-legend .is-missed {
+  font-size: 0.85em;
+}
+
+.spectator-word-legend .is-found::before,
+.spectator-word-legend .is-missed::before {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 2px;
+  margin-right: 0.3em;
+  vertical-align: 0.05em;
+}
+
+.spectator-word-legend .is-found::before {
+  background: #3ecf8e;
+}
+
+.spectator-word-legend .is-missed::before {
+  background: rgba(240, 162, 2, 0.85);
+}
+
+.spectator-word-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-height: min(36dvh, 320px);
+  overflow: auto;
+}
+
+.spectator-word-chip {
+  appearance: none;
+  border: 1px solid var(--stroke);
+  background: rgba(0, 0, 0, 0.22);
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: clamp(0.9rem, 1.6vw, 1.05rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.spectator-word-chip.is-found {
+  border-color: rgba(62, 207, 142, 0.45);
+  color: #b7f5d3;
+}
+
+.spectator-word-chip.is-missed {
+  border-color: rgba(240, 162, 2, 0.4);
+  color: #ffe3a1;
+}
+
+.spectator-word-chip:hover,
+.spectator-word-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.spectator-word-chip.is-active {
+  background: linear-gradient(160deg, var(--accent), #ffd56a);
+  color: #1c160c;
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(240, 162, 2, 0.55);
 }
 
 .missed-word-cloud {
@@ -1665,8 +1817,9 @@ input {
   }
 
   .spectator-results {
-    grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+    grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
   }
+
 
   .lobby {
     grid-template-columns: 1.1fr 0.9fr;

@@ -245,6 +245,7 @@ export class GameRoom extends DurableObject<Env> {
   private lastAccept: { playerId: string; word: string } | null = null;
   private scoresFinalized = false;
   private missedWords: string[] | null = null;
+  private possibleWords: string[] | null = null;
   private possibleWordCount: number | null = null;
   private possibleByLength: LengthCount[] | null = null;
 
@@ -296,6 +297,7 @@ export class GameRoom extends DurableObject<Env> {
       lastAccept?: { playerId: string; word: string } | null;
       scoresFinalized?: boolean;
       missedWords?: string[] | null;
+      possibleWords?: string[] | null;
       possibleWordCount?: number | null;
       possibleByLength?: LengthCount[] | null;
       playMode?: ScatterPlayMode;
@@ -348,6 +350,7 @@ export class GameRoom extends DurableObject<Env> {
       this.lastAccept = stored.lastAccept ?? null;
       this.scoresFinalized = stored.scoresFinalized ?? this.phase === "results";
       this.missedWords = stored.missedWords ?? null;
+      this.possibleWords = stored.possibleWords ?? null;
       this.possibleWordCount = stored.possibleWordCount ?? null;
       this.possibleByLength = stored.possibleByLength ?? null;
       this.playMode = isScatterPlayMode(stored.playMode) ? stored.playMode : DEFAULT_SCATTER_PLAY_MODE;
@@ -413,6 +416,7 @@ export class GameRoom extends DurableObject<Env> {
       lastAccept: this.lastAccept,
       scoresFinalized: this.scoresFinalized,
       missedWords: this.missedWords,
+      possibleWords: this.possibleWords,
       possibleWordCount: this.possibleWordCount,
       possibleByLength: this.possibleByLength,
       playMode: this.playMode,
@@ -565,6 +569,7 @@ export class GameRoom extends DurableObject<Env> {
     this.lastAccept = null;
     this.scoresFinalized = false;
     this.missedWords = null;
+    this.possibleWords = null;
     this.possibleWordCount = null;
     this.possibleByLength = null;
     this.playMode = DEFAULT_SCATTER_PLAY_MODE;
@@ -1099,6 +1104,7 @@ export class GameRoom extends DurableObject<Env> {
     if (this.gameType === "mmmms") {
       this.board = null;
       this.missedWords = null;
+      this.possibleWords = null;
       this.possibleWordCount = null;
       this.possibleByLength = null;
       this.letter = null;
@@ -1128,6 +1134,7 @@ export class GameRoom extends DurableObject<Env> {
     if (this.gameType === "scattergories") {
       this.board = null;
       this.missedWords = null;
+      this.possibleWords = null;
       this.possibleWordCount = null;
       this.possibleByLength = null;
       this.letter = null;
@@ -1155,6 +1162,7 @@ export class GameRoom extends DurableObject<Env> {
     this.globalAcceptCount = 0;
     this.lastAccept = null;
     this.missedWords = null;
+    this.possibleWords = null;
     this.possibleWordCount = null;
     this.possibleByLength = null;
     this.letter = null;
@@ -1250,6 +1258,7 @@ export class GameRoom extends DurableObject<Env> {
     this.lastAccept = null;
     this.scoresFinalized = false;
     this.missedWords = null;
+    this.possibleWords = null;
     this.possibleWordCount = null;
     this.possibleByLength = null;
     this.letter = null;
@@ -1738,10 +1747,12 @@ export class GameRoom extends DurableObject<Env> {
       const found = [...this.players.values()].flatMap((p) => [...p.words.keys()]);
       const coverage = computeBoardCoverage(this.board, this.boardSize, found);
       this.missedWords = coverage.missedWords;
+      this.possibleWords = coverage.possibleWords;
       this.possibleWordCount = coverage.possibleWordCount;
       this.possibleByLength = coverage.possibleByLength;
     } else {
       this.missedWords = [];
+      this.possibleWords = [];
       this.possibleWordCount = 0;
       this.possibleByLength = [];
     }
@@ -1982,21 +1993,27 @@ export class GameRoom extends DurableObject<Env> {
     let results: BogglePlayerResult[] | null = null;
     let winners: string[] | null = null;
     let missedWords: string[] | null = null;
+    let possibleWords: string[] | null = null;
     let possibleWordCount: number | null = null;
     let possibleByLength: LengthCount[] | null = null;
 
     if (this.phase === "results") {
       if (
-        (this.missedWords == null || this.possibleWordCount == null || this.possibleByLength == null) &&
+        (this.missedWords == null ||
+          this.possibleWords == null ||
+          this.possibleWordCount == null ||
+          this.possibleByLength == null) &&
         this.board
       ) {
         const found = [...this.players.values()].flatMap((p) => [...p.words.keys()]);
         const coverage = computeBoardCoverage(this.board, this.boardSize, found);
         this.missedWords = coverage.missedWords;
+        this.possibleWords = coverage.possibleWords;
         this.possibleWordCount = coverage.possibleWordCount;
         this.possibleByLength = coverage.possibleByLength;
       }
       missedWords = this.missedWords ?? [];
+      possibleWords = this.possibleWords ?? [];
       possibleWordCount = this.possibleWordCount ?? 0;
       possibleByLength = this.possibleByLength ?? [];
       results = [...this.players.values()].map((p) => ({
@@ -2034,6 +2051,7 @@ export class GameRoom extends DurableObject<Env> {
       results,
       winners,
       missedWords,
+      possibleWords,
       possibleWordCount,
       possibleByLength,
       round: this.round,

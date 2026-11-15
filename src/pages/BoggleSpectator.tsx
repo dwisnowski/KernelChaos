@@ -5,10 +5,12 @@ import { playBonusAwards, unlockAudio } from "../audio/sfx.ts";
 import { BoggleBoard } from "../components/BoggleBoard.tsx";
 import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
-import { MissedWordCloud } from "../components/MissedWordCloud.tsx";
 import { WordLengthPie } from "../components/WordLengthPie.tsx";
 import { WordLengthPossibleBars } from "../components/WordLengthPossibleBars.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
+import { findWordPath } from "../lib/findWordPath.ts";
+import { bucketKeyForLength, bucketLabel } from "../lib/wordLengthBuckets.ts";
+import type { LengthBucketKey } from "../types.ts";
 
 export function BoggleSpectator() {
   const { code = "" } = useParams();
@@ -16,6 +18,8 @@ export function BoggleSpectator() {
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [joined, setJoined] = useState(false);
+  const [lengthKey, setLengthKey] = useState<LengthBucketKey | null>(null);
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
   const { state, connected, badgeFeed, spectate } = useRoom({
     code: roomCode,
@@ -38,6 +42,11 @@ export function BoggleSpectator() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    setLengthKey(null);
+    setSelectedWord(null);
+  }, [state?.round, state?.phase]);
+
   const joinUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     return `${origin}/boggle/join?code=${roomCode}`;
@@ -56,6 +65,30 @@ export function BoggleSpectator() {
       (a, b) => b.wordCount - a.wordCount || a.name.localeCompare(b.name),
     );
   }, [state]);
+
+  const foundWords = useMemo(() => {
+    if (!state?.results) return new Set<string>();
+    const set = new Set<string>();
+    for (const r of state.results) {
+      for (const w of r.words) set.add(w.word);
+    }
+    return set;
+  }, [state?.results]);
+
+  const wordsForLength = useMemo(() => {
+    if (!lengthKey || !state?.possibleWords) return [];
+    return state.possibleWords.filter((w) => bucketKeyForLength(w.length) === lengthKey);
+  }, [lengthKey, state?.possibleWords]);
+
+  const highlightPath = useMemo(() => {
+    if (!selectedWord || !state?.board) return [];
+    return findWordPath(state.board, state.boardSize, selectedWord) ?? [];
+  }, [selectedWord, state?.board, state?.boardSize]);
+
+  const selectLength = (key: LengthBucketKey) => {
+    setLengthKey(key);
+    setSelectedWord(null);
+  };
 
   return (
     <Layout
@@ -151,13 +184,19 @@ export function BoggleSpectator() {
           </div>
         ) : null}
 
-        {state?.phase === "results" && state.results ? (
+        {state?.phase === "results" && state.results && state.board ? (
           <div className="spectator-results">
-            <aside className="spectator-side spectator-missed">
-              <p className="spectator-tag">Missed words</p>
-              <h2 className="spectator-missed-title">Still on the board</h2>
-              <MissedWordCloud words={state.missedWords ?? []} />
-            </aside>
+            <div className="spectator-results-board">
+              <p className="spectator-tag">Board</p>
+              <BoggleBoard
+                board={state.board}
+                size={state.boardSize}
+                disabled
+                highlightPath={highlightPath}
+                highlightLabel={selectedWord}
+                onSubmitPath={() => undefined}
+              />
+            </div>
 
             <div className="spectator-results-main">
               <h1 className="results-title">Round {state.round} results</h1>
@@ -190,11 +229,63 @@ export function BoggleSpectator() {
                   </li>
                 ))}
               </ul>
-              <p className="spectator-tag">On the board by length</p>
+
+              <p className="spectator-tag">On the board by length · tap a bar</p>
               <WordLengthPossibleBars
                 possibleByLength={state.possibleByLength ?? []}
                 label="Possible words by length"
+                selectedKey={lengthKey}
+                onSelectKey={selectLength}
               />
+
+              {lengthKey ? (
+                <div className="spectator-word-explorer" aria-live="polite">
+                  <header className="spectator-word-explorer-head">
+                    <h2>
+                      {bucketLabel(lengthKey)}-letter words
+                      <em>
+                        {wordsForLength.length} on the board
+                      </em>
+                    </h2>
+                    <p className="muted">
+                      Tap a word to trace it.{" "}
+                      <span className="spectator-word-legend">
+                        <span className="is-found">Found</span>
+                        <span className="is-missed">Missed</span>
+                      </span>
+                    </p>
+                  </header>
+                  {wordsForLength.length === 0 ? (
+                    <p className="muted">No words in this bucket.</p>
+                  ) : (
+                    <ul className="spectator-word-list" aria-label={`${bucketLabel(lengthKey)} letter words`}>
+                      {wordsForLength.map((word) => {
+                        const found = foundWords.has(word);
+                        const active = selectedWord === word;
+                        return (
+                          <li key={word}>
+                            <button
+                              type="button"
+                              className={`spectator-word-chip${found ? " is-found" : " is-missed"}${
+                                active ? " is-active" : ""
+                              }`}
+                              aria-pressed={active}
+                              onClick={() => setSelectedWord(word)}
+                            >
+                              {word}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <p className="muted spectator-word-hint">
+                  Tap a length bar to browse every possible word — then tap one to see where it hid.
+                </p>
+              )}
+
               <p className="spectator-tag">Words by length</p>
               <div className="spectator-pies" aria-label="Word length breakdowns">
                 {state.results.map((r) => (
