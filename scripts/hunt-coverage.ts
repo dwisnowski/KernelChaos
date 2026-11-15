@@ -4,11 +4,10 @@
  * Authoring loop:
  * 1. Write worker/scattergories/hunt/data/<id>.json (objects + synonyms) first.
  * 2. Run this script until floors pass.
- * 3. Generate dense family-friendly B&W line art into public/hunt/<id>.jpg.
- * 4. Vision-check; replace missing keyed items; re-run coverage.
- * 5. make lint && make build; ship.
+ * 3. Run npm run hunt:compose to pack boxes + write sticker-board JPGs (ADR 0026).
+ * 4. Re-run coverage; make lint && make build; ship.
  *
- * Floors: ≥250 objects; ≥10 distinct objectIds findable per die letter.
+ * Floors: ≥120 objects; ≥10 distinct objectIds findable per die letter.
  *
  * Run: npm run hunt:coverage
  */
@@ -39,7 +38,7 @@ const LETTER_DIE = [
   "W",
 ] as const;
 
-const MIN_OBJECTS = 250;
+const MIN_OBJECTS = 120;
 const MIN_PER_LETTER = 10;
 
 function normalizeAnswer(raw: string): string {

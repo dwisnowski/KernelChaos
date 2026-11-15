@@ -12,6 +12,7 @@
     "cf-typegen": "wrangler types",
     "hunt:coverage": "node --experimental-strip-types scripts/hunt-coverage.ts",
     "hunt:generate-catalogs": "node scripts/generate-hunt-catalogs.mjs",
+    "hunt:compose": "node scripts/compose-hunt-scenes.mjs",
     "hunt:seed-boxes": "node scripts/seed-hunt-boxes.mjs",
     "boggle:remove-words": "node --experimental-strip-types scripts/remove-boggle-words.ts"
   },

@@ -15,7 +15,7 @@ Scene catalogs had names only. Accurate freehand drawing is unreliable across de
 - **Immediate find validation** via `submitHuntFind` → private `huntFindResult` (`ok`, `status`, `remaining`, `matchedCount`, `letterTotal`). Success flash (green) + `playWordFound`; failure flash (red) + `playReject`. Duplicate self-claims and unknown/wrong-letter words are failures.
 - **Personal remaining** on the left during play: distinct letter-findable objectIds in the scene minus objectIds this seat has matched. Public snapshot may include `huntLetterTotal` (count only).
 - **Bounding boxes** on hunt objects as optional normalized `{ x, y, w, h }` (0–1). Results include `findLocations` for each seat’s matched finds so the client can overlay boxes without shipping the full catalog. Missing box → “No location marked”.
-- Box authoring is vision-assisted / approximate; coverage script reports box % without failing floors yet.
+- Box authoring is **layout-first** ([ADR 0026](./0026-hunt-layout-first-boxes.md)): compose script assigns boxes then draws stickers at those rects. Hash-grid seeds are retired.
 
 ## Consequences
 

@@ -1,4 +1,4 @@
-.PHONY: install run build deploy lint types clean help hunt-coverage undef-words-cleanup-prompt
+.PHONY: install run build deploy lint types clean help hunt-coverage hunt-compose undef-words-cleanup-prompt
 
 NPM ?= npm
 DEV_PORT ?= 5173
@@ -13,7 +13,8 @@ help:
 	@echo "  make build                         Production build"
 	@echo "  make deploy                        Build and deploy to kernelchaos.wildideazone.com"
 	@echo "  make lint                          Run oxlint"
-	@echo "  make hunt-coverage                 Check Picture Hunt catalog floors (ADR 0020)"
+	@echo "  make hunt-coverage                 Check Picture Hunt catalog floors (ADR 0020/0026)"
+	@echo "  make hunt-compose                  Layout-pack boxes + compose hunt JPGs (ADR 0026)"
 	@echo "  make undef-words-cleanup-prompt    Print Cursor prompt to clean undefined Boggle words (ADR 0025)"
 	@echo "  make types                         Regenerate worker-configuration.d.ts"
 	@echo "  make clean                         Remove node_modules, dist, and .wrangler"
@@ -35,6 +36,9 @@ lint:
 
 hunt-coverage:
 	$(NPM) run hunt:coverage
+
+hunt-compose:
+	$(NPM) run hunt:compose
 
 undef-words-cleanup-prompt:
 	@cat scripts/undef-words-cleanup-prompt.txt

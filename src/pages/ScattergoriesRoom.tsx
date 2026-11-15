@@ -345,33 +345,23 @@ export function ScattergoriesRoom() {
             </div>
           </header>
           <div className="hunt-play-layout">
-            <aside className="hunt-remaining-rail" aria-live="polite">
-              <p className="lobby-label">Remaining</p>
-              <p className="hunt-remaining-value">
-                {huntProgress?.remaining ??
-                  Math.max(
-                    0,
-                    (state.huntLetterTotal ?? 0) -
-                      (huntProgress?.matchedCount ?? huntFinds.length),
-                  )}
-              </p>
-              <p className="muted hunt-remaining-meta">
-                Found {huntProgress?.matchedCount ?? huntFinds.length}
-                {" / "}
-                {huntProgress?.letterTotal ?? state.huntLetterTotal ?? "—"}
-              </p>
-            </aside>
-            <div className="hunt-play-main">
-              <figure className="hunt-scene">
-                <img
-                  src={state.sceneImageUrl}
-                  alt={state.sceneTitle ?? "Hidden object scene"}
-                  className="hunt-scene-img"
-                />
-                {state.sceneTitle ? (
-                  <figcaption className="muted">{state.sceneTitle}</figcaption>
-                ) : null}
-              </figure>
+            <div className="hunt-play-side">
+              <aside className="hunt-remaining-rail" aria-live="polite">
+                <p className="lobby-label">Remaining</p>
+                <p className="hunt-remaining-value">
+                  {huntProgress?.remaining ??
+                    Math.max(
+                      0,
+                      (state.huntLetterTotal ?? 0) -
+                        (huntProgress?.matchedCount ?? huntFinds.length),
+                    )}
+                </p>
+                <p className="muted hunt-remaining-meta">
+                  Found {huntProgress?.matchedCount ?? huntFinds.length}
+                  {" / "}
+                  {huntProgress?.letterTotal ?? state.huntLetterTotal ?? "—"}
+                </p>
+              </aside>
               <form
                 className="scatter-form hunt-find-form"
                 onSubmit={(e) => {
@@ -384,7 +374,7 @@ export function ScattergoriesRoom() {
               >
                 <label className="scatter-field">
                   <span>
-                    Find objects starting with <em>{state.letter}</em>
+                    Find <em>{state.letter}</em>…
                   </span>
                   <input
                     value={huntDraft}
@@ -396,9 +386,21 @@ export function ScattergoriesRoom() {
                   />
                 </label>
                 <button type="submit" className="btn primary" disabled={!huntDraft.trim()}>
-                  Add find
+                  Add
                 </button>
               </form>
+            </div>
+            <div className="hunt-play-main">
+              <figure className="hunt-scene">
+                <img
+                  src={state.sceneImageUrl}
+                  alt={state.sceneTitle ?? "Hidden object scene"}
+                  className="hunt-scene-img"
+                />
+                {state.sceneTitle ? (
+                  <figcaption className="muted">{state.sceneTitle}</figcaption>
+                ) : null}
+              </figure>
               {huntFinds.length > 0 ? (
                 <ul className="hunt-find-list" aria-label="Your finds">
                   {huntFinds.map((word, i) => (
@@ -496,81 +498,134 @@ export function ScattergoriesRoom() {
       ) : null}
 
       {state?.phase === "results" && state.results ? (
-        <section className="results scatter-results">
-          <h2>Round results</h2>
-          {state.winners && state.winners.length > 0 ? (
-            <p className="winner-banner rise">
-              {state.winners.length === 1
-                ? `${state.results.find((r) => r.id === state.winners![0])?.name ?? "Winner"} wins!`
-                : "It's a tie!"}
-            </p>
-          ) : null}
-          <ol className="scoreboard">
-            {state.results.map((r) => (
-              <li key={r.id} className={state.winners?.includes(r.id) ? "is-winner" : ""}>
-                <span>{r.name}</span>
-                <strong>{r.score}</strong>
-              </li>
-            ))}
-          </ol>
-          {isHunt && me ? (
-            <HuntLocationReview
-              sceneImageUrl={state.sceneImageUrl}
-              sceneTitle={state.sceneTitle}
-              locations={
-                state.results.find((r) => r.id === me.id)?.findLocations ?? []
-              }
-              index={reviewLocIndex}
-              onSelect={setReviewLocIndex}
-            />
-          ) : null}
-          {isHunt
-            ? state.results.map((r) => (
-                <div key={`finds-${r.id}`} className="hunt-result-block">
-                  <h3>
-                    {r.name} · {r.score} pt{r.score === 1 ? "" : "s"}
-                  </h3>
-                  <ul className="hunt-find-list is-results">
-                    {r.answers
-                      .map((word, i) => ({ word, pts: r.categoryPoints[i] ?? 0 }))
-                      .filter((x) => x.word.trim())
-                      .map((x, i) => (
-                        <li key={`${r.id}-${i}`} className={x.pts > 0 ? "is-scored" : "is-miss"}>
-                          <span>{x.word}</span>
-                          <strong>{x.pts > 0 ? "+1" : "0"}</strong>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              ))
-            : null}
-          {me?.isHost ? (
-            <div className="results-actions">
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => {
-                  unlockAudio();
-                  start();
-                }}
-              >
-                Play again
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  unlockAudio();
-                  playAgain();
-                }}
-              >
-                Back to lobby
-              </button>
+        <section
+          className={`results scatter-results${isHunt ? " hunt-results" : ""}`}
+        >
+          {isHunt ? (
+            <div className="hunt-results-layout">
+              <div className="hunt-results-side">
+                <h2>Round results</h2>
+                {state.winners && state.winners.length > 0 ? (
+                  <p className="winner-banner rise">
+                    {state.winners.length === 1
+                      ? `${state.results.find((r) => r.id === state.winners![0])?.name ?? "Winner"} wins!`
+                      : "It's a tie!"}
+                  </p>
+                ) : null}
+                <ol className="scoreboard">
+                  {state.results.map((r) => (
+                    <li
+                      key={r.id}
+                      className={state.winners?.includes(r.id) ? "is-winner" : ""}
+                    >
+                      <span>{r.name}</span>
+                      <strong>{r.score}</strong>
+                    </li>
+                  ))}
+                </ol>
+                {state.results.map((r) => (
+                  <HuntResultFindList
+                    key={`finds-${r.id}`}
+                    name={r.name}
+                    score={r.score}
+                    answers={r.answers}
+                    categoryPoints={r.categoryPoints}
+                    locations={r.findLocations ?? []}
+                    reviewIndex={r.id === me?.id ? reviewLocIndex : -1}
+                    onSelectLocation={
+                      r.id === me?.id ? setReviewLocIndex : undefined
+                    }
+                  />
+                ))}
+                {me?.isHost ? (
+                  <div className="results-actions">
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => {
+                        unlockAudio();
+                        start();
+                      }}
+                    >
+                      Play again
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        unlockAudio();
+                        playAgain();
+                      }}
+                    >
+                      Back to lobby
+                    </button>
+                  </div>
+                ) : (
+                  <p className="waiting">Waiting for the host…</p>
+                )}
+                <OpenTvButton roomCode={roomCode} game="scattergories" />
+              </div>
+              {me ? (
+                <HuntLocationScene
+                  sceneImageUrl={state.sceneImageUrl}
+                  sceneTitle={state.sceneTitle}
+                  locations={
+                    state.results.find((r) => r.id === me.id)?.findLocations ?? []
+                  }
+                  index={reviewLocIndex}
+                />
+              ) : null}
             </div>
           ) : (
-            <p className="waiting">Waiting for the host…</p>
+            <>
+              <h2>Round results</h2>
+              {state.winners && state.winners.length > 0 ? (
+                <p className="winner-banner rise">
+                  {state.winners.length === 1
+                    ? `${state.results.find((r) => r.id === state.winners![0])?.name ?? "Winner"} wins!`
+                    : "It's a tie!"}
+                </p>
+              ) : null}
+              <ol className="scoreboard">
+                {state.results.map((r) => (
+                  <li
+                    key={r.id}
+                    className={state.winners?.includes(r.id) ? "is-winner" : ""}
+                  >
+                    <span>{r.name}</span>
+                    <strong>{r.score}</strong>
+                  </li>
+                ))}
+              </ol>
+              {me?.isHost ? (
+                <div className="results-actions">
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => {
+                      unlockAudio();
+                      start();
+                    }}
+                  >
+                    Play again
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      unlockAudio();
+                      playAgain();
+                    }}
+                  >
+                    Back to lobby
+                  </button>
+                </div>
+              ) : (
+                <p className="waiting">Waiting for the host…</p>
+              )}
+              <OpenTvButton roomCode={roomCode} game="scattergories" />
+            </>
           )}
-          <OpenTvButton roomCode={roomCode} game="scattergories" />
         </section>
       ) : null}
     </Layout>
@@ -583,18 +638,90 @@ function formatClock(totalSeconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function HuntLocationReview({
+function HuntResultFindList({
+  name,
+  score,
+  answers,
+  categoryPoints,
+  locations,
+  reviewIndex,
+  onSelectLocation,
+}: {
+  name: string;
+  score: number;
+  answers: string[];
+  categoryPoints: number[];
+  locations: HuntFindLocation[];
+  reviewIndex: number;
+  onSelectLocation?: (i: number) => void;
+}) {
+  const items = answers
+    .map((word, i) => ({ word, pts: categoryPoints[i] ?? 0 }))
+    .filter((x) => x.word.trim())
+    .map((x) => {
+      const locIndex = locations.findIndex(
+        (loc) => loc.raw.trim().toLowerCase() === x.word.trim().toLowerCase(),
+      );
+      return { ...x, locIndex };
+    });
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="hunt-result-block">
+      <h3>
+        {name} · {score} pt{score === 1 ? "" : "s"}
+      </h3>
+      <ul className="hunt-find-list is-results" aria-label={`${name} finds`}>
+        {items.map((x, i) => {
+          const canReview = Boolean(onSelectLocation) && x.locIndex >= 0;
+          const isActive = canReview && x.locIndex === reviewIndex;
+          const className = [
+            x.pts > 0 ? "is-scored" : "is-miss",
+            canReview ? "is-reviewable" : "",
+            isActive ? "is-active" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+          if (canReview) {
+            return (
+              <li key={`${name}-${i}`} className={className}>
+                <button
+                  type="button"
+                  className="hunt-find-review-btn"
+                  onClick={() => onSelectLocation?.(x.locIndex)}
+                  aria-pressed={isActive}
+                >
+                  <span>{x.word}</span>
+                  <strong>{x.pts > 0 ? "+1" : "0"}</strong>
+                </button>
+              </li>
+            );
+          }
+
+          return (
+            <li key={`${name}-${i}`} className={className}>
+              <span>{x.word}</span>
+              <strong>{x.pts > 0 ? "+1" : "0"}</strong>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function HuntLocationScene({
   sceneImageUrl,
   sceneTitle,
   locations,
   index,
-  onSelect,
 }: {
   sceneImageUrl: string | null;
   sceneTitle: string | null;
   locations: HuntFindLocation[];
   index: number;
-  onSelect: (i: number) => void;
 }) {
   if (!sceneImageUrl || locations.length === 0) return null;
   const safeIndex = Math.min(Math.max(0, index), locations.length - 1);
@@ -602,47 +729,31 @@ function HuntLocationReview({
   const box = current.box;
 
   return (
-    <div className="hunt-location-review">
-      <h3>Review your finds</h3>
-      <div className="hunt-location-pills" role="list">
-        {locations.map((loc, i) => (
-          <button
-            key={`${loc.objectId}-${i}`}
-            type="button"
-            role="listitem"
-            className={`size-pill${i === safeIndex ? " is-active" : ""}`}
-            onClick={() => onSelect(i)}
-          >
-            {loc.raw}
-          </button>
-        ))}
-      </div>
-      <figure className="hunt-scene hunt-scene-results hunt-scene-review">
-        <div className="hunt-scene-frame">
-          <img
-            src={sceneImageUrl}
-            alt={sceneTitle ?? "Hidden object scene"}
-            className="hunt-scene-img"
-          />
-          {box ? (
-            <span
-              className="hunt-box-overlay"
-              style={{
-                left: `${box.x * 100}%`,
-                top: `${box.y * 100}%`,
-                width: `${box.w * 100}%`,
-                height: `${box.h * 100}%`,
-              }}
-              aria-hidden
-            />
-          ) : null}
-        </div>
+    <figure className="hunt-scene hunt-scene-results hunt-scene-review">
+      <div className="hunt-scene-frame">
+        <img
+          src={sceneImageUrl}
+          alt={sceneTitle ?? "Hidden object scene"}
+          className="hunt-scene-img"
+        />
         {box ? (
-          <figcaption className="muted">Location for “{current.raw}”</figcaption>
-        ) : (
-          <figcaption className="muted">No location marked for this object</figcaption>
-        )}
-      </figure>
-    </div>
+          <span
+            className="hunt-box-overlay"
+            style={{
+              left: `${box.x * 100}%`,
+              top: `${box.y * 100}%`,
+              width: `${box.w * 100}%`,
+              height: `${box.h * 100}%`,
+            }}
+            aria-hidden
+          />
+        ) : null}
+      </div>
+      {box ? (
+        <figcaption className="muted">Location for “{current.raw}”</figcaption>
+      ) : (
+        <figcaption className="muted">No location marked for this object</figcaption>
+      )}
+    </figure>
   );
 }
