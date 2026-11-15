@@ -148,6 +148,7 @@ export type ScatterClientMessage =
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
   | { type: "submitReviewVotes"; votes: Record<string, ReviewVote> }
+  | { type: "skipReviewVoter"; voterId: string }
   | { type: "finishReview" }
   | { type: "playAgain" };
 

@@ -212,6 +212,10 @@ export function useScattergoriesRoom({
     (votes: Record<string, "in" | "out">) => send({ type: "submitReviewVotes", votes }),
     [send],
   );
+  const skipReviewVoter = useCallback(
+    (voterId: string) => send({ type: "skipReviewVoter", voterId }),
+    [send],
+  );
   const finishReview = useCallback(() => send({ type: "finishReview" }), [send]);
 
   const me = state?.players.find((p) => p.id === playerId) ?? null;
@@ -239,6 +243,7 @@ export function useScattergoriesRoom({
     reviewNext,
     reviewPrev,
     submitReviewVotes,
+    skipReviewVoter,
     finishReview,
   };
 }

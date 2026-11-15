@@ -707,6 +707,10 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "scattergories") break;
         await this.handleSubmitReviewVotes(attachment?.playerId, msg.votes);
         break;
+      case "skipReviewVoter":
+        if (this.gameType !== "scattergories") break;
+        await this.handleSkipReviewVoter(attachment?.playerId, msg.voterId);
+        break;
       case "finishReview":
         if (this.gameType !== "scattergories") break;
         await this.handleFinishReview(attachment?.playerId);
@@ -1545,6 +1549,32 @@ export class GameRoom extends DurableObject<Env> {
 
     const map = this.reviewBallots[idx] ?? new Map();
     map.set(playerId, cleaned);
+    this.reviewBallots[idx] = map;
+
+    if (this.isReviewVotingComplete(idx)) {
+      this.applyReviewMajority(idx);
+    }
+
+    await this.persist();
+    this.broadcastState();
+  }
+
+  /** Host marks an AFK voter as submitted with an empty ballot (no in/out tallies). */
+  private async handleSkipReviewVoter(
+    hostId: string | undefined,
+    voterId: string,
+  ): Promise<void> {
+    if (this.playMode === "hunt") return;
+    if (!hostId || !this.isHost(hostId) || this.phase !== "review") return;
+    if (!voterId || !this.players.has(voterId)) return;
+    const idx = this.reviewIndex;
+    if (idx == null || idx < 0 || idx >= CATEGORIES_PER_LIST) return;
+    if (this.isReviewVotingComplete(idx)) return;
+
+    const map = this.reviewBallots[idx] ?? new Map();
+    if (map.has(voterId)) return;
+
+    map.set(voterId, {});
     this.reviewBallots[idx] = map;
 
     if (this.isReviewVotingComplete(idx)) {

@@ -21,6 +21,6 @@ Showing one answer, voting, then the next would slow review. Players need to see
 ## Consequences
 
 - Host is no longer the sole judge of validity; the table’s majority is authoritative.
-- Review cannot skip ahead until every seated player ballots the current category (disconnected players still block until they reconnect or leave the seated set).
+- Review cannot skip ahead until every seated player has a ballot entry for the current category (real submit or host Pass per [0022](./0022-host-skip-review-voter.md)); disconnected players still block until they reconnect, leave the seated set, or the host Passes them.
 - Ties favor counting the answer, matching a generous family-game bias.
-- Cross-links: extends [0009](./0009-scattergories-and-game-shell.md).
+- Cross-links: extends [0009](./0009-scattergories-and-game-shell.md); host Pass in [0022](./0022-host-skip-review-voter.md).

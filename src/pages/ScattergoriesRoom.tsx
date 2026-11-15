@@ -82,6 +82,7 @@ export function ScattergoriesRoom() {
     reviewNext,
     reviewPrev,
     submitReviewVotes,
+    skipReviewVoter,
     finishReview,
   } = useScattergoriesRoom({
     code: roomCode,
@@ -483,6 +484,10 @@ export function ScattergoriesRoom() {
             reviewNext();
           }}
           onSubmitVotes={onSubmitVotes}
+          onSkipVoter={(voterId) => {
+            unlockAudio();
+            skipReviewVoter(voterId);
+          }}
           onFinish={() => {
             unlockAudio();
             finishReview();

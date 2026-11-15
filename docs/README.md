@@ -30,3 +30,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0019 – Scattergories Picture Hunt](adr/0019-scattergories-picture-hunt.md) — Lobby Categories vs Hunt; curated scene synonym keys; skip review; shared letter die + 120/150/180 timers
 - [0020 – Picture Hunt scene authoring](adr/0020-hunt-scene-authoring.md) — Metadata-first JSON catalogs; ≥250 objects; ≥10 findable objectIds per die letter; coverage script + generate/verify loop
 - [0021 – Picture Hunt find feedback + boxes](adr/0021-hunt-find-feedback-and-boxes.md) — Green/red flash + SFX; personal remaining rail; normalized metadata boxes on results review
+- [0022 – Host skip review voter](adr/0022-host-skip-review-voter.md) — Host Pass on pending review voters; empty ballot unblocks majority without inventing In/Out

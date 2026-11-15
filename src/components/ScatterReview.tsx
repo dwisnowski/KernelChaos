@@ -20,6 +20,7 @@ interface Props {
   onPrev: () => void;
   onNext: () => void;
   onSubmitVotes: (votes: Record<string, ReviewVote>) => void;
+  onSkipVoter?: (voterId: string) => void;
   onFinish: () => void;
   /** Compact phone layout vs big TV. */
   variant?: "player" | "tv";
@@ -46,6 +47,7 @@ export function ScatterReview({
   onPrev,
   onNext,
   onSubmitVotes,
+  onSkipVoter,
   onFinish,
   variant = "player",
 }: Props) {
@@ -54,6 +56,8 @@ export function ScatterReview({
   const isPlayer = variant === "player" && me != null;
   const iSubmitted = me != null && reviewSubmittedBy.includes(me.id);
   const pendingNames = reviewPendingVoters.map((v) => v.name).join(", ");
+  const hostCanPass =
+    isHost && variant === "player" && !reviewVotingComplete && Boolean(onSkipVoter);
 
   // Parent remounts with key={reviewIndex} so toggles reset per category.
   const [votes, setVotes] = useState<Record<string, ReviewVote>>(() => defaultVotes(answers));
@@ -73,10 +77,30 @@ export function ScatterReview({
       </p>
       <h2 className="scatter-review-category rise">{category}</h2>
 
-      {!reviewVotingComplete && pendingNames ? (
-        <p className="scatter-review-waiting" aria-live="polite">
-          Waiting on: {pendingNames}
-        </p>
+      {!reviewVotingComplete && reviewPendingVoters.length > 0 ? (
+        hostCanPass ? (
+          <div className="scatter-review-waiting" aria-live="polite">
+            <span className="scatter-review-waiting-label">Waiting on:</span>
+            <ul className="scatter-pending-list">
+              {reviewPendingVoters.map((v) => (
+                <li key={v.id} className="scatter-pending-item">
+                  <span>{v.name}</span>
+                  <button
+                    type="button"
+                    className="btn scatter-pass-btn"
+                    onClick={() => onSkipVoter?.(v.id)}
+                  >
+                    Pass
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="scatter-review-waiting" aria-live="polite">
+            Waiting on: {pendingNames}
+          </p>
+        )
       ) : null}
       {reviewVotingComplete ? (
         <p className="scatter-review-waiting is-complete" aria-live="polite">
