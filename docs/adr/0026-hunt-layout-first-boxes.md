@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0027](./0027-hunt-hidden-object-art.md) for shipped scene art (sticker boards rejected; hidden-object illustrations restored).
 
 ## Context
 

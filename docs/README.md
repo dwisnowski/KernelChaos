@@ -35,4 +35,5 @@ Architecture decisions and project notes for KernelChaos.
 - [0023 – TV results board word explorer](adr/0023-tv-results-board-word-explorer.md) — Full `possibleWords`; TV keeps board; length bars open word list; click word to highlight path
 - [0024 – App color palette settings](adr/0024-app-color-palettes.md) — `/settings` with 5 presets + custom chrome tokens; localStorage; game pieces unchanged
 - [0025 – Undefined Boggle words queue](adr/0025-undefined-boggle-words-queue.md) — D1 Free Dictionary misses; TV notice; ungated Settings Admin list; cleanup skill + make prompt
-- [0026 – Layout-first Hunt scenes + boxes](adr/0026-hunt-layout-first-boxes.md) — Compose sticker boards from packed boxes; boxes ground truth; ≥120 objects; retire hash-grid seeds
+- [0026 – Layout-first Hunt scenes + boxes](adr/0026-hunt-layout-first-boxes.md) — Sticker-board experiment for ground-truth boxes (superseded for shipped art by [0027](adr/0027-hunt-hidden-object-art.md))
+- [0027 – Hunt hidden-object art](adr/0027-hunt-hidden-object-art.md) — Restore dense seek-and-find illustrations; boxes only when visually authored; no fake placeholders

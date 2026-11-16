@@ -14,7 +14,7 @@ help:
 	@echo "  make deploy                        Build and deploy to kernelchaos.wildideazone.com"
 	@echo "  make lint                          Run oxlint"
 	@echo "  make hunt-coverage                 Check Picture Hunt catalog floors (ADR 0020/0026)"
-	@echo "  make hunt-compose                  Layout-pack boxes + compose hunt JPGs (ADR 0026)"
+	@echo "  make hunt-compose                  (retired — ADR 0027 hidden-object art)"
 	@echo "  make undef-words-cleanup-prompt    Print Cursor prompt to clean undefined Boggle words (ADR 0025)"
 	@echo "  make types                         Regenerate worker-configuration.d.ts"
 	@echo "  make clean                         Remove node_modules, dist, and .wrangler"
