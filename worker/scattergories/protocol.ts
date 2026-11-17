@@ -2,8 +2,13 @@ export type GameType = "boggle" | "scattergories";
 
 export type PackTier = "family" | "kids" | "adult";
 
-/** Categories = classic lists; hunt = Picture Hunt synonym-key scenes. */
+/** Categories = classic lists; hunt = click-annotate scene + peer review (ADR 0028). */
 export type ScatterPlayMode = "categories" | "hunt";
+
+export interface HuntMark {
+  x: number;
+  y: number;
+}
 
 export type ScatterPhase =
   | "lobby"
@@ -67,6 +72,11 @@ export interface CategoryAnswerView {
   /** Ballot tallies; 0 while voting is still open. */
   votesIn: number;
   votesOut: number;
+  /** Hunt review: vote target `playerId:findIndex`. */
+  findKey?: string;
+  /** Hunt pin on the scene (normalized 0–1). */
+  x?: number;
+  y?: number;
 }
 
 export interface ReviewPendingVoter {
@@ -97,7 +107,9 @@ export interface HuntFindLocation {
 export interface ScatterPlayerResult extends ScatterPlayerPublic {
   answers: string[];
   categoryPoints: number[];
-  /** Hunt results only — matched finds with optional location boxes. */
+  /** Hunt results — pin positions parallel to answers. */
+  findMarks?: HuntMark[];
+  /** @deprecated Catalog boxes retired (ADR 0028); kept optional for old clients. */
   findLocations?: HuntFindLocation[];
 }
 
@@ -160,7 +172,7 @@ export type ScatterClientMessage =
   | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }
   | { type: "submitLetterRoll"; letter: string }
   | { type: "submitAnswers"; answers: string[] }
-  | { type: "submitHuntFind"; word: string }
+  | { type: "submitHuntFind"; word: string; x: number; y: number }
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
   | { type: "submitReviewVotes"; votes: Record<string, ReviewVote> }
@@ -176,6 +188,7 @@ export type ScatterServerMessage =
       role?: "player" | "spectator";
       /** Private answers for this seat — present when rejoining/resuming as a player. */
       myAnswers?: string[];
+      myFindMarks?: HuntMark[];
     }
   | { type: "state"; state: ScatterRoomState }
   | { type: "diePose"; rollerId: string; qx: number; qy: number; qz: number; qw: number }
@@ -183,11 +196,14 @@ export type ScatterServerMessage =
       type: "huntFindResult";
       ok: boolean;
       status: HuntFindStatus;
+      /** Slots left under HUNT_MAX_ANSWERS. */
       remaining: number;
       matchedCount: number;
       letterTotal: number;
       /** Present when ok — the accepted raw word appended to the seat. */
       word?: string;
+      x?: number;
+      y?: number;
     }
   | {
       type: "huntProgress";

@@ -14,10 +14,9 @@ A separate top-level `GameType` would duplicate lobby/QR/TV wiring. Overloading 
 
 - **Lobby play mode** on Scattergories rooms: `categories` (default, existing flow) or `hunt` (Picture Hunt). Host toggles in lobby; not a new `GameType`.
 - **Timers** stay `120 | 150 | 180` seconds for both modes.
-- **Letter die / rolling / countdown** stay shared. Hunt skips **review**: `playing` → `results`.
-- **Scene catalog** under `worker/scattergories/hunt/` with static images in `public/hunt/`. Each scene lists objects with synonym `names`. Host may pick a scene or leave random; server tracks `usedSceneIds` like category `usedListIds`.
-- **Scoring:** normalize submissions; match against synonyms that start with the round letter; uniqueness by **object id** across players (synonym collisions cancel); 1 point per unique matched object; unknown / wrong letter / empty → 0. Cap submissions (40) per player.
-- **UI:** phone shows scene + letter + free-text find list; TV shows scene + letter + find counts (answer-blind) then results. Category pack controls hide in hunt mode.
+- **Letter die / rolling / countdown** stay shared. Hunt review/scoring: see [ADR 0028](./0028-hunt-click-annotate-review.md) (click-to-pin, peer In/Out; catalog matching retired).
+- **Scene catalog** under `worker/scattergories/hunt/` with static images in `public/hunt/`. Host may pick a scene or leave random; server tracks `usedSceneIds` like category `usedListIds`. Synonym lists remain for authoring/coverage only.
+- **UI (superseded detail in 0028):** phone shows scene + letter + private pinned finds; TV shows scene + letter + find counts (answer-blind) then review/results. Category pack controls hide in hunt mode.
 
 ## Consequences
 

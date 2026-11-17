@@ -51,9 +51,9 @@ Mode: `playMode: "categories" | "hunt"` (lobby toggle; not a URL).
 | `lobby` | Pack / mode / timer | Scene picker when hunt |
 | `rolling` | Letter die | Same |
 | `countdown` | Letter shown | Letter + scene title |
-| `playing` | Category form | Scene + finds |
-| `review` | Per-category votes | Skipped / location review on results |
-| `results` | Scoreboard | Find lists + location review |
+| `playing` | Category form | Scene click-to-pin + private finds |
+| `review` | Per-category votes | All pins revealed; single In/Out ballot |
+| `results` | Scoreboard | Scoreboard + accepted finds |
 
 TV mirrors the same phases (`ScattergoriesSpectator.tsx`).
 

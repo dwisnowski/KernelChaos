@@ -3,6 +3,7 @@ import { loadResumeId, saveResumeId } from "../lib/playerResume.ts";
 import type {
   DiePose,
   HuntFindResultMessage,
+  HuntMark,
   HuntProgressMessage,
   PackTier,
   ScatterClientMessage,
@@ -31,6 +32,7 @@ export function useScattergoriesRoom({
   const [connected, setConnected] = useState(false);
   const [diePose, setDiePose] = useState<DiePose | null>(null);
   const [myAnswers, setMyAnswers] = useState<string[] | null>(null);
+  const [myFindMarks, setMyFindMarks] = useState<HuntMark[] | null>(null);
   const [huntProgress, setHuntProgress] = useState<HuntProgressMessage | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingJoin = useRef<string | null>(null);
@@ -90,15 +92,18 @@ export function useScattergoriesRoom({
         if (msg.myAnswers) {
           if (msg.state.playMode === "hunt") {
             setMyAnswers(msg.myAnswers.slice(0, HUNT_MAX_ANSWERS));
+            setMyFindMarks((msg.myFindMarks ?? []).slice(0, HUNT_MAX_ANSWERS));
           } else {
             const padded = Array.from(
               { length: CATEGORIES_PER_LIST },
               (_, i) => msg.myAnswers![i] ?? "",
             );
             setMyAnswers(padded);
+            setMyFindMarks(null);
           }
         } else if (msg.state.phase === "lobby" || msg.state.phase === "rolling" || msg.state.phase === "countdown") {
           setMyAnswers(null);
+          setMyFindMarks(null);
         }
         if (msg.state.phase === "lobby" || msg.state.phase === "rolling") {
           setHuntProgress(null);
@@ -112,6 +117,7 @@ export function useScattergoriesRoom({
         setState(msg.state);
         if (msg.state.phase === "lobby" || msg.state.phase === "rolling" || msg.state.phase === "countdown") {
           setMyAnswers(null);
+          setMyFindMarks(null);
         }
         if (msg.state.phase === "lobby" || msg.state.phase === "rolling") {
           setHuntProgress(null);
@@ -126,12 +132,11 @@ export function useScattergoriesRoom({
           matchedCount: msg.matchedCount,
           letterTotal: msg.letterTotal,
         });
-        if (msg.ok && msg.word) {
-          setMyAnswers((prev) => {
-            const base = prev ?? [];
-            if (base.includes(msg.word!)) return base;
-            return [...base, msg.word!].slice(0, HUNT_MAX_ANSWERS);
-          });
+        if (msg.ok && msg.word != null && msg.x != null && msg.y != null) {
+          setMyAnswers((prev) => [...(prev ?? []), msg.word!].slice(0, HUNT_MAX_ANSWERS));
+          setMyFindMarks((prev) =>
+            [...(prev ?? []), { x: msg.x!, y: msg.y! }].slice(0, HUNT_MAX_ANSWERS),
+          );
         }
         onHuntFindResultRef.current?.(msg);
       } else if (msg.type === "huntProgress") {
@@ -203,7 +208,7 @@ export function useScattergoriesRoom({
     [send],
   );
   const submitHuntFind = useCallback(
-    (word: string) => send({ type: "submitHuntFind", word }),
+    (word: string, x: number, y: number) => send({ type: "submitHuntFind", word, x, y }),
     [send],
   );
   const reviewNext = useCallback(() => send({ type: "reviewNext" }), [send]);
@@ -227,6 +232,7 @@ export function useScattergoriesRoom({
     connected,
     diePose,
     myAnswers,
+    myFindMarks,
     huntProgress,
     join,
     spectate,

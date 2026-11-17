@@ -29,15 +29,15 @@ import { computeBoardCoverage } from "./boggle/solver.ts";
 import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
 import { deleteActiveRoom, upsertActiveRoom } from "./activeRooms.ts";
 import { isLetterDie, rollLetter } from "./scattergories/letter.ts";
-import { getScene, isHuntSceneId, pickScene, HUNT_MAX_ANSWERS, scenesCatalog } from "./scattergories/hunt/scenes.ts";
+import { isHuntSceneId, pickScene, HUNT_MAX_ANSWERS, scenesCatalog } from "./scattergories/hunt/scenes.ts";
 import {
-  countLetterObjects,
-  matchHuntWord,
-  matchedObjectIdsForPlayer,
-  scoreHuntPlayer,
-  scoreHuntRound,
-} from "./scattergories/hunt/scoring.ts";
-import type { HuntFindStatus } from "./scattergories/protocol.ts";
+  huntFindKey,
+  scoreHuntPeerFinds,
+  scoreHuntPeerPlayer,
+  type HuntPeerFindInput,
+} from "./scattergories/hunt/peerScoring.ts";
+import { normalizeAnswer, startsWithLetter } from "./scattergories/normalize.ts";
+import type { HuntFindStatus, HuntMark } from "./scattergories/protocol.ts";
 import { pickList } from "./scattergories/packs.ts";
 import {
   CATEGORIES_PER_LIST,
@@ -110,6 +110,8 @@ interface PlayerRecord {
   roundAwards: RoundAward[];
   answers: string[];
   hostRejected: boolean[];
+  /** Hunt pin positions parallel to answers. */
+  findMarks: HuntMark[];
   /** M&Ms Smash: bottom→top stack (index 0 explodes first). */
   orbs: OrbColor[];
   mmmmsReady: boolean;
@@ -137,6 +139,7 @@ interface StoredPlayer {
   roundAwards?: RoundAward[];
   answers?: string[];
   hostRejected?: boolean[];
+  findMarks?: HuntMark[];
   orbs?: OrbColor[];
   mmmmsReady?: boolean;
 }
@@ -391,7 +394,11 @@ export class GameRoom extends DurableObject<Env> {
             words: loadWords(p.words),
             roundAwards: p.roundAwards ?? [],
             answers: padAnswers(p.answers, this.playMode),
-            hostRejected: padRejected(p.hostRejected),
+            hostRejected:
+              this.playMode === "hunt"
+                ? padHuntRejected(p.hostRejected, padAnswers(p.answers, "hunt").length)
+                : padRejected(p.hostRejected),
+            findMarks: padFindMarks(p.findMarks, padAnswers(p.answers, this.playMode).length),
             orbs: loadOrbs(p.orbs),
             mmmmsReady: Boolean(p.mmmmsReady),
           },
@@ -452,6 +459,7 @@ export class GameRoom extends DurableObject<Env> {
         roundAwards: p.roundAwards,
         answers: p.answers,
         hostRejected: p.hostRejected,
+        findMarks: p.findMarks,
         orbs: p.orbs,
         mmmmsReady: p.mmmmsReady,
       })),
@@ -698,7 +706,13 @@ export class GameRoom extends DurableObject<Env> {
         break;
       case "submitHuntFind":
         if (this.gameType !== "scattergories") break;
-        await this.handleSubmitHuntFind(ws, attachment?.playerId, msg.word);
+        await this.handleSubmitHuntFind(
+          ws,
+          attachment?.playerId,
+          msg.word,
+          msg.x,
+          msg.y,
+        );
         break;
       case "reviewNext":
         if (this.gameType !== "scattergories") break;
@@ -814,19 +828,19 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase === "playing" && this.endsAt != null && now >= this.endsAt) {
       this.endsAt = null;
       if (this.gameType === "scattergories") {
-        if (this.playMode === "hunt") {
-          this.phase = "results";
-          this.reviewIndex = null;
-          this.scoresFinalized = true;
-          await this.persist();
-          this.broadcastState();
-          return;
-        }
         this.phase = "review";
         this.reviewIndex = 0;
         this.reviewBallots = emptyReviewBallots();
         for (const p of this.players.values()) {
-          p.hostRejected = emptyRejected();
+          if (this.playMode === "hunt") {
+            p.hostRejected = p.answers.map(() => false);
+            while (p.findMarks.length < p.answers.length) {
+              p.findMarks.push({ x: 0.5, y: 0.5 });
+            }
+            p.findMarks = p.findMarks.slice(0, p.answers.length);
+          } else {
+            p.hostRejected = emptyRejected();
+          }
         }
         await this.persist();
         this.broadcastState();
@@ -948,6 +962,7 @@ export class GameRoom extends DurableObject<Env> {
           ? []
           : emptyAnswers(),
       hostRejected: emptyRejected(),
+      findMarks: [],
       orbs: [],
       mmmmsReady: false,
     });
@@ -979,6 +994,7 @@ export class GameRoom extends DurableObject<Env> {
         role: "player",
         state: this.publicState(),
         myAnswers: [...player.answers],
+        myFindMarks: [...player.findMarks],
       } as ServerMessage);
       this.sendHuntProgress(ws, playerId);
       return;
@@ -1086,6 +1102,7 @@ export class GameRoom extends DurableObject<Env> {
       p.roundAwards = [];
       p.answers = this.gameType === "scattergories" && this.playMode === "hunt" ? [] : emptyAnswers();
       p.hostRejected = emptyRejected();
+      p.findMarks = [];
       p.orbs = [];
       p.mmmmsReady = false;
     }
@@ -1283,6 +1300,7 @@ export class GameRoom extends DurableObject<Env> {
       p.roundAwards = [];
       p.answers = this.gameType === "scattergories" && this.playMode === "hunt" ? [] : emptyAnswers();
       p.hostRejected = emptyRejected();
+      p.findMarks = [];
       p.orbs = [];
       p.mmmmsReady = false;
     }
@@ -1434,21 +1452,16 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private huntLetterTotal(): number {
-    if (this.playMode !== "hunt" || !this.letter || !this.sceneId) return 0;
-    const scene = getScene(this.sceneId);
-    if (!scene) return 0;
-    return countLetterObjects(scene, this.letter);
+    return this.playMode === "hunt" ? HUNT_MAX_ANSWERS : 0;
   }
 
   private sendHuntProgress(ws: WebSocket, playerId: string): void {
     if (this.gameType !== "scattergories" || this.playMode !== "hunt") return;
-    if (this.phase !== "playing" && this.phase !== "countdown" && this.phase !== "results") return;
-    if (!this.letter || !this.sceneId) return;
-    const scene = getScene(this.sceneId);
+    if (this.phase !== "playing" && this.phase !== "countdown") return;
     const player = this.players.get(playerId);
-    if (!scene || !player) return;
-    const letterTotal = countLetterObjects(scene, this.letter);
-    const matchedCount = matchedObjectIdsForPlayer(scene, this.letter, player.answers).size;
+    if (!player) return;
+    const letterTotal = HUNT_MAX_ANSWERS;
+    const matchedCount = player.answers.length;
     this.send(ws, {
       type: "huntProgress",
       letterTotal,
@@ -1457,58 +1470,87 @@ export class GameRoom extends DurableObject<Env> {
     } satisfies ScatterServerMessage);
   }
 
+  private collectHuntPeerFinds(applyRejects: boolean): HuntPeerFindInput[] {
+    const finds: HuntPeerFindInput[] = [];
+    for (const p of this.players.values()) {
+      for (let i = 0; i < p.answers.length; i++) {
+        const raw = p.answers[i] ?? "";
+        if (!raw.trim()) continue;
+        const mark = p.findMarks[i] ?? { x: 0.5, y: 0.5 };
+        finds.push({
+          findKey: huntFindKey(p.id, i),
+          playerId: p.id,
+          playerName: p.name,
+          raw,
+          x: mark.x,
+          y: mark.y,
+          hostRejected: applyRejects ? Boolean(p.hostRejected[i]) : false,
+        });
+      }
+    }
+    return finds;
+  }
+
   private async handleSubmitHuntFind(
     ws: WebSocket,
     playerId: string | undefined,
     word: unknown,
+    xRaw: unknown,
+    yRaw: unknown,
   ): Promise<void> {
     if (!playerId || this.phase !== "playing" || this.playMode !== "hunt") return;
     if (this.endsAt != null && Date.now() >= this.endsAt) return;
     const player = this.players.get(playerId);
-    if (!player || !this.letter || !this.sceneId) return;
-    const scene = getScene(this.sceneId);
-    if (!scene) return;
+    if (!player || !this.letter) return;
 
-    const letterTotal = countLetterObjects(scene, this.letter);
-    const already = matchedObjectIdsForPlayer(scene, this.letter, player.answers);
-    const raw = typeof word === "string" ? word.slice(0, 80) : "";
-    const match = matchHuntWord(scene, this.letter, raw, already);
+    const letterTotal = HUNT_MAX_ANSWERS;
+    const matchedCount = player.answers.length;
+    const remaining = Math.max(0, letterTotal - matchedCount);
+    const raw = typeof word === "string" ? word.slice(0, 80).trim() : "";
+    const normalized = normalizeAnswer(raw);
+    const x = clamp01(typeof xRaw === "number" ? xRaw : Number(xRaw));
+    const y = clamp01(typeof yRaw === "number" ? yRaw : Number(yRaw));
 
-    if (match.ok && match.objectId) {
-      if (player.answers.length >= HUNT_MAX_ANSWERS) {
-        this.send(ws, {
-          type: "huntFindResult",
-          ok: false,
-          status: "unknown" satisfies HuntFindStatus,
-          remaining: Math.max(0, letterTotal - already.size),
-          matchedCount: already.size,
-          letterTotal,
-        } satisfies ScatterServerMessage);
-        return;
-      }
-      player.answers = [...player.answers, raw.trim()];
-      const matchedCount = already.size + 1;
-      await this.persist();
-      this.broadcastState();
+    const fail = (status: HuntFindStatus) => {
       this.send(ws, {
         type: "huntFindResult",
-        ok: true,
-        status: match.status,
-        remaining: Math.max(0, letterTotal - matchedCount),
+        ok: false,
+        status,
+        remaining,
         matchedCount,
         letterTotal,
-        word: raw.trim(),
       } satisfies ScatterServerMessage);
+    };
+
+    if (!normalized) {
+      fail("empty");
+      return;
+    }
+    if (!startsWithLetter(normalized, this.letter)) {
+      fail("invalidLetter");
+      return;
+    }
+    if (player.answers.length >= HUNT_MAX_ANSWERS) {
+      fail("unknown");
       return;
     }
 
+    player.answers = [...player.answers, raw];
+    player.findMarks = [...player.findMarks, { x, y }];
+    player.hostRejected = [...player.hostRejected, false];
+    const nextCount = player.answers.length;
+    await this.persist();
+    this.broadcastState();
     this.send(ws, {
       type: "huntFindResult",
-      ok: false,
-      status: match.status,
-      remaining: Math.max(0, letterTotal - already.size),
-      matchedCount: already.size,
+      ok: true,
+      status: "unique" satisfies HuntFindStatus,
+      remaining: Math.max(0, letterTotal - nextCount),
+      matchedCount: nextCount,
       letterTotal,
+      word: raw,
+      x,
+      y,
     } satisfies ScatterServerMessage);
   }
 
@@ -1537,7 +1579,6 @@ export class GameRoom extends DurableObject<Env> {
     playerId: string | undefined,
     votes: Record<string, ReviewVote>,
   ): Promise<void> {
-    if (this.playMode === "hunt") return;
     if (!playerId || this.phase !== "review") return;
     if (!this.players.has(playerId)) return;
     const idx = this.reviewIndex;
@@ -1545,15 +1586,24 @@ export class GameRoom extends DurableObject<Env> {
     if (this.isReviewVotingComplete(idx)) return;
     if (!votes || typeof votes !== "object") return;
 
-    const validTargets = new Set(
-      [...this.players.values()]
-        .filter((p) => (p.answers[idx] ?? "").trim().length > 0)
-        .map((p) => p.id),
-    );
-
     const cleaned: Record<string, ReviewVote> = {};
-    for (const targetId of validTargets) {
-      cleaned[targetId] = votes[targetId] === "out" ? "out" : "in";
+    if (this.playMode === "hunt") {
+      if (idx !== 0) return;
+      const validTargets = new Set(
+        this.collectHuntPeerFinds(false).map((f) => f.findKey),
+      );
+      for (const key of validTargets) {
+        cleaned[key] = votes[key] === "out" ? "out" : "in";
+      }
+    } else {
+      const validTargets = new Set(
+        [...this.players.values()]
+          .filter((p) => (p.answers[idx] ?? "").trim().length > 0)
+          .map((p) => p.id),
+      );
+      for (const targetId of validTargets) {
+        cleaned[targetId] = votes[targetId] === "out" ? "out" : "in";
+      }
     }
 
     const map = this.reviewBallots[idx] ?? new Map();
@@ -1561,7 +1611,8 @@ export class GameRoom extends DurableObject<Env> {
     this.reviewBallots[idx] = map;
 
     if (this.isReviewVotingComplete(idx)) {
-      this.applyReviewMajority(idx);
+      if (this.playMode === "hunt") this.applyHuntReviewMajority();
+      else this.applyReviewMajority(idx);
     }
 
     await this.persist();
@@ -1573,11 +1624,11 @@ export class GameRoom extends DurableObject<Env> {
     hostId: string | undefined,
     voterId: string,
   ): Promise<void> {
-    if (this.playMode === "hunt") return;
     if (!hostId || !this.isHost(hostId) || this.phase !== "review") return;
     if (!voterId || !this.players.has(voterId)) return;
     const idx = this.reviewIndex;
     if (idx == null || idx < 0 || idx >= CATEGORIES_PER_LIST) return;
+    if (this.playMode === "hunt" && idx !== 0) return;
     if (this.isReviewVotingComplete(idx)) return;
 
     const map = this.reviewBallots[idx] ?? new Map();
@@ -1587,7 +1638,8 @@ export class GameRoom extends DurableObject<Env> {
     this.reviewBallots[idx] = map;
 
     if (this.isReviewVotingComplete(idx)) {
-      this.applyReviewMajority(idx);
+      if (this.playMode === "hunt") this.applyHuntReviewMajority();
+      else this.applyReviewMajority(idx);
     }
 
     await this.persist();
@@ -1595,15 +1647,38 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private async handleFinishReview(playerId: string | undefined): Promise<void> {
-    if (this.playMode === "hunt") return;
     if (!playerId || !this.isHost(playerId) || this.phase !== "review") return;
     const idx = this.reviewIndex;
     if (idx == null || !this.isReviewVotingComplete(idx)) return;
+    if (this.playMode === "hunt" && idx !== 0) return;
+    if (this.playMode === "categories" && idx !== CATEGORIES_PER_LIST - 1) {
+      // Categories still finishes only from last category via UI, but allow if complete
+    }
     this.phase = "results";
     this.reviewIndex = null;
     this.scoresFinalized = true;
     await this.persist();
     this.broadcastState();
+  }
+
+  private applyHuntReviewMajority(): void {
+    const ballots = this.reviewBallots[0];
+    if (!ballots) return;
+    for (const p of this.players.values()) {
+      p.hostRejected = p.answers.map(() => false);
+      for (let i = 0; i < p.answers.length; i++) {
+        if (!(p.answers[i] ?? "").trim()) continue;
+        const key = huntFindKey(p.id, i);
+        let votesIn = 0;
+        let votesOut = 0;
+        for (const ballot of ballots.values()) {
+          const v = ballot[key];
+          if (v === "in") votesIn += 1;
+          else if (v === "out") votesOut += 1;
+        }
+        p.hostRejected[i] = votesOut > votesIn;
+      }
+    }
   }
 
   private isReviewVotingComplete(idx: number): boolean {
@@ -1637,14 +1712,14 @@ export class GameRoom extends DurableObject<Env> {
     }
   }
 
-  private reviewVoteTallies(idx: number, targetId: string): { votesIn: number; votesOut: number } {
+  private reviewVoteTallies(idx: number, targetKey: string): { votesIn: number; votesOut: number } {
     if (!this.isReviewVotingComplete(idx)) return { votesIn: 0, votesOut: 0 };
     const ballots = this.reviewBallots[idx];
     if (!ballots) return { votesIn: 0, votesOut: 0 };
     let votesIn = 0;
     let votesOut = 0;
     for (const ballot of ballots.values()) {
-      const v = ballot[targetId];
+      const v = ballot[targetKey];
       if (v === "in") votesIn += 1;
       else if (v === "out") votesOut += 1;
     }
@@ -1814,13 +1889,14 @@ export class GameRoom extends DurableObject<Env> {
   private scatterPlayerScore(p: PlayerRecord): number {
     if (!this.letter) return 0;
     if (this.playMode === "hunt") {
-      const scene = this.sceneId ? getScene(this.sceneId) : undefined;
-      if (!scene) return 0;
-      const all = [...this.players.values()].map((x) => ({
-        id: x.id,
-        answers: x.answers,
-      }));
-      return scoreHuntPlayer(p.id, this.letter, scene, all).total;
+      const applyRejects =
+        this.phase === "results" ||
+        (this.phase === "review" && this.isReviewVotingComplete(0));
+      return scoreHuntPeerPlayer(
+        p.id,
+        this.letter,
+        this.collectHuntPeerFinds(applyRejects),
+      ).total;
     }
     const all = [...this.players.values()].map((x) => ({
       id: x.id,
@@ -1858,19 +1934,29 @@ export class GameRoom extends DurableObject<Env> {
         .filter((p) => !ballots?.has(p.id))
         .map((p) => ({ id: p.id, name: p.name }));
 
-      // Until ballots are complete, do not apply reject flags to live scores.
-      reviewAnswers = scoreCategory(
-        this.letter,
-        [...this.players.values()].map((p) => ({
-          playerId: p.id,
-          playerName: p.name,
-          raw: p.answers[idx] ?? "",
-          hostRejected: reviewVotingComplete ? (p.hostRejected[idx] ?? false) : false,
-        })),
-      ).map((view) => {
-        const tallies = this.reviewVoteTallies(idx, view.playerId);
-        return { ...view, votesIn: tallies.votesIn, votesOut: tallies.votesOut };
-      });
+      if (this.playMode === "hunt") {
+        reviewAnswers = scoreHuntPeerFinds(
+          this.letter,
+          this.collectHuntPeerFinds(reviewVotingComplete),
+        ).map((view) => {
+          const key = view.findKey ?? view.playerId;
+          const tallies = this.reviewVoteTallies(0, key);
+          return { ...view, votesIn: tallies.votesIn, votesOut: tallies.votesOut };
+        });
+      } else {
+        reviewAnswers = scoreCategory(
+          this.letter,
+          [...this.players.values()].map((p) => ({
+            playerId: p.id,
+            playerName: p.name,
+            raw: p.answers[idx] ?? "",
+            hostRejected: reviewVotingComplete ? (p.hostRejected[idx] ?? false) : false,
+          })),
+        ).map((view) => {
+          const tallies = this.reviewVoteTallies(idx, view.playerId);
+          return { ...view, votesIn: tallies.votesIn, votesOut: tallies.votesOut };
+        });
+      }
     }
 
     let results: ScatterPlayerResult[] | null = null;
@@ -1878,30 +1964,9 @@ export class GameRoom extends DurableObject<Env> {
 
     if (this.phase === "results" && this.letter) {
       if (this.playMode === "hunt") {
-        const scene = this.sceneId ? getScene(this.sceneId) : undefined;
-        const all = [...this.players.values()].map((x) => ({
-          id: x.id,
-          answers: x.answers,
-        }));
-        const roundScores = scene ? scoreHuntRound(this.letter, scene, all) : [];
+        const finds = this.collectHuntPeerFinds(true);
         results = [...this.players.values()].map((p) => {
-          const scored = scene
-            ? scoreHuntPlayer(p.id, this.letter!, scene, all)
-            : { total: 0, findPoints: [] };
-          const mine = roundScores.find((s) => s.playerId === p.id);
-          const findLocations =
-            scene && mine
-              ? mine.finds
-                  .filter((f) => f.objectId && f.status === "unique" && f.points > 0)
-                  .map((f) => {
-                    const obj = scene.objects.find((o) => o.id === f.objectId);
-                    return {
-                      objectId: f.objectId!,
-                      raw: f.raw,
-                      box: obj?.box ?? null,
-                    };
-                  })
-              : [];
+          const scored = scoreHuntPeerPlayer(p.id, this.letter!, finds);
           return {
             id: p.id,
             name: p.name,
@@ -1910,7 +1975,7 @@ export class GameRoom extends DurableObject<Env> {
             score: scored.total,
             answers: [...p.answers],
             categoryPoints: scored.findPoints,
-            findLocations,
+            findMarks: [...p.findMarks],
           };
         });
       } else {
@@ -1966,11 +2031,11 @@ export class GameRoom extends DurableObject<Env> {
       players,
       rollerId: this.phase === "rolling" ? this.rollerId : null,
       rollerName: this.phase === "rolling" ? this.rollerName : null,
-      reviewIndex: this.phase === "review" && this.playMode !== "hunt" ? this.reviewIndex : null,
-      reviewAnswers: this.playMode === "hunt" ? null : reviewAnswers,
-      reviewSubmittedBy: this.playMode === "hunt" ? [] : reviewSubmittedBy,
-      reviewPendingVoters: this.playMode === "hunt" ? [] : reviewPendingVoters,
-      reviewVotingComplete: this.playMode === "hunt" ? false : reviewVotingComplete,
+      reviewIndex: this.phase === "review" ? this.reviewIndex : null,
+      reviewAnswers,
+      reviewSubmittedBy,
+      reviewPendingVoters,
+      reviewVotingComplete,
       results,
       winners,
       round: this.round,
@@ -2174,4 +2239,23 @@ function padRejected(raw: boolean[] | undefined): boolean[] {
     out[i] = Boolean(raw[i]);
   }
   return out;
+}
+
+function padHuntRejected(raw: boolean[] | undefined, answerLen: number): boolean[] {
+  return Array.from({ length: answerLen }, (_, i) => Boolean(raw?.[i]));
+}
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0.5;
+  return Math.min(1, Math.max(0, n));
+}
+
+function padFindMarks(raw: HuntMark[] | undefined, answerLen: number): HuntMark[] {
+  return Array.from({ length: answerLen }, (_, i) => {
+    const m = raw?.[i];
+    if (m && typeof m.x === "number" && typeof m.y === "number") {
+      return { x: clamp01(m.x), y: clamp01(m.y) };
+    }
+    return { x: 0.5, y: 0.5 };
+  });
 }

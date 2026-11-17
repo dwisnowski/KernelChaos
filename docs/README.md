@@ -37,3 +37,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0025 – Undefined Boggle words queue](adr/0025-undefined-boggle-words-queue.md) — D1 Free Dictionary misses; TV notice; ungated Settings Admin list; cleanup skill + make prompt
 - [0026 – Layout-first Hunt scenes + boxes](adr/0026-hunt-layout-first-boxes.md) — Sticker-board experiment for ground-truth boxes (superseded for shipped art by [0027](adr/0027-hunt-hidden-object-art.md))
 - [0027 – Hunt hidden-object art](adr/0027-hunt-hidden-object-art.md) — Restore dense seek-and-find illustrations; boxes only when visually authored; no fake placeholders
+- [0028 – Hunt click-annotate + peer review](adr/0028-hunt-click-annotate-review.md) — Private pins on scene; playing→review; letter + In/Out; 1 pt unique accepted finds

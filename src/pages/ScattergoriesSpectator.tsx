@@ -12,6 +12,7 @@ import {
 } from "../audio/sfx.ts";
 import { Layout } from "../components/Layout.tsx";
 import { LetterDie } from "../components/LetterDie.tsx";
+import { HuntReview } from "../components/HuntReview.tsx";
 import { ScatterReview } from "../components/ScatterReview.tsx";
 import { useScattergoriesRoom } from "../hooks/useScattergoriesRoom.ts";
 
@@ -224,6 +225,28 @@ export function ScattergoriesSpectator() {
         ) : null}
 
         {state?.phase === "review" &&
+        state.playMode === "hunt" &&
+        state.letter &&
+        state.sceneImageUrl &&
+        state.reviewAnswers ? (
+          <HuntReview
+            key={`hunt-tv-${state.round}`}
+            letter={state.letter}
+            sceneImageUrl={state.sceneImageUrl}
+            sceneTitle={state.sceneTitle}
+            answers={state.reviewAnswers}
+            me={null}
+            reviewSubmittedBy={state.reviewSubmittedBy}
+            reviewPendingVoters={state.reviewPendingVoters}
+            reviewVotingComplete={state.reviewVotingComplete}
+            onSubmitVotes={() => undefined}
+            onFinish={() => undefined}
+            variant="tv"
+          />
+        ) : null}
+
+        {state?.phase === "review" &&
+        state.playMode !== "hunt" &&
         state.categories &&
         state.letter &&
         state.reviewIndex != null &&

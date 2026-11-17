@@ -72,6 +72,11 @@ export interface ScatterPlayerPublic {
   score: number;
 }
 
+export interface HuntMark {
+  x: number;
+  y: number;
+}
+
 export interface CategoryAnswerView {
   playerId: string;
   playerName: string;
@@ -82,6 +87,9 @@ export interface CategoryAnswerView {
   hostRejected: boolean;
   votesIn: number;
   votesOut: number;
+  findKey?: string;
+  x?: number;
+  y?: number;
 }
 
 export interface ReviewPendingVoter {
@@ -92,6 +100,7 @@ export interface ReviewPendingVoter {
 export interface ScatterPlayerResult extends ScatterPlayerPublic {
   answers: string[];
   categoryPoints: number[];
+  findMarks?: HuntMark[];
   findLocations?: HuntFindLocation[];
 }
 
@@ -144,7 +153,7 @@ export type ScatterClientMessage =
   | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }
   | { type: "submitLetterRoll"; letter: string }
   | { type: "submitAnswers"; answers: string[] }
-  | { type: "submitHuntFind"; word: string }
+  | { type: "submitHuntFind"; word: string; x: number; y: number }
   | { type: "reviewNext" }
   | { type: "reviewPrev" }
   | { type: "submitReviewVotes"; votes: Record<string, ReviewVote> }
@@ -160,6 +169,8 @@ export type HuntFindResultMessage = {
   matchedCount: number;
   letterTotal: number;
   word?: string;
+  x?: number;
+  y?: number;
 };
 
 export type HuntProgressMessage = {
@@ -177,6 +188,8 @@ export type ScatterServerMessage =
       role?: "player" | "spectator";
       /** Private answers for this seat — present when rejoining/resuming as a player. */
       myAnswers?: string[];
+      /** Hunt pins parallel to myAnswers. */
+      myFindMarks?: HuntMark[];
     }
   | { type: "state"; state: ScatterRoomState }
   | { type: "diePose"; rollerId: string; qx: number; qy: number; qz: number; qw: number }
