@@ -1,10 +1,18 @@
+import aquarium from "./data/aquarium.json";
+import bakery from "./data/bakery.json";
 import beach from "./data/beach.json";
+import campsite from "./data/campsite.json";
 import carnival from "./data/carnival.json";
+import classroom from "./data/classroom.json";
 import farm from "./data/farm.json";
+import garage from "./data/garage.json";
 import kitchen from "./data/kitchen.json";
 import park from "./data/park.json";
 import playroom from "./data/playroom.json";
 import shop from "./data/shop.json";
+import space from "./data/space.json";
+import train from "./data/train.json";
+import zoo from "./data/zoo.json";
 import { normalizeAnswer } from "../normalize.ts";
 
 /** Normalized bounding box (fractions of image width/height). */
@@ -80,6 +88,14 @@ export const HUNT_SCENES: HuntScene[] = [
   loadScene(farm as HuntSceneJson),
   loadScene(beach as HuntSceneJson),
   loadScene(park as HuntSceneJson),
+  loadScene(classroom as HuntSceneJson),
+  loadScene(garage as HuntSceneJson),
+  loadScene(bakery as HuntSceneJson),
+  loadScene(zoo as HuntSceneJson),
+  loadScene(train as HuntSceneJson),
+  loadScene(space as HuntSceneJson),
+  loadScene(campsite as HuntSceneJson),
+  loadScene(aquarium as HuntSceneJson),
 ];
 
 function cloneObjects(objects: HuntObject[]): HuntObject[] {
