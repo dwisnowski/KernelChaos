@@ -352,46 +352,6 @@ export function ScattergoriesRoom() {
           <div className="hunt-play-layout">
             <div className="hunt-play-side">
               <p className="muted hunt-pin-hint">Tap the picture to pin a find</p>
-              {huntDraftMark ? (
-                <form
-                  className="scatter-form hunt-find-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const next = huntDraft.trim();
-                    if (!next || !huntDraftMark || huntFinds.length >= HUNT_MAX_ANSWERS) return;
-                    unlockAudio();
-                    submitHuntFind(next, huntDraftMark.x, huntDraftMark.y);
-                  }}
-                >
-                  <label className="scatter-field">
-                    <span>
-                      What starts with <em>{state.letter}</em>?
-                    </span>
-                    <input
-                      value={huntDraft}
-                      onChange={(e) => setHuntDraft(e.target.value)}
-                      maxLength={80}
-                      autoComplete="off"
-                      spellCheck
-                      autoFocus
-                      placeholder={`${state.letter}…`}
-                    />
-                  </label>
-                  <button type="submit" className="btn primary" disabled={!huntDraft.trim()}>
-                    Pin
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    onClick={() => {
-                      setHuntDraftMark(null);
-                      setHuntDraft("");
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </form>
-              ) : null}
               {huntFinds.length > 0 ? (
                 <ul className="hunt-find-list" aria-label="Your finds">
                   {huntFinds.map((word, i) => (
@@ -419,6 +379,54 @@ export function ScattergoriesRoom() {
                   unlockAudio();
                   setHuntDraftMark(norm);
                 }}
+                draftPopover={
+                  huntDraftMark ? (
+                    <form
+                      className="scatter-form hunt-find-form hunt-find-form-popover"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const next = huntDraft.trim();
+                        if (!next || !huntDraftMark || huntFinds.length >= HUNT_MAX_ANSWERS)
+                          return;
+                        unlockAudio();
+                        submitHuntFind(next, huntDraftMark.x, huntDraftMark.y);
+                      }}
+                    >
+                      <label className="scatter-field">
+                        <span>
+                          Starts with <em>{state.letter}</em>
+                        </span>
+                        <input
+                          value={huntDraft}
+                          onChange={(e) => setHuntDraft(e.target.value)}
+                          maxLength={80}
+                          autoComplete="off"
+                          spellCheck
+                          placeholder={`${state.letter}…`}
+                        />
+                      </label>
+                      <div className="hunt-find-form-actions">
+                        <button
+                          type="submit"
+                          className="btn primary"
+                          disabled={!huntDraft.trim()}
+                        >
+                          Pin
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          onClick={() => {
+                            setHuntDraftMark(null);
+                            setHuntDraft("");
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : null
+                }
                 caption={state.sceneTitle}
                 className="hunt-scene-play"
               />

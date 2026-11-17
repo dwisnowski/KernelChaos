@@ -2230,7 +2230,7 @@ input {
 }
 
 .hunt-pin.is-active {
-  transform: scale(1.25);
+  transform: scale(1.75);
   z-index: 3;
 }
 
@@ -2254,6 +2254,27 @@ input {
 .hunt-pin-hint {
   margin: 0;
   font-size: 0.85rem;
+}
+
+.hunt-draft-popover {
+  position: absolute;
+  z-index: 5;
+  width: min(14rem, 70vw);
+  pointer-events: auto;
+}
+
+.hunt-draft-popover.is-below {
+  transform: translate(-50%, 0.85rem);
+}
+
+.hunt-draft-popover.is-above {
+  transform: translate(-50%, calc(-100% - 0.85rem));
+}
+
+.hunt-find-form-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
 }
 
 .hunt-review-layout {
@@ -2287,6 +2308,11 @@ input {
 
 .scatter-answer.is-focused {
   border-color: var(--accent);
+}
+
+.scatter-answer.is-focused .scatter-answer-raw {
+  font-size: 1.4rem;
+  font-weight: 650;
 }
 
 @media (max-width: 720px) {
@@ -2426,6 +2452,38 @@ input {
   width: 100%;
   padding: 0.35rem 0.5rem;
   font-size: 0.85rem;
+}
+
+/* After .hunt-find-form so opaque bg wins over transparent --card. */
+.hunt-find-form.hunt-find-form-popover {
+  margin: 0;
+  background: var(--bg0);
+  border-color: color-mix(in srgb, var(--ink) 30%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.hunt-find-form.hunt-find-form-popover .scatter-field {
+  background: var(--bg1);
+  border-color: color-mix(in srgb, var(--ink) 24%, transparent);
+}
+
+.hunt-find-form.hunt-find-form-popover input {
+  background: transparent;
+  color: var(--ink);
+}
+
+.hunt-find-form.hunt-find-form-popover .btn.primary {
+  background: var(--accent);
+  color: #1a1408;
+  opacity: 1;
+}
+
+.hunt-find-form.hunt-find-form-popover .btn.ghost {
+  width: auto;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg1);
+  border: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
+  color: var(--ink);
 }
 
 .hunt-find-count {
