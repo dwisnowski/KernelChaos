@@ -6,6 +6,8 @@ export type SpotRoundSeconds = 60 | 90 | 120;
 
 export type SpotDiffCount = 3 | 5 | 7;
 
+export type SpotDifficulty = "easy" | "medium" | "hard";
+
 export type SpotTemplateId = "kitchen" | "toyshelf" | "park";
 
 export type SpotShape = "rect" | "circle" | "ellipse" | "triangle" | "star";
@@ -50,11 +52,18 @@ export interface SpotPuzzle {
 export const SPOT_PLAY_MODES: SpotPlayMode[] = ["race", "coop", "solo"];
 export const SPOT_ROUND_OPTIONS: SpotRoundSeconds[] = [60, 90, 120];
 export const SPOT_DIFF_OPTIONS: SpotDiffCount[] = [3, 5, 7];
+export const SPOT_DIFFICULTIES: SpotDifficulty[] = ["easy", "medium", "hard"];
 
 export const SPOT_MODE_LABELS: Record<SpotPlayMode, string> = {
   race: "Race",
   coop: "Co-op",
   solo: "Solo",
+};
+
+export const SPOT_DIFFICULTY_LABELS: Record<SpotDifficulty, string> = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
 };
 
 export interface SpotdiffPlayerPublic {
@@ -78,6 +87,7 @@ export interface SpotdiffRoomState {
   spotMode: SpotPlayMode;
   roundSeconds: SpotRoundSeconds;
   diffCount: SpotDiffCount;
+  difficulty: SpotDifficulty;
   countdownEndsAt: number | null;
   endsAt: number | null;
   players: SpotdiffPlayerPublic[];
@@ -96,6 +106,7 @@ export type SpotdiffClientMessage =
   | { type: "setSpotMode"; spotMode: SpotPlayMode }
   | { type: "setSpotTimer"; roundSeconds: SpotRoundSeconds }
   | { type: "setSpotDiffCount"; diffCount: SpotDiffCount }
+  | { type: "setSpotDifficulty"; difficulty: SpotDifficulty }
   | { type: "start" }
   | { type: "tapDiff"; x: number; y: number }
   | { type: "requestHint" }

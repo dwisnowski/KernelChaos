@@ -77,15 +77,18 @@ import { generatePuzzle } from "./spotdiff/generate.ts";
 import { hitDifference } from "./spotdiff/hitTest.ts";
 import {
   DEFAULT_SPOT_DIFF_COUNT,
+  DEFAULT_SPOT_DIFFICULTY,
   DEFAULT_SPOT_MODE,
   DEFAULT_SPOT_ROUND_SECONDS,
   SPOT_COUNTDOWN_MS,
   SPOT_HINT_MS,
   SPOT_MISS_LOCK_MS,
   isSpotDiffCount,
+  isSpotDifficulty,
   isSpotPlayMode,
   isSpotRoundSeconds,
   type SpotDiffCount,
+  type SpotDifficulty,
   type SpotPlayMode,
   type SpotPuzzle,
   type SpotRoundSeconds,
@@ -322,6 +325,7 @@ export class GameRoom extends DurableObject<Env> {
   // Spot the Difference
   private spotMode: SpotPlayMode = DEFAULT_SPOT_MODE;
   private spotDiffCount: SpotDiffCount = DEFAULT_SPOT_DIFF_COUNT;
+  private spotDifficulty: SpotDifficulty = DEFAULT_SPOT_DIFFICULTY;
   private spotPuzzle: SpotPuzzle | null = null;
   private spotSharedFound: string[] = [];
   private spotWinners: string[] = [];
@@ -378,6 +382,7 @@ export class GameRoom extends DurableObject<Env> {
       resolveEndsAt?: number | null;
       spotMode?: SpotPlayMode;
       spotDiffCount?: SpotDiffCount;
+      spotDifficulty?: SpotDifficulty;
       spotPuzzle?: SpotPuzzle | null;
       spotSharedFound?: string[];
       spotWinners?: string[];
@@ -448,6 +453,9 @@ export class GameRoom extends DurableObject<Env> {
       this.spotDiffCount = isSpotDiffCount(stored.spotDiffCount)
         ? stored.spotDiffCount
         : DEFAULT_SPOT_DIFF_COUNT;
+      this.spotDifficulty = isSpotDifficulty(stored.spotDifficulty)
+        ? stored.spotDifficulty
+        : DEFAULT_SPOT_DIFFICULTY;
       this.spotPuzzle = stored.spotPuzzle ?? null;
       this.spotSharedFound = Array.isArray(stored.spotSharedFound) ? stored.spotSharedFound : [];
       this.spotWinners = Array.isArray(stored.spotWinners) ? stored.spotWinners : [];
@@ -526,6 +534,7 @@ export class GameRoom extends DurableObject<Env> {
       resolveEndsAt: this.resolveEndsAt,
       spotMode: this.spotMode,
       spotDiffCount: this.spotDiffCount,
+      spotDifficulty: this.spotDifficulty,
       spotPuzzle: this.spotPuzzle,
       spotSharedFound: this.spotSharedFound,
       spotWinners: this.spotWinners,
@@ -691,6 +700,7 @@ export class GameRoom extends DurableObject<Env> {
     this.resolveEndsAt = null;
     this.spotMode = DEFAULT_SPOT_MODE;
     this.spotDiffCount = DEFAULT_SPOT_DIFF_COUNT;
+    this.spotDifficulty = DEFAULT_SPOT_DIFFICULTY;
     this.spotPuzzle = null;
     this.spotSharedFound = [];
     this.spotWinners = [];
@@ -720,6 +730,7 @@ export class GameRoom extends DurableObject<Env> {
           this.roundSeconds = DEFAULT_SPOT_ROUND_SECONDS;
           this.spotMode = DEFAULT_SPOT_MODE;
           this.spotDiffCount = DEFAULT_SPOT_DIFF_COUNT;
+          this.spotDifficulty = DEFAULT_SPOT_DIFFICULTY;
         }
         await this.persist();
         return Response.json({ code: this.code, game: this.gameType, created: true });
@@ -868,6 +879,10 @@ export class GameRoom extends DurableObject<Env> {
       case "setSpotDiffCount":
         if (this.gameType !== "spotdiff") break;
         await this.handleSetSpotDiffCount(attachment?.playerId, msg.diffCount);
+        break;
+      case "setSpotDifficulty":
+        if (this.gameType !== "spotdiff") break;
+        await this.handleSetSpotDifficulty(attachment?.playerId, msg.difficulty);
         break;
       case "tapDiff":
         if (this.gameType !== "spotdiff") break;
@@ -1276,7 +1291,10 @@ export class GameRoom extends DurableObject<Env> {
       this.sceneImageUrl = null;
       this.rollerId = null;
       this.rollerName = null;
-      this.spotPuzzle = generatePuzzle({ diffCount: this.spotDiffCount });
+      this.spotPuzzle = generatePuzzle({
+        diffCount: this.spotDiffCount,
+        difficulty: this.spotDifficulty,
+      });
       this.countdownEndsAt = Date.now() + SPOT_COUNTDOWN_MS;
       this.phase = "countdown";
       await this.ctx.storage.setAlarm(this.countdownEndsAt);
@@ -1523,6 +1541,18 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "lobby" && this.phase !== "results") return;
     if (!isSpotDiffCount(diffCount)) return;
     this.spotDiffCount = diffCount;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetSpotDifficulty(
+    playerId: string | undefined,
+    difficulty: SpotDifficulty,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isSpotDifficulty(difficulty)) return;
+    this.spotDifficulty = difficulty;
     await this.persist();
     this.broadcastState();
   }
@@ -2545,6 +2575,7 @@ export class GameRoom extends DurableObject<Env> {
       spotMode: this.spotMode,
       roundSeconds: this.roundSeconds as SpotRoundSeconds,
       diffCount: this.spotDiffCount,
+      difficulty: this.spotDifficulty,
       countdownEndsAt: this.countdownEndsAt,
       endsAt: this.endsAt,
       players,

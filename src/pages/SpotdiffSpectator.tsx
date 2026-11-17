@@ -13,7 +13,7 @@ import {
 import { Layout } from "../components/Layout.tsx";
 import { SpotDiffPanels } from "../components/SpotDiffPanels.tsx";
 import { useSpotdiffRoom } from "../hooks/useSpotdiffRoom.ts";
-import { SPOT_MODE_LABELS } from "../spotdiffTypes.ts";
+import { SPOT_DIFFICULTY_LABELS, SPOT_MODE_LABELS } from "../spotdiffTypes.ts";
 
 export function SpotdiffSpectator() {
   const { code = "" } = useParams();
@@ -111,7 +111,8 @@ export function SpotdiffSpectator() {
               <QRCodeSVG value={joinUrl} size={260} level="M" includeMargin bgColor="#f2f5fa" fgColor="#0e1f35" />
             </div>
             <p className="muted">
-              {SPOT_MODE_LABELS[state.spotMode]} · {state.diffCount} diffs · {state.roundSeconds}s
+              {SPOT_MODE_LABELS[state.spotMode]} · {SPOT_DIFFICULTY_LABELS[state.difficulty]} ·{" "}
+              {state.diffCount} diffs · {state.roundSeconds}s
             </p>
             <ul className="tv-player-list">
               {state.players.map((p) => (

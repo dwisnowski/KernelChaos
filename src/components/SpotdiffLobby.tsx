@@ -1,11 +1,14 @@
 import { QRCodeSVG } from "qrcode.react";
 import { OpenTvButton } from "./OpenTvButton.tsx";
 import {
+  SPOT_DIFFICULTIES,
+  SPOT_DIFFICULTY_LABELS,
   SPOT_DIFF_OPTIONS,
   SPOT_MODE_LABELS,
   SPOT_PLAY_MODES,
   SPOT_ROUND_OPTIONS,
   type SpotDiffCount,
+  type SpotDifficulty,
   type SpotPlayMode,
   type SpotRoundSeconds,
   type SpotdiffPlayerPublic,
@@ -19,6 +22,7 @@ interface Props {
   onSetMode: (mode: SpotPlayMode) => void;
   onSetTimer: (seconds: SpotRoundSeconds) => void;
   onSetDiffCount: (count: SpotDiffCount) => void;
+  onSetDifficulty: (difficulty: SpotDifficulty) => void;
   onStart: () => void;
 }
 
@@ -29,6 +33,7 @@ export function SpotdiffLobby({
   onSetMode,
   onSetTimer,
   onSetDiffCount,
+  onSetDifficulty,
   onStart,
 }: Props) {
   const isHost = me?.isHost ?? false;
@@ -108,6 +113,23 @@ export function SpotdiffLobby({
                 onClick={() => onSetDiffCount(n)}
               >
                 {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="board-size">
+          <h2>Difficulty</h2>
+          <div className="size-pills" role="group" aria-label="Scene difficulty">
+            {SPOT_DIFFICULTIES.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className={`size-pill${state.difficulty === d ? " is-active" : ""}`}
+                disabled={!isHost}
+                onClick={() => onSetDifficulty(d)}
+              >
+                {SPOT_DIFFICULTY_LABELS[d]}
               </button>
             ))}
           </div>

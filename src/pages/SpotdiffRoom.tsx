@@ -44,6 +44,7 @@ export function SpotdiffRoom() {
     setSpotMode,
     setSpotTimer,
     setSpotDiffCount,
+    setSpotDifficulty,
     start,
     tapDiff,
     requestHint,
@@ -162,6 +163,7 @@ export function SpotdiffRoom() {
             onSetMode={setSpotMode}
             onSetTimer={setSpotTimer}
             onSetDiffCount={setSpotDiffCount}
+            onSetDifficulty={setSpotDifficulty}
             onStart={() => {
               unlockAudio();
               start();

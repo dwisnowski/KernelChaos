@@ -18,7 +18,7 @@ Hand-authored PNG A/B pairs are heavy for a feel-test. A procedural SVG graph (o
   - `race`: ≥1 seats; private `foundDiffIds` per seat; first to clear all wins early, else most found when the timer ends (ties allowed).
   - `coop`: ≥1 seats; shared finds; anyone’s correct tap marks for the room; ends when all found or timer.
 - **Phases:** `lobby` → `countdown` → `playing` → `results`.
-- **Lobby options:** timer `60 | 90 | 120` (default 90); difference count `3 | 5 | 7` (default 5).
+- **Lobby options:** timer `60 | 90 | 120` (default 90); difference count `3 | 5 | 7` (default 5). Scene clutter difficulty is [ADR 0030](./0030-spotdiff-scene-difficulty.md).
 - **Puzzle:** Server picks a template (`kitchen` | `toyshelf` | `park`), seeds prop placement, clones panel A → B, applies mixed edits (`remove`, `recolor`, `flip`, `resize`, `swapShape`) with quadrant spread and one near-center hook. Clients render the published SVG graphs; taps send normalized `{ x, y }` on a panel; server point-in-box validates.
 - **Miss / hint:** Three misses lock that seat’s input ~1.5s. Hint outlines one unfound box ~2s (private in race/solo; room-wide in coop).
 - **TV:** Dual panels; race shows per-player counts without marking private finds until results; coop mirrors shared marks.

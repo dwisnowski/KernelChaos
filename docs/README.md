@@ -39,3 +39,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0027 – Hunt hidden-object art](adr/0027-hunt-hidden-object-art.md) — Restore dense seek-and-find illustrations; boxes only when visually authored; no fake placeholders
 - [0028 – Hunt click-annotate + peer review](adr/0028-hunt-click-annotate-review.md) — Private pins on scene; playing→review; letter + In/Out; 1 pt unique accepted finds
 - [0029 – Spot the Difference (procedural)](adr/0029-spot-the-difference.md) — `spotdiff` rooms; race/coop/solo; procedural SVG A/B panels; server hit-test + timer
+- [0030 – Spot the Difference scene difficulty](adr/0030-spotdiff-scene-difficulty.md) — Lobby easy/medium/hard clutter density; current templates = easy

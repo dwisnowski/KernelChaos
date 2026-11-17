@@ -81,10 +81,11 @@ TV mirrors the same phases (`ScattergoriesSpectator.tsx`).
 `SpotdiffPhase` in `src/spotdiffTypes.ts`: `lobby` → `countdown` → `playing` → `results`
 
 Mode: `spotMode: "race" | "coop" | "solo"` (lobby pills).
+Difficulty: `difficulty: "easy" | "medium" | "hard"` (lobby pills; scene clutter).
 
 | Phase | Player | TV |
 | --- | --- | --- |
-| `lobby` | Mode / timer / diff count, QR, start | Lobby / waiting |
+| `lobby` | Mode / timer / diffs / difficulty, QR, start | Lobby / waiting |
 | `countdown` | Get ready | Same |
 | `playing` | Dual SVG panels; tap diffs; hint | Panels + progress (race: counts; coop: shared marks) |
 | `results` | All circles + scores | Same |

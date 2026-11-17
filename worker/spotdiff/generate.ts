@@ -1,5 +1,6 @@
 import {
   type SpotDiffCount,
+  type SpotDifficulty,
   type SpotDifference,
   type SpotEditKind,
   type SpotProp,
@@ -11,6 +12,7 @@ import {
   SPOT_SHAPES,
   getTemplate,
   pickTemplate,
+  slotsForDifficulty,
   type SpotSlot,
   type SpotTemplate,
 } from "./scenes.ts";
@@ -141,6 +143,7 @@ function backdropProps(template: SpotTemplate): SpotProp[] {
 export function generatePuzzle(opts: {
   seed?: number;
   diffCount: SpotDiffCount;
+  difficulty?: SpotDifficulty;
   templateId?: SpotTemplate["id"];
 }): SpotPuzzle {
   const seed =
@@ -148,11 +151,13 @@ export function generatePuzzle(opts: {
     (crypto.getRandomValues(new Uint32Array(1))[0] ?? Math.floor(Math.random() * 0xffffffff));
   const rng = makeRng(seed >>> 0);
   const template = opts.templateId ? getTemplate(opts.templateId) : pickTemplate(seed);
+  const difficulty = opts.difficulty ?? "easy";
+  const activeSlots = slotsForDifficulty(template.slots, difficulty);
 
-  const slotProps = template.slots.map((slot) => propForSlot(slot, rng));
+  const slotProps = activeSlots.map((slot) => propForSlot(slot, rng));
   const panelA: SpotProp[] = [...backdropProps(template), ...slotProps.map(cloneProp)];
 
-  const diffSlots = pickDiffSlots(template.slots, opts.diffCount, rng);
+  const diffSlots = pickDiffSlots(activeSlots, opts.diffCount, rng);
   const propById = new Map(slotProps.map((p) => [p.id, p]));
   const panelBMap = new Map(slotProps.map((p) => [p.id, cloneProp(p)]));
   const differences: SpotDifference[] = [];
@@ -175,7 +180,7 @@ export function generatePuzzle(opts: {
 
   const panelB: SpotProp[] = [
     ...backdropProps(template),
-    ...template.slots.map((s) => panelBMap.get(s.id)).filter((p): p is SpotProp => Boolean(p)),
+    ...activeSlots.map((s) => panelBMap.get(s.id)).filter((p): p is SpotProp => Boolean(p)),
   ];
 
   return {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadResumeId, saveResumeId } from "../lib/playerResume.ts";
 import type {
   SpotDiffCount,
+  SpotDifficulty,
   SpotPlayMode,
   SpotRoundSeconds,
   SpotdiffClientMessage,
@@ -140,6 +141,10 @@ export function useSpotdiffRoom({ code, role = "player", onError, onTapResult }:
     (diffCount: SpotDiffCount) => send({ type: "setSpotDiffCount", diffCount }),
     [send],
   );
+  const setSpotDifficulty = useCallback(
+    (difficulty: SpotDifficulty) => send({ type: "setSpotDifficulty", difficulty }),
+    [send],
+  );
   const start = useCallback(() => send({ type: "start" }), [send]);
   const tapDiff = useCallback((x: number, y: number) => send({ type: "tapDiff", x, y }), [send]);
   const requestHint = useCallback(() => send({ type: "requestHint" }), [send]);
@@ -162,6 +167,7 @@ export function useSpotdiffRoom({ code, role = "player", onError, onTapResult }:
     setSpotMode,
     setSpotTimer,
     setSpotDiffCount,
+    setSpotDifficulty,
     start,
     tapDiff,
     requestHint,

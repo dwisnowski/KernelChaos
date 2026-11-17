@@ -1,4 +1,4 @@
-import type { SpotShape, SpotTemplateId } from "./protocol.ts";
+import type { SpotDifficulty, SpotShape, SpotTemplateId } from "./protocol.ts";
 
 export interface SpotSlot {
   id: string;
@@ -9,6 +9,8 @@ export interface SpotSlot {
   quadrant: "tl" | "tr" | "bl" | "br" | "c";
   nearCenter?: boolean;
   preferredShapes?: SpotShape[];
+  /** Omit or `"easy"` = always present; medium/hard add denser clutter. */
+  minDifficulty?: SpotDifficulty;
 }
 
 export interface SpotTemplate {
@@ -29,7 +31,7 @@ export interface SpotTemplate {
   bg: string;
 }
 
-const FILLS = [
+const FILL = [
   "#e57373",
   "#ffb74d",
   "#fff176",
@@ -42,9 +44,21 @@ const FILLS = [
   "#ff8a65",
 ] as const;
 
-export const SPOT_FILLS: readonly string[] = FILLS;
+export const SPOT_FILLS: readonly string[] = FILL;
 
 export const SPOT_SHAPES: SpotShape[] = ["rect", "circle", "ellipse", "triangle", "star"];
+
+const DIFFICULTY_RANK: Record<SpotDifficulty, number> = {
+  easy: 0,
+  medium: 1,
+  hard: 2,
+};
+
+/** Slots visible at the chosen difficulty (easy ⊂ medium ⊂ hard). */
+export function slotsForDifficulty(slots: SpotSlot[], difficulty: SpotDifficulty): SpotSlot[] {
+  const rank = DIFFICULTY_RANK[difficulty];
+  return slots.filter((s) => DIFFICULTY_RANK[s.minDifficulty ?? "easy"] <= rank);
+}
 
 export const SPOT_TEMPLATES: SpotTemplate[] = [
   {
@@ -73,6 +87,22 @@ export const SPOT_TEMPLATES: SpotTemplate[] = [
       { id: "k13", x: 70, y: 76, w: 10, h: 10, quadrant: "br" },
       { id: "k14", x: 84, y: 78, w: 8, h: 8, quadrant: "br" },
       { id: "k15", x: 52, y: 78, w: 10, h: 8, quadrant: "c", nearCenter: true },
+      // Medium clutter
+      { id: "km1", x: 20, y: 40, w: 6, h: 6, quadrant: "tl", minDifficulty: "medium" },
+      { id: "km2", x: 40, y: 40, w: 6, h: 6, quadrant: "c", minDifficulty: "medium" },
+      { id: "km3", x: 58, y: 40, w: 6, h: 6, quadrant: "c", minDifficulty: "medium" },
+      { id: "km4", x: 74, y: 40, w: 6, h: 6, quadrant: "tr", minDifficulty: "medium" },
+      { id: "km5", x: 6, y: 66, w: 6, h: 6, quadrant: "bl", minDifficulty: "medium" },
+      { id: "km6", x: 64, y: 68, w: 6, h: 6, quadrant: "br", minDifficulty: "medium" },
+      { id: "km7", x: 88, y: 66, w: 6, h: 6, quadrant: "br", minDifficulty: "medium" },
+      // Hard clutter
+      { id: "kh1", x: 16, y: 58, w: 5, h: 5, quadrant: "bl", minDifficulty: "hard" },
+      { id: "kh2", x: 36, y: 58, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "kh3", x: 56, y: 58, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "kh4", x: 76, y: 58, w: 5, h: 5, quadrant: "br", minDifficulty: "hard" },
+      { id: "kh5", x: 42, y: 84, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "kh6", x: 62, y: 86, w: 5, h: 5, quadrant: "br", minDifficulty: "hard" },
+      { id: "kh7", x: 90, y: 40, w: 5, h: 5, quadrant: "tr", minDifficulty: "hard" },
     ],
   },
   {
@@ -104,6 +134,24 @@ export const SPOT_TEMPLATES: SpotTemplate[] = [
       { id: "t16", x: 24, y: 82, w: 10, h: 8, quadrant: "bl" },
       { id: "t17", x: 46, y: 82, w: 12, h: 8, quadrant: "c" },
       { id: "t18", x: 70, y: 82, w: 10, h: 8, quadrant: "br" },
+      // Medium clutter
+      { id: "tm1", x: 24, y: 30, w: 6, h: 6, quadrant: "tl", minDifficulty: "medium" },
+      { id: "tm2", x: 44, y: 30, w: 6, h: 6, quadrant: "c", minDifficulty: "medium" },
+      { id: "tm3", x: 62, y: 30, w: 6, h: 6, quadrant: "tr", minDifficulty: "medium" },
+      { id: "tm4", x: 26, y: 54, w: 6, h: 6, quadrant: "bl", minDifficulty: "medium" },
+      { id: "tm5", x: 44, y: 54, w: 6, h: 6, quadrant: "c", minDifficulty: "medium" },
+      { id: "tm6", x: 62, y: 54, w: 6, h: 6, quadrant: "br", minDifficulty: "medium" },
+      { id: "tm7", x: 12, y: 84, w: 6, h: 6, quadrant: "bl", minDifficulty: "medium" },
+      { id: "tm8", x: 84, y: 84, w: 6, h: 6, quadrant: "br", minDifficulty: "medium" },
+      // Hard clutter
+      { id: "th1", x: 8, y: 20, w: 5, h: 5, quadrant: "tl", minDifficulty: "hard" },
+      { id: "th2", x: 92, y: 20, w: 5, h: 5, quadrant: "tr", minDifficulty: "hard" },
+      { id: "th3", x: 28, y: 46, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "th4", x: 58, y: 46, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "th5", x: 8, y: 68, w: 5, h: 5, quadrant: "bl", minDifficulty: "hard" },
+      { id: "th6", x: 92, y: 68, w: 5, h: 5, quadrant: "br", minDifficulty: "hard" },
+      { id: "th7", x: 38, y: 88, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "th8", x: 60, y: 88, w: 5, h: 5, quadrant: "br", minDifficulty: "hard" },
     ],
   },
   {
@@ -135,6 +183,23 @@ export const SPOT_TEMPLATES: SpotTemplate[] = [
       { id: "p15", x: 22, y: 84, w: 10, h: 8, quadrant: "bl" },
       { id: "p16", x: 46, y: 84, w: 12, h: 8, quadrant: "c" },
       { id: "p17", x: 72, y: 84, w: 10, h: 8, quadrant: "br" },
+      // Medium clutter
+      { id: "pm1", x: 26, y: 20, w: 6, h: 6, quadrant: "tl", minDifficulty: "medium" },
+      { id: "pm2", x: 50, y: 20, w: 6, h: 6, quadrant: "c", minDifficulty: "medium" },
+      { id: "pm3", x: 72, y: 22, w: 6, h: 6, quadrant: "tr", minDifficulty: "medium" },
+      { id: "pm4", x: 6, y: 52, w: 6, h: 6, quadrant: "bl", minDifficulty: "medium" },
+      { id: "pm5", x: 80, y: 48, w: 6, h: 6, quadrant: "br", minDifficulty: "medium" },
+      { id: "pm6", x: 26, y: 74, w: 6, h: 6, quadrant: "bl", minDifficulty: "medium" },
+      { id: "pm7", x: 60, y: 74, w: 6, h: 6, quadrant: "br", minDifficulty: "medium" },
+      // Hard clutter
+      { id: "ph1", x: 4, y: 12, w: 5, h: 5, quadrant: "tl", minDifficulty: "hard" },
+      { id: "ph2", x: 92, y: 8, w: 5, h: 5, quadrant: "tr", minDifficulty: "hard" },
+      { id: "ph3", x: 34, y: 40, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "ph4", x: 56, y: 40, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "ph5", x: 8, y: 78, w: 5, h: 5, quadrant: "bl", minDifficulty: "hard" },
+      { id: "ph6", x: 90, y: 78, w: 5, h: 5, quadrant: "br", minDifficulty: "hard" },
+      { id: "ph7", x: 38, y: 90, w: 5, h: 5, quadrant: "c", minDifficulty: "hard" },
+      { id: "ph8", x: 62, y: 90, w: 5, h: 5, quadrant: "br", minDifficulty: "hard" },
     ],
   },
 ];
