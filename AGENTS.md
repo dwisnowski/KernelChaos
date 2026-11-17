@@ -4,7 +4,7 @@ Short orientation for AI coding agents. Humans should start with [`readme.md`](.
 
 ## What this is
 
-Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters), Scattergories (category forms + TV review), and M&Ms Smash (two-player orb duel), all with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
+Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters), Scattergories (category forms + TV review), M&Ms Smash (two-player orb duel), and Spot the Difference (procedural SVG pairs), all with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
 
 ## Read before changing architecture
 
@@ -24,10 +24,11 @@ URL routes and in-room phases (lobby, playing, review, …) are catalogued in [`
 | --- | --- |
 | `src/` | React SPA (home, Boggle + Scattergories entry/room/TV, audio) |
 | `worker/index.ts` | Worker fetch; room create; WS proxy |
-| `worker/room.ts` | Polymorphic `GameRoom` Durable Object (`boggle` \| `scattergories`) |
+| `worker/room.ts` | Polymorphic `GameRoom` Durable Object (`boggle` \| `scattergories` \| `mmmms` \| `spotdiff`) |
 | `worker/boggle/` | Dice, path, scoring, dictionary |
 | `worker/scattergories/` | Letter die, packs, normalize/scoring, protocol |
 | `worker/mmmms/` | Orb colors, deal/resolve attack, protocol |
+| `worker/spotdiff/` | Procedural scenes, generate, hit-test, protocol |
 | `docs/screens.md` | Screen / route / phase reference for chat |
 | `docs/adr/` | Architecture Decision Records |
 | `Makefile` | Canonical local commands (`make undef-words-cleanup-prompt` for ADR 0025) |

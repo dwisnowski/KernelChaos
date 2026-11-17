@@ -73,15 +73,38 @@ import {
   type MmmmsServerMessage,
   type OrbCount,
 } from "./mmmms/protocol.ts";
+import { generatePuzzle } from "./spotdiff/generate.ts";
+import { hitDifference } from "./spotdiff/hitTest.ts";
+import {
+  DEFAULT_SPOT_DIFF_COUNT,
+  DEFAULT_SPOT_MODE,
+  DEFAULT_SPOT_ROUND_SECONDS,
+  SPOT_COUNTDOWN_MS,
+  SPOT_HINT_MS,
+  SPOT_MISS_LOCK_MS,
+  isSpotDiffCount,
+  isSpotPlayMode,
+  isSpotRoundSeconds,
+  type SpotDiffCount,
+  type SpotPlayMode,
+  type SpotPuzzle,
+  type SpotRoundSeconds,
+  type SpotdiffClientMessage,
+  type SpotdiffPhase,
+  type SpotdiffPlayerPublic,
+  type SpotdiffPlayerResult,
+  type SpotdiffRoomState,
+  type SpotdiffServerMessage,
+} from "./spotdiff/protocol.ts";
 
 /** Per-category: voterId → (targetPlayerId → in|out). */
 type ReviewBallotMaps = Array<Map<string, Record<string, ReviewVote>>>;
 /** Persistable form of ReviewBallotMaps. */
 type StoredReviewBallots = Array<Record<string, Record<string, ReviewVote>>>;
 
-export type GameType = "boggle" | "scattergories" | "mmmms";
+export type GameType = "boggle" | "scattergories" | "mmmms" | "spotdiff";
 
-type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase;
+type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase | SpotdiffPhase;
 
 /** Max wait for clients to finish explosion animation before advancing. */
 const MMMMS_RESOLVE_TIMEOUT_MS = 15_000;
@@ -115,6 +138,10 @@ interface PlayerRecord {
   /** M&Ms Smash: bottom→top stack (index 0 explodes first). */
   orbs: OrbColor[];
   mmmmsReady: boolean;
+  /** Spot the Difference: private finds (race/solo). */
+  foundDiffIds: string[];
+  missStreak: number;
+  lockedUntil: number | null;
 }
 
 interface Attachment {
@@ -142,10 +169,21 @@ interface StoredPlayer {
   findMarks?: HuntMark[];
   orbs?: OrbColor[];
   mmmmsReady?: boolean;
+  foundDiffIds?: string[];
+  missStreak?: number;
+  lockedUntil?: number | null;
 }
 
-type ClientMessage = BoggleClientMessage | ScatterClientMessage | MmmmsClientMessage;
-type ServerMessage = BoggleServerMessage | ScatterServerMessage | MmmmsServerMessage;
+type ClientMessage =
+  | BoggleClientMessage
+  | ScatterClientMessage
+  | MmmmsClientMessage
+  | SpotdiffClientMessage;
+type ServerMessage =
+  | BoggleServerMessage
+  | ScatterServerMessage
+  | MmmmsServerMessage
+  | SpotdiffServerMessage;
 
 function emptyAnswers(): string[] {
   return Array.from({ length: CATEGORIES_PER_LIST }, () => "");
@@ -225,7 +263,7 @@ function loadWords(raw: StoredPlayer["words"]): Map<string, WordRecord> {
 }
 
 function isGameType(v: unknown): v is GameType {
-  return v === "boggle" || v === "scattergories" || v === "mmmms";
+  return v === "boggle" || v === "scattergories" || v === "mmmms" || v === "spotdiff";
 }
 
 function loadOrbs(raw: unknown): OrbColor[] {
@@ -281,6 +319,16 @@ export class GameRoom extends DurableObject<Env> {
   private resolveAcks = new Set<string>();
   private resolveEndsAt: number | null = null;
 
+  // Spot the Difference
+  private spotMode: SpotPlayMode = DEFAULT_SPOT_MODE;
+  private spotDiffCount: SpotDiffCount = DEFAULT_SPOT_DIFF_COUNT;
+  private spotPuzzle: SpotPuzzle | null = null;
+  private spotSharedFound: string[] = [];
+  private spotWinners: string[] = [];
+  private spotHintDiffId: string | null = null;
+  private spotHintUntil: number | null = null;
+  private spotHintForPlayerId: string | null = null;
+
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
@@ -328,6 +376,14 @@ export class GameRoom extends DurableObject<Env> {
       winnerId?: string | null;
       resolveAcks?: string[];
       resolveEndsAt?: number | null;
+      spotMode?: SpotPlayMode;
+      spotDiffCount?: SpotDiffCount;
+      spotPuzzle?: SpotPuzzle | null;
+      spotSharedFound?: string[];
+      spotWinners?: string[];
+      spotHintDiffId?: string | null;
+      spotHintUntil?: number | null;
+      spotHintForPlayerId?: string | null;
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -340,6 +396,10 @@ export class GameRoom extends DurableObject<Env> {
           : DEFAULT_SCATTER_ROUND_SECONDS;
       } else if (this.gameType === "mmmms") {
         this.roundSeconds = DEFAULT_ROUND_SECONDS;
+      } else if (this.gameType === "spotdiff") {
+        this.roundSeconds = isSpotRoundSeconds(stored.roundSeconds)
+          ? stored.roundSeconds
+          : DEFAULT_SPOT_ROUND_SECONDS;
       } else {
         this.roundSeconds = isRoundSeconds(stored.roundSeconds)
           ? stored.roundSeconds
@@ -384,6 +444,16 @@ export class GameRoom extends DurableObject<Env> {
       this.winnerId = stored.winnerId ?? null;
       this.resolveAcks = new Set(stored.resolveAcks ?? []);
       this.resolveEndsAt = stored.resolveEndsAt ?? null;
+      this.spotMode = isSpotPlayMode(stored.spotMode) ? stored.spotMode : DEFAULT_SPOT_MODE;
+      this.spotDiffCount = isSpotDiffCount(stored.spotDiffCount)
+        ? stored.spotDiffCount
+        : DEFAULT_SPOT_DIFF_COUNT;
+      this.spotPuzzle = stored.spotPuzzle ?? null;
+      this.spotSharedFound = Array.isArray(stored.spotSharedFound) ? stored.spotSharedFound : [];
+      this.spotWinners = Array.isArray(stored.spotWinners) ? stored.spotWinners : [];
+      this.spotHintDiffId = stored.spotHintDiffId ?? null;
+      this.spotHintUntil = stored.spotHintUntil ?? null;
+      this.spotHintForPlayerId = stored.spotHintForPlayerId ?? null;
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -401,6 +471,9 @@ export class GameRoom extends DurableObject<Env> {
             findMarks: padFindMarks(p.findMarks, padAnswers(p.answers, this.playMode).length),
             orbs: loadOrbs(p.orbs),
             mmmmsReady: Boolean(p.mmmmsReady),
+            foundDiffIds: Array.isArray(p.foundDiffIds) ? p.foundDiffIds.filter((id) => typeof id === "string") : [],
+            missStreak: typeof p.missStreak === "number" ? p.missStreak : 0,
+            lockedUntil: typeof p.lockedUntil === "number" ? p.lockedUntil : null,
           },
         ]),
       );
@@ -451,6 +524,14 @@ export class GameRoom extends DurableObject<Env> {
       winnerId: this.winnerId,
       resolveAcks: [...this.resolveAcks],
       resolveEndsAt: this.resolveEndsAt,
+      spotMode: this.spotMode,
+      spotDiffCount: this.spotDiffCount,
+      spotPuzzle: this.spotPuzzle,
+      spotSharedFound: this.spotSharedFound,
+      spotWinners: this.spotWinners,
+      spotHintDiffId: this.spotHintDiffId,
+      spotHintUntil: this.spotHintUntil,
+      spotHintForPlayerId: this.spotHintForPlayerId,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -462,6 +543,9 @@ export class GameRoom extends DurableObject<Env> {
         findMarks: p.findMarks,
         orbs: p.orbs,
         mmmmsReady: p.mmmmsReady,
+        foundDiffIds: p.foundDiffIds,
+        missStreak: p.missStreak,
+        lockedUntil: p.lockedUntil,
       })),
     });
     await this.syncActiveDirectory();
@@ -605,6 +689,14 @@ export class GameRoom extends DurableObject<Env> {
     this.winnerId = null;
     this.resolveAcks = new Set();
     this.resolveEndsAt = null;
+    this.spotMode = DEFAULT_SPOT_MODE;
+    this.spotDiffCount = DEFAULT_SPOT_DIFF_COUNT;
+    this.spotPuzzle = null;
+    this.spotSharedFound = [];
+    this.spotWinners = [];
+    this.spotHintDiffId = null;
+    this.spotHintUntil = null;
+    this.spotHintForPlayerId = null;
     this.loaded = true;
   }
 
@@ -624,6 +716,10 @@ export class GameRoom extends DurableObject<Env> {
           this.roundSeconds = DEFAULT_SCATTER_ROUND_SECONDS;
         } else if (this.gameType === "mmmms") {
           this.orbCount = DEFAULT_ORB_COUNT;
+        } else if (this.gameType === "spotdiff") {
+          this.roundSeconds = DEFAULT_SPOT_ROUND_SECONDS;
+          this.spotMode = DEFAULT_SPOT_MODE;
+          this.spotDiffCount = DEFAULT_SPOT_DIFF_COUNT;
         }
         await this.persist();
         return Response.json({ code: this.code, game: this.gameType, created: true });
@@ -761,6 +857,26 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "mmmms") break;
         await this.handleMmmmsResolveDone(attachment?.playerId);
         break;
+      case "setSpotMode":
+        if (this.gameType !== "spotdiff") break;
+        await this.handleSetSpotMode(attachment?.playerId, msg.spotMode);
+        break;
+      case "setSpotTimer":
+        if (this.gameType !== "spotdiff") break;
+        await this.handleSetSpotTimer(attachment?.playerId, msg.roundSeconds);
+        break;
+      case "setSpotDiffCount":
+        if (this.gameType !== "spotdiff") break;
+        await this.handleSetSpotDiffCount(attachment?.playerId, msg.diffCount);
+        break;
+      case "tapDiff":
+        if (this.gameType !== "spotdiff") break;
+        await this.handleTapDiff(ws, attachment?.playerId, msg.x, msg.y);
+        break;
+      case "requestHint":
+        if (this.gameType !== "spotdiff") break;
+        await this.handleRequestHint(attachment?.playerId);
+        break;
       default:
         this.send(ws, { type: "error", message: "Unknown message" });
     }
@@ -842,6 +958,12 @@ export class GameRoom extends DurableObject<Env> {
             p.hostRejected = emptyRejected();
           }
         }
+        await this.persist();
+        this.broadcastState();
+        return;
+      }
+      if (this.gameType === "spotdiff") {
+        this.finishSpotdiffRound();
         await this.persist();
         this.broadcastState();
         return;
@@ -965,6 +1087,9 @@ export class GameRoom extends DurableObject<Env> {
       findMarks: [],
       orbs: [],
       mmmmsReady: false,
+      foundDiffIds: [],
+      missStreak: 0,
+      lockedUntil: null,
     });
     ws.serializeAttachment({ playerId: id } satisfies Attachment);
     await this.persist();
@@ -1006,6 +1131,17 @@ export class GameRoom extends DurableObject<Env> {
         role: "player",
         state: this.publicState(),
         myOrbs: [...player.orbs],
+      } as ServerMessage);
+      return;
+    }
+    if (this.gameType === "spotdiff") {
+      this.send(ws, {
+        type: "welcome",
+        playerId,
+        role: "player",
+        state: this.publicState(),
+        myFoundDiffIds: [...player.foundDiffIds],
+        lockedUntil: player.lockedUntil,
       } as ServerMessage);
       return;
     }
@@ -1105,6 +1241,9 @@ export class GameRoom extends DurableObject<Env> {
       p.findMarks = [];
       p.orbs = [];
       p.mmmmsReady = false;
+      p.foundDiffIds = [];
+      p.missStreak = 0;
+      p.lockedUntil = null;
     }
     this.reviewBallots = emptyReviewBallots();
 
@@ -1117,6 +1256,34 @@ export class GameRoom extends DurableObject<Env> {
     this.defenderGuess = null;
     this.resolveAcks = new Set();
     this.resolveEndsAt = null;
+    this.spotSharedFound = [];
+    this.spotWinners = [];
+    this.spotHintDiffId = null;
+    this.spotHintUntil = null;
+    this.spotHintForPlayerId = null;
+
+    if (this.gameType === "spotdiff") {
+      this.board = null;
+      this.missedWords = null;
+      this.possibleWords = null;
+      this.possibleWordCount = null;
+      this.possibleByLength = null;
+      this.letter = null;
+      this.categories = null;
+      this.listId = null;
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
+      this.rollerId = null;
+      this.rollerName = null;
+      this.spotPuzzle = generatePuzzle({ diffCount: this.spotDiffCount });
+      this.countdownEndsAt = Date.now() + SPOT_COUNTDOWN_MS;
+      this.phase = "countdown";
+      await this.ctx.storage.setAlarm(this.countdownEndsAt);
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
 
     if (this.gameType === "mmmms") {
       this.board = null;
@@ -1295,6 +1462,12 @@ export class GameRoom extends DurableObject<Env> {
     this.winnerId = null;
     this.resolveAcks = new Set();
     this.resolveEndsAt = null;
+    this.spotPuzzle = null;
+    this.spotSharedFound = [];
+    this.spotWinners = [];
+    this.spotHintDiffId = null;
+    this.spotHintUntil = null;
+    this.spotHintForPlayerId = null;
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
@@ -1303,6 +1476,9 @@ export class GameRoom extends DurableObject<Env> {
       p.findMarks = [];
       p.orbs = [];
       p.mmmmsReady = false;
+      p.foundDiffIds = [];
+      p.missStreak = 0;
+      p.lockedUntil = null;
     }
     await this.ctx.storage.deleteAlarm();
     await this.persist();
@@ -1314,6 +1490,178 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "lobby" && this.phase !== "results") return;
     if (!isOrbCount(orbCount)) return;
     this.orbCount = orbCount;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetSpotMode(playerId: string | undefined, spotMode: SpotPlayMode): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isSpotPlayMode(spotMode)) return;
+    this.spotMode = spotMode;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetSpotTimer(
+    playerId: string | undefined,
+    roundSeconds: SpotRoundSeconds,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isSpotRoundSeconds(roundSeconds)) return;
+    this.roundSeconds = roundSeconds;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetSpotDiffCount(
+    playerId: string | undefined,
+    diffCount: SpotDiffCount,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isSpotDiffCount(diffCount)) return;
+    this.spotDiffCount = diffCount;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private clearExpiredSpotHint(now: number): void {
+    if (this.spotHintUntil != null && now >= this.spotHintUntil) {
+      this.spotHintDiffId = null;
+      this.spotHintUntil = null;
+      this.spotHintForPlayerId = null;
+    }
+  }
+
+  private finishSpotdiffRound(): void {
+    this.phase = "results";
+    this.endsAt = null;
+    this.spotHintDiffId = null;
+    this.spotHintUntil = null;
+    this.spotHintForPlayerId = null;
+    const total = this.spotPuzzle?.differences.length ?? 0;
+    if (this.spotMode === "coop") {
+      this.spotWinners =
+        this.spotSharedFound.length >= total && total > 0
+          ? [...this.players.keys()]
+          : [];
+      return;
+    }
+    let best = -1;
+    const winners: string[] = [];
+    for (const p of this.players.values()) {
+      const n = p.foundDiffIds.length;
+      if (n > best) {
+        best = n;
+        winners.length = 0;
+        winners.push(p.id);
+      } else if (n === best && n > 0) {
+        winners.push(p.id);
+      }
+    }
+    this.spotWinners = winners;
+  }
+
+  private async handleTapDiff(
+    ws: WebSocket,
+    playerId: string | undefined,
+    x: number,
+    y: number,
+  ): Promise<void> {
+    if (!playerId || this.phase !== "playing" || !this.spotPuzzle) return;
+    const player = this.players.get(playerId);
+    if (!player) return;
+    const now = Date.now();
+    this.clearExpiredSpotHint(now);
+    if (player.lockedUntil != null && now < player.lockedUntil) {
+      this.send(ws, {
+        type: "tapResult",
+        hit: false,
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotdiffServerMessage);
+      return;
+    }
+
+    const foundSet =
+      this.spotMode === "coop"
+        ? new Set(this.spotSharedFound)
+        : new Set(player.foundDiffIds);
+    const hit = hitDifference(x, y, this.spotPuzzle.differences, foundSet);
+    if (!hit) {
+      player.missStreak += 1;
+      let lockedUntil: number | null = player.lockedUntil;
+      if (player.missStreak >= 3) {
+        player.missStreak = 0;
+        lockedUntil = now + SPOT_MISS_LOCK_MS;
+        player.lockedUntil = lockedUntil;
+      }
+      await this.persist();
+      this.send(ws, {
+        type: "tapResult",
+        hit: false,
+        lockedUntil,
+      } satisfies SpotdiffServerMessage);
+      this.broadcastState();
+      return;
+    }
+
+    player.missStreak = 0;
+    if (this.spotMode === "coop") {
+      if (!this.spotSharedFound.includes(hit.id)) {
+        this.spotSharedFound = [...this.spotSharedFound, hit.id];
+      }
+    } else if (!player.foundDiffIds.includes(hit.id)) {
+      player.foundDiffIds = [...player.foundDiffIds, hit.id];
+    }
+
+    this.send(ws, {
+      type: "tapResult",
+      hit: true,
+      diffId: hit.id,
+      lockedUntil: player.lockedUntil,
+    } satisfies SpotdiffServerMessage);
+
+    const total = this.spotPuzzle.differences.length;
+    const cleared =
+      this.spotMode === "coop"
+        ? this.spotSharedFound.length >= total
+        : player.foundDiffIds.length >= total;
+
+    if (cleared) {
+      if (this.spotMode === "race" || this.spotMode === "solo") {
+        this.spotWinners = [playerId];
+      }
+      this.finishSpotdiffRound();
+      if (this.spotMode === "race" || this.spotMode === "solo") {
+        this.spotWinners = [playerId];
+      }
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleRequestHint(playerId: string | undefined): Promise<void> {
+    if (!playerId || this.phase !== "playing" || !this.spotPuzzle) return;
+    if (!this.players.has(playerId)) return;
+    const now = Date.now();
+    this.clearExpiredSpotHint(now);
+    const foundSet =
+      this.spotMode === "coop"
+        ? new Set(this.spotSharedFound)
+        : new Set(this.players.get(playerId)!.foundDiffIds);
+    const remaining = this.spotPuzzle.differences.filter((d) => !foundSet.has(d.id));
+    if (remaining.length === 0) return;
+    const pick = remaining[Math.floor(Math.random() * remaining.length)]!;
+    this.spotHintDiffId = pick.id;
+    this.spotHintUntil = now + SPOT_HINT_MS;
+    this.spotHintForPlayerId = this.spotMode === "coop" ? null : playerId;
     await this.persist();
     this.broadcastState();
   }
@@ -2153,9 +2501,67 @@ export class GameRoom extends DurableObject<Env> {
     };
   }
 
-  private publicState(): BoggleRoomState | ScatterRoomState | MmmmsRoomState {
+  private spotdiffSnapshot(forPlayerId?: string | null): SpotdiffRoomState {
+    this.clearExpiredSpotHint(Date.now());
+    const players: SpotdiffPlayerPublic[] = [...this.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+      foundCount:
+        this.spotMode === "coop" ? this.spotSharedFound.length : p.foundDiffIds.length,
+    }));
+
+    const results: SpotdiffPlayerResult[] =
+      this.phase === "results"
+        ? [...this.players.values()].map((p) => ({
+            id: p.id,
+            name: p.name,
+            foundCount:
+              this.spotMode === "coop" ? this.spotSharedFound.length : p.foundDiffIds.length,
+            foundDiffIds:
+              this.spotMode === "coop" ? [...this.spotSharedFound] : [...p.foundDiffIds],
+          }))
+        : [];
+
+    let hintDiffId: string | null = null;
+    if (this.spotHintDiffId && this.spotHintUntil != null && Date.now() < this.spotHintUntil) {
+      if (
+        this.spotHintForPlayerId == null ||
+        (forPlayerId != null && forPlayerId === this.spotHintForPlayerId)
+      ) {
+        hintDiffId = this.spotHintDiffId;
+      }
+    }
+
+    const foundDiffIds =
+      this.spotMode === "coop" || this.phase === "results"
+        ? [...this.spotSharedFound]
+        : [];
+
+    return {
+      game: "spotdiff",
+      code: this.code,
+      phase: this.phase as SpotdiffPhase,
+      spotMode: this.spotMode,
+      roundSeconds: this.roundSeconds as SpotRoundSeconds,
+      diffCount: this.spotDiffCount,
+      countdownEndsAt: this.countdownEndsAt,
+      endsAt: this.endsAt,
+      players,
+      puzzle: this.phase === "lobby" ? null : this.spotPuzzle,
+      foundDiffIds,
+      results,
+      winners: this.phase === "results" ? [...this.spotWinners] : [],
+      round: this.round,
+      hintDiffId,
+      hintUntil: hintDiffId ? this.spotHintUntil : null,
+    };
+  }
+
+  private publicState(): BoggleRoomState | ScatterRoomState | MmmmsRoomState | SpotdiffRoomState {
     if (this.gameType === "scattergories") return this.scatterSnapshot();
     if (this.gameType === "mmmms") return this.mmmmsSnapshot();
+    if (this.gameType === "spotdiff") return this.spotdiffSnapshot(null);
     return this.boggleSnapshot();
   }
 
@@ -2196,6 +2602,26 @@ export class GameRoom extends DurableObject<Env> {
             state,
             myOrbs: player ? [...player.orbs] : undefined,
           } satisfies MmmmsServerMessage);
+          socket.send(payload);
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
+
+    if (this.gameType === "spotdiff") {
+      for (const socket of this.ctx.getWebSockets()) {
+        if (except && socket === except) continue;
+        try {
+          const att = socket.deserializeAttachment() as Attachment | null;
+          const player = att?.playerId && !att.spectator ? this.players.get(att.playerId) : undefined;
+          const payload = JSON.stringify({
+            type: "state",
+            state: this.spotdiffSnapshot(att?.playerId ?? null),
+            myFoundDiffIds: player ? [...player.foundDiffIds] : undefined,
+            lockedUntil: player?.lockedUntil ?? null,
+          } satisfies SpotdiffServerMessage);
           socket.send(payload);
         } catch {
           /* ignore */

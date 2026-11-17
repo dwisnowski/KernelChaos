@@ -313,3 +313,38 @@ export function playMmmmsDefeat(): void {
   tone(277, t + 0.12, 0.18, "sine", 0.08);
   tone(220, t + 0.28, 0.24, "triangle", 0.07);
 }
+
+/** Spot the Difference: correct find. */
+export function playSpotFound(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(587, t, 0.08, "triangle", 0.07);
+  tone(784, t + 0.07, 0.12, "sine", 0.08);
+}
+
+/** Spot the Difference: miss / empty tap. */
+export function playSpotMiss(): void {
+  const c = getCtx();
+  if (!c) return;
+  tone(160, c.currentTime, 0.12, "square", 0.035);
+}
+
+/** Spot the Difference: hint outline. */
+export function playSpotHint(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(440, t, 0.08, "sine", 0.05);
+  tone(554, t + 0.1, 0.14, "triangle", 0.06);
+}
+
+/** Spot the Difference: coop clear / all found. */
+export function playSpotClear(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(523, t, 0.09, "sine", 0.07);
+  tone(659, t + 0.08, 0.09, "sine", 0.07);
+  tone(784, t + 0.16, 0.16, "triangle", 0.09);
+}

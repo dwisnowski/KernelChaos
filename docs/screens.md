@@ -4,7 +4,7 @@ Shared names for KernelChaos pages and in-room phases. Use these in chat so huma
 
 React Router (`BrowserRouter` in `src/main.tsx`, routes in `src/App.tsx`) already owns URL navigation. In-room **phases** are server state (`state.phase` over WebSocket), not URL segments — one room URL hosts every phase for that seat.
 
-Games: `boggle` | `scattergories` | `mmmms`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
+Games: `boggle` | `scattergories` | `mmmms` | `spotdiff`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
 
 ## URL routes
 
@@ -24,6 +24,10 @@ Games: `boggle` | `scattergories` | `mmmms`. Picture Hunt is Scattergories with 
 | `/mmmms/join?code=` | `MmmmsEntry` | same | QR / deep-link join |
 | `/mmmms/room/:code` | `MmmmsRoom` | `src/pages/MmmmsRoom.tsx` | Player |
 | `/mmmms/room/:code/tv` | `MmmmsSpectator` | `src/pages/MmmmsSpectator.tsx` | TV |
+| `/spotdiff` | `SpotdiffEntry` | `src/pages/SpotdiffEntry.tsx` | Create / join / spectate |
+| `/spotdiff/join?code=` | `SpotdiffEntry` | same | QR / deep-link join |
+| `/spotdiff/room/:code` | `SpotdiffRoom` | `src/pages/SpotdiffRoom.tsx` | Player |
+| `/spotdiff/room/:code/tv` | `SpotdiffSpectator` | `src/pages/SpotdiffSpectator.tsx` | TV |
 
 Pattern shorthand: `/{game}`, `/{game}/join?code=`, `/{game}/room/:code`, `/{game}/room/:code/tv`.
 
@@ -72,6 +76,19 @@ TV mirrors the same phases (`ScattergoriesSpectator.tsx`).
 
 `guess` | `attack` | `resolving` are often called **combat** together. TV shows the same phases without local controls.
 
+### Spot the Difference
+
+`SpotdiffPhase` in `src/spotdiffTypes.ts`: `lobby` → `countdown` → `playing` → `results`
+
+Mode: `spotMode: "race" | "coop" | "solo"` (lobby pills).
+
+| Phase | Player | TV |
+| --- | --- | --- |
+| `lobby` | Mode / timer / diff count, QR, start | Lobby / waiting |
+| `countdown` | Get ready | Same |
+| `playing` | Dual SVG panels; tap diffs; hint | Panels + progress (race: counts; coop: shared marks) |
+| `results` | All circles + scores | Same |
+
 ## Chat shorthand
 
 Prefer route + phase (and mode when needed):
@@ -88,6 +105,9 @@ Prefer route + phase (and mode when needed):
 | hunt play | `/scattergories/room/:code` + `playMode=hunt` + `phase=playing` |
 | mmmms organize | `/mmmms/room/:code` + `phase=organize` |
 | mmmms TV combat | `/mmmms/room/:code/tv` + `guess` \| `attack` \| `resolving` |
+| spotdiff entry | `/spotdiff` |
+| spotdiff room playing | `/spotdiff/room/:code` + `phase=playing` |
+| spotdiff TV results | `/spotdiff/room/:code/tv` + `phase=results` |
 
 ## Related
 

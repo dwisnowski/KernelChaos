@@ -50,6 +50,18 @@ function MmmmsIcon() {
   );
 }
 
+function SpotdiffIcon() {
+  return (
+    <svg className="game-card-icon" viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="4" y="10" width="18" height="28" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="26" y="10" width="18" height="28" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="13" cy="22" r="3" fill="none" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="35" cy="22" r="3" fill="none" stroke="currentColor" strokeWidth="1.75" />
+      <path d="M10 32h6M32 30h6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function Home() {
   return (
     <Layout>
@@ -82,6 +94,14 @@ export function Home() {
             <h2>M&Ms Smash</h2>
             <p>
               Two players stack colored orbs, guess the attack, and explode from the bottom up.
+            </p>
+            <span className="btn primary">Play</span>
+          </Link>
+          <Link className="game-card" to="/spotdiff" onClick={() => unlockAudio()}>
+            <SpotdiffIcon />
+            <h2>Spot the Difference</h2>
+            <p>
+              Side-by-side scenes with hidden changes. Race, co-op, or solo against the clock.
             </p>
             <span className="btn primary">Play</span>
           </Link>

@@ -11,6 +11,10 @@ Family games over the internet — a [Wild Idea Zone](https://www.wildideazone.c
 
 **Scattergories** — same room codes and TV spectator flow; phones fill a 12-category list for one letter; after the timer the TV reveals answers one category at a time (duplicates cancel).
 
+**M&Ms Smash** — two-player orb duel: organize stacks, guess the attack, explode from the bottom up.
+
+**Spot the Difference** — procedural side-by-side SVG scenes; race, coop, or solo; tap the hidden changes before the timer.
+
 ## Develop
 
 ```bash

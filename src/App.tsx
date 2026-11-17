@@ -10,6 +10,9 @@ import { ScattergoriesEntry } from "./pages/ScattergoriesEntry.tsx";
 import { ScattergoriesRoom } from "./pages/ScattergoriesRoom.tsx";
 import { ScattergoriesSpectator } from "./pages/ScattergoriesSpectator.tsx";
 import { Settings } from "./pages/Settings.tsx";
+import { SpotdiffEntry } from "./pages/SpotdiffEntry.tsx";
+import { SpotdiffRoom } from "./pages/SpotdiffRoom.tsx";
+import { SpotdiffSpectator } from "./pages/SpotdiffSpectator.tsx";
 
 export function App() {
   return (
@@ -28,6 +31,10 @@ export function App() {
       <Route path="/mmmms/join" element={<MmmmsEntry />} />
       <Route path="/mmmms/room/:code" element={<MmmmsRoom />} />
       <Route path="/mmmms/room/:code/tv" element={<MmmmsSpectator />} />
+      <Route path="/spotdiff" element={<SpotdiffEntry />} />
+      <Route path="/spotdiff/join" element={<SpotdiffEntry />} />
+      <Route path="/spotdiff/room/:code" element={<SpotdiffRoom />} />
+      <Route path="/spotdiff/room/:code/tv" element={<SpotdiffSpectator />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
