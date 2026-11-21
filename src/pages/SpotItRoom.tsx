@@ -26,8 +26,10 @@ export function SpotItRoom() {
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [flash, setFlash] = useState<"ok" | "bad" | null>(null);
   const lastTick = useRef<number | null>(null);
   const phaseRef = useRef<string | null>(null);
+  const flashTimer = useRef<number | null>(null);
 
   const {
     state,
@@ -48,8 +50,20 @@ export function SpotItRoom() {
     onTapResult: (hit) => {
       if (hit) playSpotItHit();
       else playSpotItMiss();
+      if (flashTimer.current != null) window.clearTimeout(flashTimer.current);
+      setFlash(hit ? "ok" : "bad");
+      flashTimer.current = window.setTimeout(() => {
+        setFlash(null);
+        flashTimer.current = null;
+      }, 420);
     },
   });
+
+  useEffect(() => {
+    return () => {
+      if (flashTimer.current != null) window.clearTimeout(flashTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (joined || !navName.trim()) return;
@@ -124,9 +138,10 @@ export function SpotItRoom() {
   return (
     <Layout
       title="KernelChaos · Spot It"
-      playerRoom={{
+      tvRoom={{
         code: roomCode,
         game: "spot-it",
+        roundActive: state.phase === "playing" || state.phase === "between",
       }}
     >
       <section className="spot-it-room">
@@ -145,7 +160,11 @@ export function SpotItRoom() {
         ) : null}
 
         {state.phase === "playing" || state.phase === "between" ? (
-          <div className="spot-it-play">
+          <div
+            className={`spot-it-play${
+              flash === "ok" ? " spot-it-flash-ok" : flash === "bad" ? " spot-it-flash-bad" : ""
+            }`}
+          >
             <header className="spot-it-play-head">
               <p className="spot-it-meta">
                 {SPOT_IT_MODE_LABELS[state.spotItMode]} · First to {state.targetScore}
