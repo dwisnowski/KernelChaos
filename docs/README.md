@@ -46,3 +46,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0032 – Picture Hunt desktop loupe + mobile pinch](adr/0032-hunt-mobile-pinch-annotate.md) — 15rem loupe on desktop; touch pinch-zoom + temp marker → overlay; maximized viewport
 - [0033 – Spot It](adr/0033-spot-it.md) — `spot-it` rooms; Shared + Tower; order-7 deck; Funny Foods pack; race to lobby target
 - [0034 – Spot It assets + card UX](adr/0034-spot-it-assets-and-card-ux.md) — masters vs 192² public; 4-up Magnific pipeline; large square cards; 360° / ±30% layout
+- [0035 – Spot It Kawaii Animals pack](adr/0035-spot-it-kawaii-animals-pack.md) — lobby pack `kawaii`; Magnific 4-up animals; required seagull/rabbit/cat/dog/horse/lizard/raccoon

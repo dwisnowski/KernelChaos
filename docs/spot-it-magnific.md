@@ -24,13 +24,19 @@ Order-7 packs need **57** symbols → **15** four-up sheets (14×4 + one leftove
 - No text, letters, numbers, labels, watermarks, or borders.
 - Keep characters readable at small size (bold silhouette, limited fine detail).
 
-### Prompt template
+### Prompt template (Funny Foods)
 
 ```text
 Four funny anthropomorphic food characters in a 2x2 grid, one per quadrant with clear empty gutters between them. Top-left: <A>. Top-right: <B>. Bottom-left: <C>. Bottom-right: <D>. Each has a face, arms, and legs, standing alone on a transparent background. Bold cartoon shapes, high contrast, no text, no letters, no numbers, no labels, no watermark, no shared background props.
 ```
 
-Swap A–D for pack-specific subjects. Prefer a dedicated Magnific folder per pack.
+### Prompt template (Kawaii Animals — pack `kawaii`)
+
+```text
+Four kawaii animals in a 2x2 grid, one per quadrant with clear empty gutters between them. Top-left: <A>. Top-right: <B>. Bottom-left: <C>. Bottom-right: <D>. Soft pastel kawaii style, big sparkly eyes, rounded cute proportions, each standing alone on a transparent background. Bold readable silhouettes, high contrast, no text, no letters, no numbers, no labels, no watermark, no shared background props.
+```
+
+Swap A–D for pack-specific subjects. Prefer a dedicated Magnific folder per pack (e.g. under KernelChaos Spot It → Kawaii Animals).
 
 ## Tool chain
 

@@ -22,4 +22,4 @@ Future packs should generate art more efficiently (fewer Magnific calls) without
 - Food pack public size drops (~10 MB → ~3 MB); masters remain available for re-emitting game sizes.
 - New packs follow the 4-up → process path without changing deal/tap protocol or `/spot-it/<pack>/NN.png` URLs.
 - Harder visual matching; phone and TV still share server-seeded placements.
-- Extends [0033](./0033-spot-it.md).
+- Extends [0033](./0033-spot-it.md). First multi-pack consumer: [0035](./0035-spot-it-kawaii-animals-pack.md).

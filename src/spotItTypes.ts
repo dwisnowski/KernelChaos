@@ -4,7 +4,7 @@ export type SpotItMode = "shared" | "tower";
 
 export type SpotItTarget = 10 | 25 | 50 | 75;
 
-export type SpotItPackId = "food";
+export type SpotItPackId = "food" | "kawaii";
 
 export interface SpotItPlacement {
   symbolIndex: number;
@@ -23,7 +23,7 @@ export interface SpotItCardView {
 
 export const SPOT_IT_MODES: SpotItMode[] = ["shared", "tower"];
 export const SPOT_IT_TARGETS: SpotItTarget[] = [10, 25, 50, 75];
-export const SPOT_IT_PACK_IDS: SpotItPackId[] = ["food"];
+export const SPOT_IT_PACK_IDS: SpotItPackId[] = ["food", "kawaii"];
 
 export const DEFAULT_SPOT_IT_MODE: SpotItMode = "shared";
 export const DEFAULT_SPOT_IT_TARGET: SpotItTarget = 25;
@@ -36,6 +36,7 @@ export const SPOT_IT_MODE_LABELS: Record<SpotItMode, string> = {
 
 export const SPOT_IT_PACK_LABELS: Record<SpotItPackId, string> = {
   food: "Funny Foods",
+  kawaii: "Kawaii Animals",
 };
 
 export const FOOD_SYMBOL_LABELS: string[] = [
@@ -98,14 +99,74 @@ export const FOOD_SYMBOL_LABELS: string[] = [
   "Milkshake hero",
 ];
 
+export const KAWAII_SYMBOL_LABELS: string[] = [
+  "Seagull",
+  "Rabbit",
+  "Cat",
+  "Dog",
+  "Horse",
+  "Lizard",
+  "Raccoon",
+  "Fox kit",
+  "Panda",
+  "Koala",
+  "Frog",
+  "Otter",
+  "Bunny",
+  "Whale",
+  "Dolphin",
+  "Seal",
+  "Octopus",
+  "Crab",
+  "Starfish",
+  "Fox",
+  "Bear",
+  "Deer",
+  "Squirrel",
+  "Hedgehog",
+  "Duck",
+  "Chicken",
+  "Cow",
+  "Pig",
+  "Sheep",
+  "Goat",
+  "Llama",
+  "Camel",
+  "Elephant",
+  "Giraffe",
+  "Zebra",
+  "Lion",
+  "Tiger",
+  "Monkey",
+  "Penguin",
+  "Owl",
+  "Bat",
+  "Mouse",
+  "Hamster",
+  "Parrot",
+  "Flamingo",
+  "Peacock",
+  "Toucan",
+  "Crocodile",
+  "Turtle",
+  "Snake",
+  "Chameleon",
+  "Axolotl",
+  "Sloth",
+  "Beaver",
+  "Skunk",
+  "Chipmunk",
+  "Corgi",
+];
+
 export function spotItSymbolSrc(packId: SpotItPackId, symbolIndex: number): string {
   const id = String(symbolIndex).padStart(2, "0");
-  if (packId === "food") return `/spot-it/food/${id}.png`;
-  return `/spot-it/food/${id}.png`;
+  return `/spot-it/${packId}/${id}.png`;
 }
 
 export function spotItSymbolLabel(packId: SpotItPackId, symbolIndex: number): string {
   if (packId === "food") return FOOD_SYMBOL_LABELS[symbolIndex] ?? `Symbol ${symbolIndex}`;
+  if (packId === "kawaii") return KAWAII_SYMBOL_LABELS[symbolIndex] ?? `Symbol ${symbolIndex}`;
   return `Symbol ${symbolIndex}`;
 }
 
