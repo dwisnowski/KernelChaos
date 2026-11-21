@@ -114,6 +114,7 @@ import {
   DEFAULT_SPOT_IT_PACK,
   DEFAULT_SPOT_IT_TARGET,
   SPOT_IT_BETWEEN_MS,
+  SPOT_IT_LEARNING_BETWEEN_MS,
   SPOT_IT_MISS_LOCK_MS,
   SPOT_IT_QUIZ_MISS_LOCK_MS,
   isKanaPack,
@@ -2258,7 +2259,7 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     this.phase = "between";
-    this.countdownEndsAt = now + SPOT_IT_BETWEEN_MS;
+    this.countdownEndsAt = now + SPOT_IT_LEARNING_BETWEEN_MS;
     await this.ctx.storage.setAlarm(this.countdownEndsAt);
     await this.persist();
     this.broadcastState();

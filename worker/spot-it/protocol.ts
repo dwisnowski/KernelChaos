@@ -20,6 +20,8 @@ export const DEFAULT_SPOT_IT_MODE: SpotItMode = "shared";
 export const DEFAULT_SPOT_IT_TARGET: SpotItTarget = 25;
 
 export const SPOT_IT_BETWEEN_MS = 3000;
+/** Longer teach window after a correct Learning quiz answer. */
+export const SPOT_IT_LEARNING_BETWEEN_MS = 7000;
 export const SPOT_IT_MISS_LOCK_MS = 800;
 export const SPOT_IT_QUIZ_MISS_LOCK_MS = 2000;
 

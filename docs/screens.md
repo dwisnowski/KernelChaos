@@ -105,7 +105,7 @@ Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses
 | `lobby` | Mode / target / pack (filtered by mode), QR, start | Lobby / waiting + QR |
 | `playing` | Cards + tap matching symbol | Cards + leaderboard |
 | `quiz` | Matched kana + 2×2 English choices (2s lock on miss) | Kana + choices (non-interactive) |
-| `between` | 3s countdown + who scored (+ kana reading chips in learning) | Same |
+| `between` | Countdown + who scored (3s shared/tower; 7s learning teach + kana reading chips) | Same |
 | `results` | Winner + scores | Same |
 
 ## Chat shorthand
