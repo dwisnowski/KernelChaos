@@ -38,6 +38,7 @@ export function ScattergoriesRoom() {
   const [huntDraft, setHuntDraft] = useState("");
   const [huntDraftMark, setHuntDraftMark] = useState<HuntMark | null>(null);
   const [huntFlash, setHuntFlash] = useState<"ok" | "bad" | null>(null);
+  const [huntMagnify, setHuntMagnify] = useState(false);
   const lastTick = useRef<number | null>(null);
   const lastUrgent = useRef<number | null>(null);
   const phaseRef = useRef<string | null>(null);
@@ -336,6 +337,17 @@ export function ScattergoriesRoom() {
             <p className="muted hunt-find-count">
               {huntProgress?.matchedCount ?? huntFinds.length}/{HUNT_MAX_ANSWERS} finds
             </p>
+            <button
+              type="button"
+              className={`size-pill hunt-magnify-toggle${huntMagnify ? " is-active" : ""}`}
+              aria-pressed={huntMagnify}
+              onClick={() => {
+                unlockAudio();
+                setHuntMagnify((v) => !v);
+              }}
+            >
+              Magnify
+            </button>
             <div
               className={`timer${
                 playLeft <= 5
@@ -351,7 +363,11 @@ export function ScattergoriesRoom() {
           </header>
           <div className="hunt-play-layout">
             <div className="hunt-play-side">
-              <p className="muted hunt-pin-hint">Tap the picture to pin a find</p>
+              <p className="muted hunt-pin-hint">
+                {huntMagnify
+                  ? "Magnify on — tap to pin a find"
+                  : "Tap the picture to pin a find"}
+              </p>
               {huntFinds.length > 0 ? (
                 <ul className="hunt-find-list" aria-label="Your finds">
                   {huntFinds.map((word, i) => (
@@ -367,6 +383,7 @@ export function ScattergoriesRoom() {
                 imageUrl={state.sceneImageUrl}
                 alt={state.sceneTitle ?? "Hidden object scene"}
                 draft={huntDraftMark}
+                magnify={huntMagnify}
                 pins={huntFinds.map((word, i) => ({
                   key: `mine-${i}`,
                   x: huntMarks[i]?.x ?? 0.5,

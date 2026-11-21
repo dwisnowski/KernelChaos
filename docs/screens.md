@@ -103,7 +103,7 @@ Prefer route + phase (and mode when needed):
 | boggle room lobby | `/boggle/room/:code` + `phase=lobby` |
 | boggle TV results | `/boggle/room/:code/tv` + `phase=results` |
 | scatter room review | `/scattergories/room/:code` + `phase=review` |
-| hunt play | `/scattergories/room/:code` + `playMode=hunt` + `phase=playing` |
+| hunt play | `/scattergories/room/:code` + `playMode=hunt` + `phase=playing` (optional Magnify loupe) |
 | mmmms organize | `/mmmms/room/:code` + `phase=organize` |
 | mmmms TV combat | `/mmmms/room/:code/tv` + `guess` \| `attack` \| `resolving` |
 | spotdiff entry | `/spotdiff` |
