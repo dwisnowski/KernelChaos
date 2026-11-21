@@ -1,14 +1,19 @@
 import type { SpotItCardView } from "./layout.ts";
 import type { SpotItPackId } from "./packs.ts";
-import { DEFAULT_SPOT_IT_PACK, isSpotItPackId } from "./packs.ts";
+import {
+  DEFAULT_KANA_PACK,
+  DEFAULT_SPOT_IT_PACK,
+  isKanaPack,
+  isSpotItPackId,
+} from "./packs.ts";
 
-export type SpotItPhase = "lobby" | "playing" | "between" | "results";
+export type SpotItPhase = "lobby" | "playing" | "quiz" | "between" | "results";
 
-export type SpotItMode = "shared" | "tower";
+export type SpotItMode = "shared" | "tower" | "learning";
 
 export type SpotItTarget = 10 | 25 | 50 | 75;
 
-export const SPOT_IT_MODES: SpotItMode[] = ["shared", "tower"];
+export const SPOT_IT_MODES: SpotItMode[] = ["shared", "tower", "learning"];
 export const SPOT_IT_TARGETS: SpotItTarget[] = [10, 25, 50, 75];
 
 export const DEFAULT_SPOT_IT_MODE: SpotItMode = "shared";
@@ -16,16 +21,17 @@ export const DEFAULT_SPOT_IT_TARGET: SpotItTarget = 25;
 
 export const SPOT_IT_BETWEEN_MS = 3000;
 export const SPOT_IT_MISS_LOCK_MS = 800;
+export const SPOT_IT_QUIZ_MISS_LOCK_MS = 2000;
 
 export function isSpotItMode(v: unknown): v is SpotItMode {
-  return v === "shared" || v === "tower";
+  return v === "shared" || v === "tower" || v === "learning";
 }
 
 export function isSpotItTarget(n: unknown): n is SpotItTarget {
   return n === 10 || n === 25 || n === 50 || n === 75;
 }
 
-export { isSpotItPackId, DEFAULT_SPOT_IT_PACK };
+export { isSpotItPackId, isKanaPack, DEFAULT_SPOT_IT_PACK, DEFAULT_KANA_PACK };
 export type { SpotItPackId };
 
 export interface SpotItPlayerPublic {
@@ -44,7 +50,7 @@ export interface SpotItRoomState {
   packId: SpotItPackId;
   countdownEndsAt: number | null;
   players: SpotItPlayerPublic[];
-  /** Shared mode: both cards. Tower: center only on public state. */
+  /** Shared / learning: both cards. Tower: center only on public state. */
   cardA: SpotItCardView | null;
   cardB: SpotItCardView | null;
   /** Tower center (also mirrored as cardA for convenience on clients). */
@@ -54,6 +60,15 @@ export interface SpotItRoomState {
   winners: string[];
   round: number;
   pileRemaining: number | null;
+  /** Learning quiz phase */
+  quizSymbolIndex: number | null;
+  quizChoices: string[] | null;
+  quizKana: string | null;
+  quizReading: string[] | null;
+  /** Between-round teaching payload */
+  lastMatchKana: string | null;
+  lastMatchReading: string[] | null;
+  lastMatchEnglish: string | null;
 }
 
 export type SpotItClientMessage =
@@ -64,6 +79,7 @@ export type SpotItClientMessage =
   | { type: "setSpotItPack"; packId: SpotItPackId }
   | { type: "start" }
   | { type: "tapSymbol"; symbolIndex: number }
+  | { type: "tapQuizChoice"; english: string }
   | { type: "playAgain" };
 
 export type SpotItServerMessage =

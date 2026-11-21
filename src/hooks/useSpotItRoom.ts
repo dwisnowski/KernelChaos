@@ -146,6 +146,10 @@ export function useSpotItRoom({ code, role = "player", onError, onTapResult }: O
     (symbolIndex: number) => send({ type: "tapSymbol", symbolIndex }),
     [send],
   );
+  const tapQuizChoice = useCallback(
+    (english: string) => send({ type: "tapQuizChoice", english }),
+    [send],
+  );
   const playAgain = useCallback(() => send({ type: "playAgain" }), [send]);
 
   const me: SpotItPlayerPublic | null = useMemo(() => {
@@ -167,6 +171,7 @@ export function useSpotItRoom({ code, role = "player", onError, onTapResult }: O
     setSpotItPack,
     start,
     tapSymbol,
+    tapQuizChoice,
     playAgain,
   };
 }

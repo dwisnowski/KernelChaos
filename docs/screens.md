@@ -96,15 +96,16 @@ Difficulty: `difficulty: "easy" | "medium" | "hard"` (lobby pills; scene clutter
 
 ### Spot It
 
-`SpotItPhase` in `src/spotItTypes.ts`: `lobby` → `playing` → `between` → `results`
+`SpotItPhase` in `src/spotItTypes.ts`: `lobby` → `playing` → (`quiz` when learning) → `between` → `results`
 
-Mode: `spotItMode: "shared" | "tower"` (lobby pills). Distinct from Spot the Difference (`spotdiff`).
+Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses the shared two-card deal, then a 4-choice English quiz before scoring. Kana packs (`kana-restaurant`) render Unicode glyphs — not Magnific image packs. Distinct from Spot the Difference (`spotdiff`).
 
 | Phase | Player | TV |
 | --- | --- | --- |
-| `lobby` | Mode / target / pack, QR, start | Lobby / waiting + QR |
+| `lobby` | Mode / target / pack (filtered by mode), QR, start | Lobby / waiting + QR |
 | `playing` | Cards + tap matching symbol | Cards + leaderboard |
-| `between` | 3s countdown + who scored | Same |
+| `quiz` | Matched kana + 2×2 English choices (2s lock on miss) | Kana + choices (non-interactive) |
+| `between` | 3s countdown + who scored (+ kana reading chips in learning) | Same |
 | `results` | Winner + scores | Same |
 
 ## Chat shorthand
@@ -128,6 +129,7 @@ Prefer route + phase (and mode when needed):
 | spotdiff TV results | `/spotdiff/room/:code/tv` + `phase=results` |
 | spot-it entry | `/spot-it` |
 | spot-it room playing | `/spot-it/room/:code` + `phase=playing` |
+| spot-it room quiz | `/spot-it/room/:code` + `phase=quiz` (learning) |
 | spot-it TV between | `/spot-it/room/:code/tv` + `phase=between` |
 
 ## Related

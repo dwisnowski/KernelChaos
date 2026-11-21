@@ -3974,6 +3974,26 @@ input {
   user-select: none;
 }
 
+.spot-it-symbol.is-kana {
+  display: grid;
+  place-items: center;
+  width: 30%;
+  height: 30%;
+}
+
+.spot-it-kana-glyph {
+  font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-weight: 700;
+  font-size: clamp(0.95rem, 3.8vw, 1.55rem);
+  line-height: 1.05;
+  color: #f7f4ee;
+  text-shadow: 0 1px 3px color-mix(in srgb, #000 45%, transparent);
+  pointer-events: none;
+  user-select: none;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
 .spot-it-symbol:disabled {
   cursor: not-allowed;
 }
@@ -3998,6 +4018,92 @@ input {
   font-size: 4.5rem;
   line-height: 1;
   color: var(--accent);
+}
+
+.spot-it-teach {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.spot-it-teach-kana {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 3.25rem);
+}
+
+.spot-it-teach-english {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: color-mix(in srgb, var(--text) 88%, var(--accent));
+}
+
+.spot-it-reading-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.spot-it-reading-chips li {
+  padding: 0.28rem 0.55rem;
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.spot-it-quiz {
+  display: grid;
+  gap: 0.65rem;
+  justify-items: center;
+  min-height: min(100%, calc(100dvh - 11rem), 28rem);
+  align-content: center;
+  text-align: center;
+}
+
+.spot-it-quiz-kana {
+  margin: 0;
+  font-size: clamp(2.4rem, 10vw, 3.75rem);
+}
+
+.spot-it-quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  width: min(100%, 28rem);
+}
+
+.spot-it-quiz-grid.is-locked {
+  opacity: 0.72;
+}
+
+.spot-it-quiz-choice {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  padding: 0.85rem 0.75rem;
+  cursor: pointer;
+}
+
+.spot-it-quiz-choice:disabled {
+  cursor: not-allowed;
+}
+
+.spot-it-quiz-choice.is-static {
+  display: grid;
+  place-items: center;
+  cursor: default;
+  opacity: 0.9;
 }
 
 .spot-it-lock {

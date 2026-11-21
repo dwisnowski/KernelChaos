@@ -43,6 +43,7 @@ export function SpotItRoom() {
     setSpotItPack,
     start,
     tapSymbol,
+    tapQuizChoice,
     playAgain,
   } = useSpotItRoom({
     code: roomCode,
@@ -134,6 +135,9 @@ export function SpotItRoom() {
   }
 
   const sorted = [...state.players].sort((a, b) => b.score - a.score);
+  const sharedLike = state.spotItMode === "shared" || state.spotItMode === "learning";
+  const inPlayPhases =
+    state.phase === "playing" || state.phase === "quiz" || state.phase === "between";
 
   return (
     <Layout
@@ -141,7 +145,7 @@ export function SpotItRoom() {
       tvRoom={{
         code: roomCode,
         game: "spot-it",
-        roundActive: state.phase === "playing" || state.phase === "between",
+        roundActive: inPlayPhases,
       }}
     >
       <section className="spot-it-room">
@@ -159,7 +163,7 @@ export function SpotItRoom() {
           />
         ) : null}
 
-        {state.phase === "playing" || state.phase === "between" ? (
+        {inPlayPhases ? (
           <div
             className={`spot-it-play${
               flash === "ok" ? " spot-it-flash-ok" : flash === "bad" ? " spot-it-flash-bad" : ""
@@ -186,12 +190,48 @@ export function SpotItRoom() {
                 <p className="spot-it-between-who">
                   {state.lastScorerName ? `${state.lastScorerName} scored!` : "Match found!"}
                 </p>
+                {state.lastMatchKana ? (
+                  <div className="spot-it-teach">
+                    <p className="spot-it-teach-kana spot-it-kana-glyph">{state.lastMatchKana}</p>
+                    {state.lastMatchReading && state.lastMatchReading.length > 0 ? (
+                      <ul className="spot-it-reading-chips" aria-label="Reading">
+                        {state.lastMatchReading.map((syllable, i) => (
+                          <li key={`${syllable}-${i}`}>{syllable}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {state.lastMatchEnglish ? (
+                      <p className="spot-it-teach-english">{state.lastMatchEnglish}</p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <p className="spot-it-between-count">{betweenLeft}</p>
                 <p className="muted">Next cards in…</p>
               </div>
+            ) : state.phase === "quiz" ? (
+              <div className="spot-it-quiz" role="group" aria-label="Pick the English meaning">
+                {state.quizKana ? (
+                  <p className="spot-it-quiz-kana spot-it-kana-glyph">{state.quizKana}</p>
+                ) : null}
+                <p className="muted">What does it mean?</p>
+                <div className={`spot-it-quiz-grid${locked ? " is-locked" : ""}`}>
+                  {(state.quizChoices ?? []).map((choice) => (
+                    <button
+                      key={choice}
+                      type="button"
+                      className="spot-it-quiz-choice"
+                      disabled={locked}
+                      onClick={() => tapQuizChoice(choice)}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+                {locked ? <p className="spot-it-lock muted">Wrong — try again in a moment</p> : null}
+              </div>
             ) : (
               <div className={`spot-it-board${locked ? " is-locked" : ""}`}>
-                {state.spotItMode === "shared" ? (
+                {sharedLike ? (
                   <>
                     {state.cardA ? (
                       <SpotItCard
@@ -242,7 +282,9 @@ export function SpotItRoom() {
                 )}
               </div>
             )}
-            {locked ? <p className="spot-it-lock muted">Miss lock — try again shortly</p> : null}
+            {state.phase === "playing" && locked ? (
+              <p className="spot-it-lock muted">Miss lock — try again shortly</p>
+            ) : null}
           </div>
         ) : null}
 

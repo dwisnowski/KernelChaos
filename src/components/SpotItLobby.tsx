@@ -6,6 +6,7 @@ import {
   SPOT_IT_PACK_IDS,
   SPOT_IT_PACK_LABELS,
   SPOT_IT_TARGETS,
+  isKanaPack,
   type SpotItMode,
   type SpotItPackId,
   type SpotItPlayerPublic,
@@ -34,6 +35,17 @@ export function SpotItLobby({
 }: Props) {
   const isHost = me?.isHost ?? false;
   const canStart = state.players.length >= 1;
+  const learning = state.spotItMode === "learning";
+  const visiblePacks = SPOT_IT_PACK_IDS.filter((id) =>
+    learning ? isKanaPack(id) : !isKanaPack(id),
+  );
+
+  const modeHint =
+    state.spotItMode === "shared"
+      ? "Everyone sees the same two cards — race to tap the match."
+      : state.spotItMode === "learning"
+        ? "Match the shared kana, then race to pick its English meaning."
+        : "Shared center + your own card — first correct match scores and takes the center.";
 
   return (
     <section className="lobby">
@@ -78,11 +90,7 @@ export function SpotItLobby({
               </button>
             ))}
           </div>
-          <p className="muted lobby-hint">
-            {state.spotItMode === "shared"
-              ? "Everyone sees the same two cards — race to tap the match."
-              : "Shared center + your own card — first correct match scores and takes the center."}
-          </p>
+          <p className="muted lobby-hint">{modeHint}</p>
         </div>
 
         <div className="board-size">
@@ -105,7 +113,7 @@ export function SpotItLobby({
         <div className="board-size">
           <h2>Symbol pack</h2>
           <div className="size-pills" role="group" aria-label="Symbol pack">
-            {SPOT_IT_PACK_IDS.map((id) => (
+            {visiblePacks.map((id) => (
               <button
                 key={id}
                 type="button"

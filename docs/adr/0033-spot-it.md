@@ -19,9 +19,10 @@ Digital play removes physical-card constraints, so symbol art can be generated a
 - **Modes (lobby):**
   - `shared` — Same two cards for every seat (+ TV). Race to tap the shared symbol.
   - `tower` — Shared center card + each player’s own card. First correct match scores; winner takes the center as their new hand card; next center after intermission.
+  - `learning` — Shared two-card deal + English meaning quiz after a correct kana tap ([ADR 0037](./0037-spot-it-kana-learning.md)).
 - **Win:** First to lobby target `10 | 25 | 50 | 75` (default 25). Start with ≥1 seat; no player cap.
-- **Phases:** `lobby` → `playing` → `between` (3s) → `playing` … → `results`.
-- **Packs:** Lobby-selectable symbol packs; v1 ships `food` (funny anthropomorphic food characters under `public/spot-it/food/`). Asset masters vs 192² game rasters and 4-up Magnific processing: [ADR 0034](./0034-spot-it-assets-and-card-ux.md). Packs `kawaii` ([ADR 0035](./0035-spot-it-kawaii-animals-pack.md)) and `cyber` ([ADR 0036](./0036-spot-it-cyber-vehicles-pack.md)).
+- **Phases:** `lobby` → `playing` → (`quiz` when learning) → `between` (3s) → `playing` … → `results`.
+- **Packs:** Lobby-selectable symbol packs; v1 ships `food` (funny anthropomorphic food characters under `public/spot-it/food/`). Asset masters vs 192² game rasters and 4-up Magnific processing: [ADR 0034](./0034-spot-it-assets-and-card-ux.md). Packs `kawaii` ([ADR 0035](./0035-spot-it-kawaii-animals-pack.md)), `cyber` ([ADR 0036](./0036-spot-it-cyber-vehicles-pack.md)), and kana `kana-restaurant` ([ADR 0037](./0037-spot-it-kana-learning.md); Unicode glyphs, not Magnific).
 - **Layouts:** Server seeds per-card placements (position / rotate / scale) so phone and TV match.
 - **Taps:** Client sends `tapSymbol { symbolId }`; server validates the authoritative match for that seat. Wrong taps get a short private lock; first correct tap of the round scores.
 - **TV:** Leaderboard toward target, mode, last scorer, live cards (shared pair, or center-only during Tower play), lobby QR.

@@ -29,7 +29,7 @@ URL routes and in-room phases (lobby, playing, review, …) are catalogued in [`
 | `worker/scattergories/` | Letter die, packs, normalize/scoring, protocol |
 | `worker/mmmms/` | Orb colors, deal/resolve attack, protocol |
 | `worker/spotdiff/` | Procedural scenes, generate, hit-test, protocol |
-| `worker/spot-it/` | Order-7 deck, packs, layout, deal, protocol |
+| `worker/spot-it/` | Order-7 deck, packs (image + kana), layout, deal, protocol; Learning mode quiz in `room.ts` |
 | `assets/spot-it/` | Symbol masters (+ gitignored Magnific sheets); game PNGs stay in `public/spot-it/` |
 | `docs/screens.md` | Screen / route / phase reference for chat |
 | `docs/adr/` | Architecture Decision Records |

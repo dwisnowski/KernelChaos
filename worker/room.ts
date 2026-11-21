@@ -107,12 +107,16 @@ import {
   type TowerDeal,
 } from "./spot-it/deal.ts";
 import type { SpotItCardView } from "./spot-it/layout.ts";
+import { buildQuizChoices, getSpotItPack } from "./spot-it/packs.ts";
 import {
+  DEFAULT_KANA_PACK,
   DEFAULT_SPOT_IT_MODE,
   DEFAULT_SPOT_IT_PACK,
   DEFAULT_SPOT_IT_TARGET,
   SPOT_IT_BETWEEN_MS,
   SPOT_IT_MISS_LOCK_MS,
+  SPOT_IT_QUIZ_MISS_LOCK_MS,
+  isKanaPack,
   isSpotItMode,
   isSpotItPackId,
   isSpotItTarget,
@@ -380,6 +384,13 @@ export class GameRoom extends DurableObject<Env> {
   private spotItLastScorerId: string | null = null;
   private spotItLastScorerName: string | null = null;
   private spotItWinners: string[] = [];
+  private spotItQuizSymbolIndex: number | null = null;
+  private spotItQuizChoices: string[] | null = null;
+  private spotItQuizKana: string | null = null;
+  private spotItQuizReading: string[] | null = null;
+  private spotItLastMatchKana: string | null = null;
+  private spotItLastMatchReading: string[] | null = null;
+  private spotItLastMatchEnglish: string | null = null;
 
   private loaded = false;
 
@@ -451,6 +462,13 @@ export class GameRoom extends DurableObject<Env> {
       spotItLastScorerId?: string | null;
       spotItLastScorerName?: string | null;
       spotItWinners?: string[];
+      spotItQuizSymbolIndex?: number | null;
+      spotItQuizChoices?: string[] | null;
+      spotItQuizKana?: string | null;
+      spotItQuizReading?: string[] | null;
+      spotItLastMatchKana?: string | null;
+      spotItLastMatchReading?: string[] | null;
+      spotItLastMatchEnglish?: string | null;
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -545,6 +563,20 @@ export class GameRoom extends DurableObject<Env> {
       this.spotItLastScorerId = stored.spotItLastScorerId ?? null;
       this.spotItLastScorerName = stored.spotItLastScorerName ?? null;
       this.spotItWinners = Array.isArray(stored.spotItWinners) ? stored.spotItWinners : [];
+      this.spotItQuizSymbolIndex =
+        typeof stored.spotItQuizSymbolIndex === "number" ? stored.spotItQuizSymbolIndex : null;
+      this.spotItQuizChoices = Array.isArray(stored.spotItQuizChoices)
+        ? stored.spotItQuizChoices
+        : null;
+      this.spotItQuizKana = stored.spotItQuizKana ?? null;
+      this.spotItQuizReading = Array.isArray(stored.spotItQuizReading)
+        ? stored.spotItQuizReading
+        : null;
+      this.spotItLastMatchKana = stored.spotItLastMatchKana ?? null;
+      this.spotItLastMatchReading = Array.isArray(stored.spotItLastMatchReading)
+        ? stored.spotItLastMatchReading
+        : null;
+      this.spotItLastMatchEnglish = stored.spotItLastMatchEnglish ?? null;
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -639,6 +671,13 @@ export class GameRoom extends DurableObject<Env> {
       spotItLastScorerId: this.spotItLastScorerId,
       spotItLastScorerName: this.spotItLastScorerName,
       spotItWinners: this.spotItWinners,
+      spotItQuizSymbolIndex: this.spotItQuizSymbolIndex,
+      spotItQuizChoices: this.spotItQuizChoices,
+      spotItQuizKana: this.spotItQuizKana,
+      spotItQuizReading: this.spotItQuizReading,
+      spotItLastMatchKana: this.spotItLastMatchKana,
+      spotItLastMatchReading: this.spotItLastMatchReading,
+      spotItLastMatchEnglish: this.spotItLastMatchEnglish,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -829,6 +868,29 @@ export class GameRoom extends DurableObject<Env> {
     this.spotItLastScorerId = null;
     this.spotItLastScorerName = null;
     this.spotItWinners = [];
+    this.clearSpotItQuizFields();
+    this.clearSpotItBetweenTeach();
+  }
+
+  private clearSpotItQuizFields(): void {
+    this.spotItQuizSymbolIndex = null;
+    this.spotItQuizChoices = null;
+    this.spotItQuizKana = null;
+    this.spotItQuizReading = null;
+  }
+
+  private clearSpotItBetweenTeach(): void {
+    this.spotItLastMatchKana = null;
+    this.spotItLastMatchReading = null;
+    this.spotItLastMatchEnglish = null;
+  }
+
+  private syncSpotItPackForMode(mode: SpotItMode): void {
+    if (mode === "learning") {
+      if (!isKanaPack(this.spotItPack)) this.spotItPack = DEFAULT_KANA_PACK;
+    } else if (isKanaPack(this.spotItPack)) {
+      this.spotItPack = DEFAULT_SPOT_IT_PACK;
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -1032,6 +1094,10 @@ export class GameRoom extends DurableObject<Env> {
       case "tapSymbol":
         if (this.gameType !== "spot-it") break;
         await this.handleTapSpotItSymbol(ws, attachment?.playerId, msg.symbolIndex);
+        break;
+      case "tapQuizChoice":
+        if (this.gameType !== "spot-it") break;
+        await this.handleTapSpotItQuizChoice(ws, attachment?.playerId, msg.english);
         break;
       default:
         this.send(ws, { type: "error", message: "Unknown message" });
@@ -1458,9 +1524,10 @@ export class GameRoom extends DurableObject<Env> {
       this.spotPuzzle = null;
       this.countdownEndsAt = null;
       this.endsAt = null;
+      this.syncSpotItPackForMode(this.spotItMode);
       const seed = randomSeed();
       try {
-        if (this.spotItMode === "shared") {
+        if (this.spotItMode === "shared" || this.spotItMode === "learning") {
           const used = new Set<number>();
           const deal = dealSharedPair(seed, used);
           this.spotItCardA = deal.cardA;
@@ -1910,6 +1977,7 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "lobby") return;
     if (!isSpotItMode(mode)) return;
     this.spotItMode = mode;
+    this.syncSpotItPackForMode(mode);
     await this.persist();
     this.broadcastState();
   }
@@ -1930,6 +1998,11 @@ export class GameRoom extends DurableObject<Env> {
     if (!playerId || !this.isHost(playerId)) return;
     if (this.phase !== "lobby") return;
     if (!isSpotItPackId(packId)) return;
+    if (this.spotItMode === "learning") {
+      if (!isKanaPack(packId)) return;
+    } else if (isKanaPack(packId)) {
+      return;
+    }
     this.spotItPack = packId;
     await this.persist();
     this.broadcastState();
@@ -1963,6 +2036,7 @@ export class GameRoom extends DurableObject<Env> {
     this.countdownEndsAt = null;
     this.endsAt = null;
     this.spotItWinners = winners;
+    this.clearSpotItQuizFields();
   }
 
   private finishSpotItByHighScore(): void {
@@ -1980,10 +2054,24 @@ export class GameRoom extends DurableObject<Env> {
     this.finishSpotIt(winners);
   }
 
+  private enterSpotItQuiz(symbolIndex: number): void {
+    const pack = getSpotItPack(this.spotItPack);
+    const meta = pack.symbols[symbolIndex];
+    this.spotItQuizSymbolIndex = symbolIndex;
+    this.spotItQuizKana = meta?.kana ?? null;
+    this.spotItQuizReading = meta?.reading ? [...meta.reading] : null;
+    this.spotItQuizChoices = buildQuizChoices(this.spotItPack, symbolIndex, randomSeed());
+    this.clearSpotItBetweenTeach();
+    this.phase = "quiz";
+    this.countdownEndsAt = null;
+  }
+
   private async advanceSpotItRound(): Promise<void> {
     this.countdownEndsAt = null;
+    this.clearSpotItQuizFields();
+    this.clearSpotItBetweenTeach();
     const seed = randomSeed();
-    if (this.spotItMode === "shared") {
+    if (this.spotItMode === "shared" || this.spotItMode === "learning") {
       try {
         const used = new Set(this.spotItUsedCards);
         const deal = dealSharedPair(seed, used);
@@ -2040,7 +2128,7 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     let expected: number | null;
-    if (this.spotItMode === "shared") {
+    if (this.spotItMode === "shared" || this.spotItMode === "learning") {
       expected = this.spotItMatchSymbol;
     } else {
       const hand = this.spotItHands.get(playerId);
@@ -2064,6 +2152,20 @@ export class GameRoom extends DurableObject<Env> {
 
     // Hit: first only. Phase flips synchronously so later taps are ignored.
     player.missStreak = 0;
+
+    if (this.spotItMode === "learning") {
+      this.enterSpotItQuiz(symbolIndex);
+      this.send(ws, {
+        type: "tapResult",
+        hit: true,
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotItServerMessage);
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
     player.spotItScore += 1;
     this.spotItLastScorerId = playerId;
     this.spotItLastScorerName = player.name;
@@ -2088,6 +2190,75 @@ export class GameRoom extends DurableObject<Env> {
       hit: true,
       lockedUntil: player.lockedUntil,
     } satisfies SpotItServerMessage);
+    await this.ctx.storage.setAlarm(this.countdownEndsAt);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleTapSpotItQuizChoice(
+    ws: WebSocket,
+    playerId: string | undefined,
+    english: string,
+  ): Promise<void> {
+    if (!playerId || this.phase !== "quiz") return;
+    if (this.spotItMode !== "learning") return;
+    const player = this.players.get(playerId);
+    if (!player) return;
+    if (typeof english !== "string" || !english) return;
+    const now = Date.now();
+    if (player.lockedUntil != null && now < player.lockedUntil) {
+      this.send(ws, {
+        type: "tapResult",
+        hit: false,
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotItServerMessage);
+      return;
+    }
+
+    const symbolIndex = this.spotItQuizSymbolIndex;
+    if (symbolIndex == null) return;
+    const correct = getSpotItPack(this.spotItPack).symbols[symbolIndex]?.label;
+    if (!correct) return;
+
+    if (english !== correct) {
+      player.lockedUntil = now + SPOT_IT_QUIZ_MISS_LOCK_MS;
+      await this.persist();
+      this.send(ws, {
+        type: "tapResult",
+        hit: false,
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotItServerMessage);
+      // Broadcast so other clients see lock state if needed via private lockedUntil only —
+      // miss is personal; still persist for resume.
+      return;
+    }
+
+    // Correct English: score and teach.
+    player.missStreak = 0;
+    player.spotItScore += 1;
+    this.spotItLastScorerId = playerId;
+    this.spotItLastScorerName = player.name;
+    this.spotItLastMatchKana = this.spotItQuizKana;
+    this.spotItLastMatchReading = this.spotItQuizReading ? [...this.spotItQuizReading] : null;
+    this.spotItLastMatchEnglish = correct;
+    this.clearSpotItQuizFields();
+
+    this.send(ws, {
+      type: "tapResult",
+      hit: true,
+      lockedUntil: player.lockedUntil,
+    } satisfies SpotItServerMessage);
+
+    if (player.spotItScore >= this.spotItTarget) {
+      this.finishSpotIt([playerId]);
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
+    this.phase = "between";
+    this.countdownEndsAt = now + SPOT_IT_BETWEEN_MS;
     await this.ctx.storage.setAlarm(this.countdownEndsAt);
     await this.persist();
     this.broadcastState();
@@ -2995,6 +3166,8 @@ export class GameRoom extends DurableObject<Env> {
       score: p.spotItScore,
     }));
     const inGame = this.phase !== "lobby";
+    const inQuiz = this.phase === "quiz";
+    const inBetween = this.phase === "between";
     return {
       game: "spot-it",
       code: this.code,
@@ -3012,6 +3185,14 @@ export class GameRoom extends DurableObject<Env> {
       winners: this.phase === "results" ? [...this.spotItWinners] : [],
       round: this.round,
       pileRemaining: tower && inGame ? this.spotItPile.length : null,
+      quizSymbolIndex: inQuiz ? this.spotItQuizSymbolIndex : null,
+      quizChoices: inQuiz && this.spotItQuizChoices ? [...this.spotItQuizChoices] : null,
+      quizKana: inQuiz ? this.spotItQuizKana : null,
+      quizReading: inQuiz && this.spotItQuizReading ? [...this.spotItQuizReading] : null,
+      lastMatchKana: inBetween ? this.spotItLastMatchKana : null,
+      lastMatchReading:
+        inBetween && this.spotItLastMatchReading ? [...this.spotItLastMatchReading] : null,
+      lastMatchEnglish: inBetween ? this.spotItLastMatchEnglish : null,
     };
   }
 

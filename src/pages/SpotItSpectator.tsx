@@ -60,7 +60,7 @@ export function SpotItSpectator() {
   }, [state, now]);
 
   useEffect(() => {
-    if (!state || (state.phase !== "playing" && state.phase !== "between")) {
+    if (!state || (state.phase !== "playing" && state.phase !== "between" && state.phase !== "quiz")) {
       scoreSumRef.current = 0;
       return;
     }
@@ -81,6 +81,9 @@ export function SpotItSpectator() {
 
   const sorted = state ? [...state.players].sort((a, b) => b.score - a.score) : [];
   const leader = sorted[0] ?? null;
+  const sharedLike = state?.spotItMode === "shared" || state?.spotItMode === "learning";
+  const inPlayPhases =
+    state && (state.phase === "playing" || state.phase === "quiz" || state.phase === "between");
 
   return (
     <Layout title="KernelChaos · TV" playerRoom={{ code: roomCode, game: "spot-it" }}>
@@ -117,7 +120,7 @@ export function SpotItSpectator() {
           </div>
         ) : null}
 
-        {state && (state.phase === "playing" || state.phase === "between") ? (
+        {inPlayPhases ? (
           <div className="spot-it-tv-play">
             <aside className="spot-it-tv-board">
               <p className="spot-it-meta">
@@ -149,9 +152,38 @@ export function SpotItSpectator() {
                   <p className="spot-it-between-who">
                     {state.lastScorerName ? `${state.lastScorerName} scored!` : "Match found!"}
                   </p>
+                  {state.lastMatchKana ? (
+                    <div className="spot-it-teach">
+                      <p className="spot-it-teach-kana spot-it-kana-glyph">{state.lastMatchKana}</p>
+                      {state.lastMatchReading && state.lastMatchReading.length > 0 ? (
+                        <ul className="spot-it-reading-chips" aria-label="Reading">
+                          {state.lastMatchReading.map((syllable, i) => (
+                            <li key={`${syllable}-${i}`}>{syllable}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {state.lastMatchEnglish ? (
+                        <p className="spot-it-teach-english">{state.lastMatchEnglish}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <p className="spot-it-between-count">{betweenLeft}</p>
                 </div>
-              ) : state.spotItMode === "shared" ? (
+              ) : state.phase === "quiz" ? (
+                <div className="spot-it-quiz spot-it-quiz-tv" role="status">
+                  {state.quizKana ? (
+                    <p className="spot-it-quiz-kana spot-it-kana-glyph">{state.quizKana}</p>
+                  ) : null}
+                  <p className="muted">Waiting for English answer…</p>
+                  <div className="spot-it-quiz-grid is-static">
+                    {(state.quizChoices ?? []).map((choice) => (
+                      <span key={choice} className="spot-it-quiz-choice is-static">
+                        {choice}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : sharedLike ? (
                 <div className="spot-it-board">
                   {state.cardA ? (
                     <SpotItCard card={state.cardA} packId={state.packId} label="Card A" />
