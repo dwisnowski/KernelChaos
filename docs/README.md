@@ -6,6 +6,7 @@ Architecture decisions and project notes for KernelChaos.
 
 - [Agent notes](../AGENTS.md) — repo map, non-negotiables, verify checklist (AI coding agents)
 - [Screen reference](./screens.md) — URL routes, in-room phases, chat shorthand
+- [Picture Hunt Magnific MCP](./hunt-magnific.md) — Creative/Precision upscale via Magnific MCP; vision-check catalogs after art
 - [README](../readme.md) — features, develop, deploy
 
 ## Architecture Decision Records
