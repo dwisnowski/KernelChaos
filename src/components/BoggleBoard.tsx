@@ -23,6 +23,25 @@ interface CellCenter {
   cy: number;
 }
 
+/** Must match `--gap-frac` on `.boggle-board` in index.css (size-6 uses 0.03). */
+const BOARD_GAP_FRAC = 0.04;
+const BOARD_GAP_FRAC_6 = 0.03;
+
+function gapFracForSize(size: number): number {
+  return size >= 6 ? BOARD_GAP_FRAC_6 : BOARD_GAP_FRAC;
+}
+
+/** Cell-center in unit square [0,1] accounting for CSS percentage gap. */
+function cellCenterUnit(size: number, index: number, gapFrac: number): { x: number; y: number } {
+  const cell = (1 - (size - 1) * gapFrac) / size;
+  const col = index % size;
+  const row = Math.floor(index / size);
+  return {
+    x: col * (cell + gapFrac) + cell / 2,
+    y: row * (cell + gapFrac) + cell / 2,
+  };
+}
+
 /**
  * Cell centers in client coordinates.
  * Boggle letters adjoin horizontally, vertically, OR diagonally (Hasbro rules).
@@ -330,41 +349,38 @@ export function BoggleBoard({
       >
         <svg
           className="path-connectors"
-          viewBox={`0 0 ${size} ${size}`}
+          viewBox="0 0 1 1"
           preserveAspectRatio="none"
           aria-hidden="true"
         >
           {displayPath.length > 1
             ? displayPath.slice(1).map((idx, i) => {
-                const prev = displayPath[i]!;
-                const x1 = (prev % size) + 0.5;
-                const y1 = Math.floor(prev / size) + 0.5;
-                const x2 = (idx % size) + 0.5;
-                const y2 = Math.floor(idx / size) + 0.5;
+                const gapFrac = gapFracForSize(size);
+                const a = cellCenterUnit(size, displayPath[i]!, gapFrac);
+                const b = cellCenterUnit(size, idx, gapFrac);
                 return (
                   <line
-                    key={`${prev}-${idx}-${i}`}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
+                    key={`${displayPath[i]}-${idx}-${i}`}
+                    x1={a.x}
+                    y1={a.y}
+                    x2={b.x}
+                    y2={b.y}
                     className="path-connector-line"
                   />
                 );
               })
             : null}
           {displayPath.map((idx, order) => {
-            const cx = (idx % size) + 0.5;
-            const cy = Math.floor(idx / size) + 0.5;
+            const gapFrac = gapFracForSize(size);
+            const { x, y } = cellCenterUnit(size, idx, gapFrac);
+            const tip = order === displayPath.length - 1;
             return (
               <circle
                 key={`node-${idx}-${order}`}
-                cx={cx}
-                cy={cy}
-                r={order === displayPath.length - 1 ? 0.18 : 0.12}
-                className={`path-connector-node${
-                  order === displayPath.length - 1 ? " is-tip" : ""
-                }`}
+                cx={x}
+                cy={y}
+                r={(tip ? 0.14 : 0.1) / size}
+                className={`path-connector-node${tip ? " is-tip" : ""}`}
               />
             );
           })}
@@ -373,11 +389,11 @@ export function BoggleBoard({
           <div
             key={i}
             data-cell={i}
-            className={`board-cell${displayPath.includes(i) ? " is-selected" : ""}${
-              displayPath[displayPath.length - 1] === i ? " is-tip" : ""
-            }${displayPath.includes(i) && flash === "ok" ? " is-flash-ok" : ""}${
-              displayPath.includes(i) && flash === "bad" ? " is-flash-bad" : ""
-            }`}
+            className={`board-cell${letter.length > 1 ? " is-digraph" : ""}${
+              displayPath.includes(i) ? " is-selected" : ""
+            }${displayPath[displayPath.length - 1] === i ? " is-tip" : ""}${
+              displayPath.includes(i) && flash === "ok" ? " is-flash-ok" : ""
+            }${displayPath.includes(i) && flash === "bad" ? " is-flash-bad" : ""}`}
           >
             <span>{letter}</span>
           </div>

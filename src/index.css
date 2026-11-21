@@ -695,6 +695,8 @@ input {
 }
 
 .play-screen {
+  container-type: inline-size;
+  container-name: play;
   display: grid;
   gap: 1rem;
   touch-action: manipulation;
@@ -744,6 +746,8 @@ input {
   display: grid;
   gap: 0.65rem;
   justify-items: center;
+  width: 100%;
+  min-width: 0;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -751,16 +755,93 @@ input {
 
 .boggle-board {
   --n: 4;
+  /* Fraction of board size; keep in sync with BoggleBoard path math (BOARD_GAP_FRAC). */
+  --gap-frac: 0.04;
+  container-type: inline-size;
+  container-name: board;
   position: relative;
-  width: min(100%, 520px);
+  width: min(100%, 520px, calc(100dvh - 12rem));
   aspect-ratio: 1;
+  height: auto;
+  max-width: 100%;
   display: grid;
-  grid-template-columns: repeat(var(--n), 1fr);
-  gap: clamp(0.45rem, 1.8vw, 0.85rem);
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--n), minmax(0, 1fr));
+  gap: calc(var(--gap-frac) * 100%);
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+.boggle-board.size-6 {
+  --gap-frac: 0.03;
+  width: min(100%, 520px, calc(100dvh - 11rem));
+}
+
+/* Desktop two-column play: board ~80% of .play-screen (not the old 520/640px caps). */
+@container play (min-width: 820px) {
+  .play-screen > .board-wrap > .boggle-board {
+    width: min(80cqi, 100%, calc(100dvh - 12rem));
+  }
+
+  .play-screen > .board-wrap > .boggle-board.size-6 {
+    width: min(80cqi, 100%, calc(100dvh - 11rem));
+  }
+}
+
+/* Phone play: edge-to-edge board, compact chrome so tiles can fill the screen. */
+@media (max-width: 819px) {
+  .app-shell:has(.play-screen) {
+    padding: 0.35rem max(0.35rem, env(safe-area-inset-right)) 0.35rem
+      max(0.35rem, env(safe-area-inset-left));
+    gap: 0.35rem;
+  }
+
+  .app-shell:has(.play-screen) .wiz-footer {
+    display: none;
+  }
+
+  .app-shell:has(.play-screen) .app-header {
+    gap: 0.35rem;
+  }
+
+  .app-shell:has(.play-screen) .brand-title {
+    font-size: 0.95rem;
+  }
+
+  .app-shell:has(.play-screen) .header-actions .header-tv-link,
+  .app-shell:has(.play-screen) .header-actions .mute-btn,
+  .app-shell:has(.play-screen) .header-actions .settings-link {
+    min-height: 2rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.78rem;
+  }
+
+  .play-screen {
+    gap: 0.45rem;
+  }
+
+  .play-meta {
+    gap: 0.2rem;
+  }
+
+  .play-screen .timer {
+    font-size: clamp(1.4rem, 7vw, 2rem);
+  }
+
+  .play-screen .play-stats,
+  .play-screen .player-activity {
+    font-size: 0.82rem;
+  }
+
+  .play-screen .boggle-board {
+    width: min(100%, calc(100dvh - 9.5rem));
+  }
+
+  .play-screen .boggle-board.size-6 {
+    width: min(100%, calc(100dvh - 9rem));
+  }
 }
 
 .path-connectors {
@@ -775,7 +856,8 @@ input {
 
 .path-connector-line {
   stroke: rgba(240, 162, 2, 0.92);
-  stroke-width: 0.14;
+  /* viewBox is 0 0 1 1 — keep stroke ~8–12px on typical boards. */
+  stroke-width: 0.022;
   stroke-linecap: round;
   filter: drop-shadow(0 0 0.04px rgba(26, 20, 8, 0.35));
 }
@@ -783,7 +865,7 @@ input {
 .path-connector-node {
   fill: rgba(240, 162, 2, 0.95);
   stroke: rgba(26, 20, 8, 0.2);
-  stroke-width: 0.03;
+  stroke-width: 0.006;
 }
 
 .path-connector-node.is-tip {
@@ -794,14 +876,21 @@ input {
 .board-cell {
   position: relative;
   z-index: 1;
-  border-radius: clamp(10px, 2vw, 16px);
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  /* % radius is relative to the tile itself → same look on 4×4–6×6. */
+  border-radius: 18%;
   background: linear-gradient(160deg, #f7f1df, #e7d7b0);
   color: #1c160c;
   display: grid;
   place-items: center;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.1rem, 5.2vw, 2.4rem);
+  /* Scale glyph to cell size; lower floor so 6×6 tiles stay uniform. */
+  font-size: clamp(0.7rem, calc(42cqi / var(--n)), 3.25rem);
+  line-height: 1;
+  overflow: hidden;
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12);
   transition: transform 0.12s ease, background 0.12s ease;
   touch-action: none;
@@ -809,6 +898,11 @@ input {
   user-select: none;
   /* Keep the board as the gesture target on iOS — don't let cells steal capture. */
   pointer-events: none;
+}
+
+.board-cell.is-digraph {
+  font-size: clamp(0.55rem, calc(32cqi / var(--n)), 2.4rem);
+  letter-spacing: -0.04em;
 }
 
 .board-cell span {
@@ -1573,6 +1667,7 @@ input {
   display: grid;
   gap: 0.45rem;
   justify-items: center;
+  align-content: start;
   padding: 0.85rem;
   border-radius: var(--radius);
   background: var(--card);
@@ -1581,8 +1676,12 @@ input {
   top: 0.75rem;
 }
 
-.spectator-results-board .boggle-board {
+.spectator-results-board .board-wrap {
   width: min(100%, 520px);
+}
+
+.spectator-results-board .boggle-board {
+  width: 100%;
 }
 
 .spectator-word-definition {
@@ -1910,7 +2009,7 @@ input {
   }
 
   .play-screen {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 220px minmax(0, 1fr);
     align-items: start;
   }
 
@@ -1944,18 +2043,9 @@ input {
     width: 280px;
   }
 
-  .boggle-board {
-    width: min(100%, 640px);
-  }
-
+  /* Keep play as meta | board so the board can reach ~80cqi; chips stay full-width below. */
   .play-screen {
-    grid-template-columns: 260px 1fr 220px;
-  }
-
-  .word-chips {
-    grid-column: auto;
-    flex-direction: column;
-    align-items: flex-start;
+    grid-template-columns: 260px minmax(0, 1fr);
   }
 
   .results-grid {
