@@ -21,4 +21,4 @@ Required animals in the pack: seagull, rabbit, cat, dog, horse, lizard, raccoon 
 
 - `SpotItPackId` / lobby pills grow to include `kawaii`.
 - Deal/tap protocol unchanged; only image URLs and labels differ by `packId`.
-- Extends [0033](./0033-spot-it.md), [0034](./0034-spot-it-assets-and-card-ux.md).
+- Extends [0033](./0033-spot-it.md), [0034](./0034-spot-it-assets-and-card-ux.md). Next pack: [0036](./0036-spot-it-cyber-vehicles-pack.md).

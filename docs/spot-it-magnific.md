@@ -36,7 +36,13 @@ Four funny anthropomorphic food characters in a 2x2 grid, one per quadrant with 
 Four kawaii animals in a 2x2 grid, one per quadrant with clear empty gutters between them. Top-left: <A>. Top-right: <B>. Bottom-left: <C>. Bottom-right: <D>. Soft pastel kawaii style, big sparkly eyes, rounded cute proportions, each standing alone on a transparent background. Bold readable silhouettes, high contrast, no text, no letters, no numbers, no labels, no watermark, no shared background props.
 ```
 
-Swap A–D for pack-specific subjects. Prefer a dedicated Magnific folder per pack (e.g. under KernelChaos Spot It → Kawaii Animals).
+### Prompt template (Cyber Vehicles — pack `cyber`)
+
+```text
+Four Japanese anime style vehicles with a cyberpunk vibe in a 2x2 grid, one per quadrant with clear empty gutters between them. Top-left: <A>. Top-right: <B>. Bottom-left: <C>. Bottom-right: <D>. Neon accents, chrome details, night-city cyberpunk look, each vehicle alone on a transparent or solid black background. Bold readable silhouettes, high contrast, no text, no letters, no numbers, no labels, no watermark, no shared background props, no people.
+```
+
+Swap A–D for pack-specific subjects. Prefer a dedicated Magnific folder per pack (e.g. under KernelChaos Spot It → Kawaii Animals / Cyber Vehicles).
 
 ## Tool chain
 

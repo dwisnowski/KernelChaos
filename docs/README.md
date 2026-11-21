@@ -47,3 +47,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0033 – Spot It](adr/0033-spot-it.md) — `spot-it` rooms; Shared + Tower; order-7 deck; Funny Foods pack; race to lobby target
 - [0034 – Spot It assets + card UX](adr/0034-spot-it-assets-and-card-ux.md) — masters vs 192² public; 4-up Magnific pipeline; large square cards; 360° / ±30% layout
 - [0035 – Spot It Kawaii Animals pack](adr/0035-spot-it-kawaii-animals-pack.md) — lobby pack `kawaii`; Magnific 4-up animals; required seagull/rabbit/cat/dog/horse/lizard/raccoon
+- [0036 – Spot It Cyber Vehicles pack](adr/0036-spot-it-cyber-vehicles-pack.md) — lobby pack `cyber`; anime cyberpunk vehicle 4-ups

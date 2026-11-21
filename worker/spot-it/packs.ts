@@ -1,4 +1,4 @@
-export type SpotItPackId = "food" | "kawaii";
+export type SpotItPackId = "food" | "kawaii" | "cyber";
 
 export interface SpotItSymbolMeta {
   /** Stable id within the pack (matches filename stem). */
@@ -136,6 +136,66 @@ const KAWAII_LABELS: string[] = [
   "Corgi",
 ];
 
+const CYBER_LABELS: string[] = [
+  "Hoverbike",
+  "Neon sports car",
+  "Cyber truck",
+  "Maglev train",
+  "Drone taxi",
+  "Mech walker",
+  "Street racer",
+  "Mono-wheel",
+  "Cargo hauler",
+  "Police cruiser",
+  "Ambulance pod",
+  "Firebot truck",
+  "Taxi cab",
+  "Delivery scooter",
+  "Skateboarder bot",
+  "Jet ski",
+  "Submarine",
+  "Airship",
+  "Fighter jet",
+  "VTOL shuttle",
+  "Helicopter",
+  "Spaceship",
+  "Starfighter",
+  "Tank",
+  "APC",
+  "Motorcycle",
+  "Chopper bike",
+  "Trike",
+  "Bus",
+  "Tram",
+  "Bullet train",
+  "Pickup",
+  "Van",
+  "Limousine",
+  "Convertible",
+  "SUV",
+  "ATV",
+  "Snowmobile",
+  "Sand crawler",
+  "Construction digger",
+  "Forklift bot",
+  "Crane truck",
+  "Tow truck",
+  "Food truck",
+  "Ice cream hover",
+  "Yacht",
+  "Speedboat",
+  "Sailboat cyber",
+  "Glider",
+  "Hot air neon",
+  "Rocket",
+  "Satellite tug",
+  "Lunar rover",
+  "Tunnel drill",
+  "Cable car",
+  "Rickshaw bot",
+  "Tuk-tuk neon",
+];
+
 function packSymbols(packId: SpotItPackId, labels: string[]): SpotItSymbolMeta[] {
   return labels.map((label, i) => {
     const id = String(i).padStart(2, "0");
@@ -158,13 +218,18 @@ export const SPOT_IT_PACKS: Record<SpotItPackId, SpotItPack> = {
     label: "Kawaii Animals",
     symbols: packSymbols("kawaii", KAWAII_LABELS),
   },
+  cyber: {
+    id: "cyber",
+    label: "Cyber Vehicles",
+    symbols: packSymbols("cyber", CYBER_LABELS),
+  },
 };
 
-export const SPOT_IT_PACK_IDS: SpotItPackId[] = ["food", "kawaii"];
+export const SPOT_IT_PACK_IDS: SpotItPackId[] = ["food", "kawaii", "cyber"];
 export const DEFAULT_SPOT_IT_PACK: SpotItPackId = "food";
 
 export function isSpotItPackId(v: unknown): v is SpotItPackId {
-  return v === "food" || v === "kawaii";
+  return v === "food" || v === "kawaii" || v === "cyber";
 }
 
 export function getSpotItPack(id: SpotItPackId): SpotItPack {

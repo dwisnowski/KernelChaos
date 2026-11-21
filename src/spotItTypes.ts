@@ -4,7 +4,7 @@ export type SpotItMode = "shared" | "tower";
 
 export type SpotItTarget = 10 | 25 | 50 | 75;
 
-export type SpotItPackId = "food" | "kawaii";
+export type SpotItPackId = "food" | "kawaii" | "cyber";
 
 export interface SpotItPlacement {
   symbolIndex: number;
@@ -23,7 +23,7 @@ export interface SpotItCardView {
 
 export const SPOT_IT_MODES: SpotItMode[] = ["shared", "tower"];
 export const SPOT_IT_TARGETS: SpotItTarget[] = [10, 25, 50, 75];
-export const SPOT_IT_PACK_IDS: SpotItPackId[] = ["food", "kawaii"];
+export const SPOT_IT_PACK_IDS: SpotItPackId[] = ["food", "kawaii", "cyber"];
 
 export const DEFAULT_SPOT_IT_MODE: SpotItMode = "shared";
 export const DEFAULT_SPOT_IT_TARGET: SpotItTarget = 25;
@@ -37,6 +37,7 @@ export const SPOT_IT_MODE_LABELS: Record<SpotItMode, string> = {
 export const SPOT_IT_PACK_LABELS: Record<SpotItPackId, string> = {
   food: "Funny Foods",
   kawaii: "Kawaii Animals",
+  cyber: "Cyber Vehicles",
 };
 
 export const FOOD_SYMBOL_LABELS: string[] = [
@@ -159,6 +160,66 @@ export const KAWAII_SYMBOL_LABELS: string[] = [
   "Corgi",
 ];
 
+export const CYBER_SYMBOL_LABELS: string[] = [
+  "Hoverbike",
+  "Neon sports car",
+  "Cyber truck",
+  "Maglev train",
+  "Drone taxi",
+  "Mech walker",
+  "Street racer",
+  "Mono-wheel",
+  "Cargo hauler",
+  "Police cruiser",
+  "Ambulance pod",
+  "Firebot truck",
+  "Taxi cab",
+  "Delivery scooter",
+  "Skateboarder bot",
+  "Jet ski",
+  "Submarine",
+  "Airship",
+  "Fighter jet",
+  "VTOL shuttle",
+  "Helicopter",
+  "Spaceship",
+  "Starfighter",
+  "Tank",
+  "APC",
+  "Motorcycle",
+  "Chopper bike",
+  "Trike",
+  "Bus",
+  "Tram",
+  "Bullet train",
+  "Pickup",
+  "Van",
+  "Limousine",
+  "Convertible",
+  "SUV",
+  "ATV",
+  "Snowmobile",
+  "Sand crawler",
+  "Construction digger",
+  "Forklift bot",
+  "Crane truck",
+  "Tow truck",
+  "Food truck",
+  "Ice cream hover",
+  "Yacht",
+  "Speedboat",
+  "Sailboat cyber",
+  "Glider",
+  "Hot air neon",
+  "Rocket",
+  "Satellite tug",
+  "Lunar rover",
+  "Tunnel drill",
+  "Cable car",
+  "Rickshaw bot",
+  "Tuk-tuk neon",
+];
+
 export function spotItSymbolSrc(packId: SpotItPackId, symbolIndex: number): string {
   const id = String(symbolIndex).padStart(2, "0");
   return `/spot-it/${packId}/${id}.png`;
@@ -167,6 +228,7 @@ export function spotItSymbolSrc(packId: SpotItPackId, symbolIndex: number): stri
 export function spotItSymbolLabel(packId: SpotItPackId, symbolIndex: number): string {
   if (packId === "food") return FOOD_SYMBOL_LABELS[symbolIndex] ?? `Symbol ${symbolIndex}`;
   if (packId === "kawaii") return KAWAII_SYMBOL_LABELS[symbolIndex] ?? `Symbol ${symbolIndex}`;
+  if (packId === "cyber") return CYBER_SYMBOL_LABELS[symbolIndex] ?? `Symbol ${symbolIndex}`;
   return `Symbol ${symbolIndex}`;
 }
 
