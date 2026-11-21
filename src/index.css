@@ -2201,9 +2201,9 @@ input {
 .hunt-loupe {
   position: absolute;
   z-index: 4;
-  width: 7.5rem;
-  height: 7.5rem;
-  margin: -3.75rem 0 0 -3.75rem;
+  width: 15rem;
+  height: 15rem;
+  margin: -7.5rem 0 0 -7.5rem;
   border-radius: 50%;
   border: 3px solid color-mix(in srgb, var(--ink) 55%, #fff);
   box-shadow:
@@ -2217,6 +2217,190 @@ input {
 
 .hunt-magnify-toggle {
   flex-shrink: 0;
+}
+
+@media (hover: none) {
+  .hunt-magnify-toggle {
+    display: none;
+  }
+}
+
+/* Touch hunt: maximize scene viewport */
+.app-shell:has(.scatter-hunt-play.is-touch-hunt) {
+  padding: 0.35rem 0 0;
+  gap: 0.35rem;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  grid-template-rows: auto 1fr;
+}
+
+.app-shell:has(.scatter-hunt-play.is-touch-hunt) .wiz-footer {
+  display: none;
+}
+
+.app-shell:has(.scatter-hunt-play.is-touch-hunt) .app-header {
+  padding-inline: max(0.65rem, env(safe-area-inset-left))
+    max(0.65rem, env(safe-area-inset-right));
+}
+
+.app-main:has(.scatter-hunt-play.is-touch-hunt) {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scatter-hunt-play.is-touch-hunt {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.scatter-hunt-play.is-touch-hunt .scatter-play-header {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding-block: 0.35rem;
+  padding-inline: max(0.65rem, env(safe-area-inset-left))
+    max(0.65rem, env(safe-area-inset-right));
+}
+
+.hunt-find-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.3rem max(0.65rem, env(safe-area-inset-left)) 0.35rem
+    max(0.65rem, env(safe-area-inset-right));
+  list-style: none;
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hunt-find-chips li span {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.scatter-hunt-play.is-touch-hunt .hunt-play-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  grid-template-columns: none;
+  margin: 0;
+}
+
+.scatter-hunt-play.is-touch-hunt .hunt-play-main {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scatter-hunt-play.is-touch-hunt .hunt-scene {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hunt-zoom-viewport {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
+  position: relative;
+  background: color-mix(in srgb, var(--bg0) 92%, #000);
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
+.hunt-zoom-content {
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.scatter-hunt-play.is-touch-hunt .hunt-zoom-viewport .hunt-scene-frame {
+  /* Tight wrap so pin % coords match the image. */
+  width: fit-content;
+  max-width: 100cqw;
+  max-height: 100cqh;
+}
+
+.scatter-hunt-play.is-touch-hunt .hunt-zoom-viewport .hunt-scene-img {
+  max-width: 100cqw;
+  max-height: 100cqh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0;
+  border: none;
+}
+
+.hunt-annotate-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+  background: color-mix(in srgb, #000 45%, transparent);
+  padding: 0;
+}
+
+.hunt-annotate-sheet {
+  width: 100%;
+  padding: 0.85rem max(0.85rem, env(safe-area-inset-right))
+    max(0.85rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--bg0) 94%, transparent);
+  border-top: 1px solid var(--stroke);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.hunt-find-form-overlay {
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
+.hunt-scene.is-mobile-zoom {
+  position: relative;
+}
+
+.hunt-pin-draft {
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+}
+
+.hunt-pin-draft.is-interactive {
+  pointer-events: auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -1.125rem 0 0 -1.125rem;
+  cursor: pointer;
+  z-index: 6;
 }
 
 .hunt-pin {

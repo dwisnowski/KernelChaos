@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+
+function subscribeHoverNone(onStoreChange: () => void): () => void {
+  const mq = window.matchMedia("(hover: none)");
+  mq.addEventListener("change", onStoreChange);
+  return () => mq.removeEventListener("change", onStoreChange);
+}
+
+function getHoverNone(): boolean {
+  return window.matchMedia("(hover: none)").matches;
+}
 import {
   playCountdownTick,
   playDupeCancel,
@@ -37,8 +47,11 @@ export function ScattergoriesRoom() {
   const [answers, setAnswers] = useState<string[]>(() => Array(CATEGORIES_PER_LIST).fill(""));
   const [huntDraft, setHuntDraft] = useState("");
   const [huntDraftMark, setHuntDraftMark] = useState<HuntMark | null>(null);
+  const [huntAnnotating, setHuntAnnotating] = useState(false);
   const [huntFlash, setHuntFlash] = useState<"ok" | "bad" | null>(null);
   const [huntMagnify, setHuntMagnify] = useState(false);
+  const [huntZoomReset, setHuntZoomReset] = useState(0);
+  const touchHunt = useSyncExternalStore(subscribeHoverNone, getHoverNone, () => false);
   const lastTick = useRef<number | null>(null);
   const lastUrgent = useRef<number | null>(null);
   const phaseRef = useRef<string | null>(null);
@@ -58,6 +71,8 @@ export function ScattergoriesRoom() {
       setHuntFlash("ok");
       setHuntDraft("");
       setHuntDraftMark(null);
+      setHuntAnnotating(false);
+      setHuntZoomReset((n) => n + 1);
     } else {
       playReject();
       setHuntFlash("bad");
@@ -325,7 +340,7 @@ export function ScattergoriesRoom() {
 
       {state?.phase === "playing" && isHunt && state.sceneImageUrl ? (
         <section
-          className={`scatter-play scatter-hunt-play${
+          className={`scatter-play scatter-hunt-play${touchHunt ? " is-touch-hunt" : ""}${
             huntFlash === "ok" ? " hunt-flash-ok" : huntFlash === "bad" ? " hunt-flash-bad" : ""
           }`}
         >
@@ -337,17 +352,19 @@ export function ScattergoriesRoom() {
             <p className="muted hunt-find-count">
               {huntProgress?.matchedCount ?? huntFinds.length}/{HUNT_MAX_ANSWERS} finds
             </p>
-            <button
-              type="button"
-              className={`size-pill hunt-magnify-toggle${huntMagnify ? " is-active" : ""}`}
-              aria-pressed={huntMagnify}
-              onClick={() => {
-                unlockAudio();
-                setHuntMagnify((v) => !v);
-              }}
-            >
-              Magnify
-            </button>
+            {!touchHunt ? (
+              <button
+                type="button"
+                className={`size-pill hunt-magnify-toggle${huntMagnify ? " is-active" : ""}`}
+                aria-pressed={huntMagnify}
+                onClick={() => {
+                  unlockAudio();
+                  setHuntMagnify((v) => !v);
+                }}
+              >
+                Magnify
+              </button>
+            ) : null}
             <div
               className={`timer${
                 playLeft <= 5
@@ -361,29 +378,49 @@ export function ScattergoriesRoom() {
               {formatClock(playLeft)}
             </div>
           </header>
+          {touchHunt && huntFinds.length > 0 ? (
+            <ul className="hunt-find-chips" aria-label="Your finds">
+              {huntFinds.map((word, i) => (
+                <li key={`${word}-${i}`}>
+                  <span>{word}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <div className="hunt-play-layout">
-            <div className="hunt-play-side">
-              <p className="muted hunt-pin-hint">
-                {huntMagnify
-                  ? "Magnify on — tap to pin a find"
-                  : "Tap the picture to pin a find"}
-              </p>
-              {huntFinds.length > 0 ? (
-                <ul className="hunt-find-list" aria-label="Your finds">
-                  {huntFinds.map((word, i) => (
-                    <li key={`${word}-${i}`}>
-                      <span>{word}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
+            {!touchHunt ? (
+              <div className="hunt-play-side">
+                <p className="muted hunt-pin-hint">
+                  {huntMagnify
+                    ? "Magnify on — tap to pin a find"
+                    : "Tap the picture to pin a find"}
+                </p>
+                {huntFinds.length > 0 ? (
+                  <ul className="hunt-find-list" aria-label="Your finds">
+                    {huntFinds.map((word, i) => (
+                      <li key={`${word}-${i}`}>
+                        <span>{word}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
             <div className="hunt-play-main">
               <HuntScenePins
                 imageUrl={state.sceneImageUrl}
                 alt={state.sceneTitle ?? "Hidden object scene"}
                 draft={huntDraftMark}
-                magnify={huntMagnify}
+                magnify={!touchHunt && huntMagnify}
+                mobileZoom={touchHunt}
+                zoomResetKey={huntZoomReset}
+                draftInteractive={touchHunt && !!huntDraftMark && !huntAnnotating}
+                onDraftActivate={() => {
+                  unlockAudio();
+                  setHuntAnnotating(true);
+                }}
+                annotating={huntAnnotating}
+                annotateMode={touchHunt ? "overlay" : "popover"}
                 pins={huntFinds.map((word, i) => ({
                   key: `mine-${i}`,
                   x: huntMarks[i]?.x ?? 0.5,
@@ -395,11 +432,16 @@ export function ScattergoriesRoom() {
                   if (huntFinds.length >= HUNT_MAX_ANSWERS) return;
                   unlockAudio();
                   setHuntDraftMark(norm);
+                  setHuntDraft("");
+                  if (touchHunt) setHuntAnnotating(false);
+                  else setHuntAnnotating(true);
                 }}
                 draftPopover={
-                  huntDraftMark ? (
+                  huntDraftMark && huntAnnotating ? (
                     <form
-                      className="scatter-form hunt-find-form hunt-find-form-popover"
+                      className={`scatter-form hunt-find-form${
+                        touchHunt ? " hunt-find-form-overlay" : " hunt-find-form-popover"
+                      }`}
                       onSubmit={(e) => {
                         e.preventDefault();
                         const next = huntDraft.trim();
@@ -434,8 +476,9 @@ export function ScattergoriesRoom() {
                           type="button"
                           className="btn ghost"
                           onClick={() => {
-                            setHuntDraftMark(null);
+                            setHuntAnnotating(false);
                             setHuntDraft("");
+                            if (!touchHunt) setHuntDraftMark(null);
                           }}
                         >
                           Cancel
@@ -444,7 +487,7 @@ export function ScattergoriesRoom() {
                     </form>
                   ) : null
                 }
-                caption={state.sceneTitle}
+                caption={touchHunt ? undefined : state.sceneTitle}
                 className="hunt-scene-play"
               />
             </div>

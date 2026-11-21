@@ -19,4 +19,5 @@ Picture Hunt scenes are dense seek-and-find illustrations ([ADR 0027](./0027-hun
 ## Consequences
 
 - Extends Hunt play UX without worker/protocol changes.
-- Cross-links: [0027](./0027-hunt-hidden-object-art.md), [0028](./0028-hunt-click-annotate-review.md).
+- Touch / loupe-offset path superseded by [ADR 0032](./0032-hunt-mobile-pinch-annotate.md) (pinch-zoom + two-step temp marker; desktop loupe enlarged to 15rem).
+- Cross-links: [0027](./0027-hunt-hidden-object-art.md), [0028](./0028-hunt-click-annotate-review.md), [0032](./0032-hunt-mobile-pinch-annotate.md).
