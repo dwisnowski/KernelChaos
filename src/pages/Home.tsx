@@ -62,6 +62,18 @@ function SpotdiffIcon() {
   );
 }
 
+function SpotItIcon() {
+  return (
+    <svg className="game-card-icon" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="16" cy="18" r="3.5" fill="currentColor" opacity="0.85" />
+      <circle cx="30" cy="16" r="2.5" fill="currentColor" opacity="0.7" />
+      <circle cx="28" cy="28" r="4" fill="currentColor" opacity="0.9" />
+      <circle cx="17" cy="30" r="2" fill="currentColor" opacity="0.65" />
+    </svg>
+  );
+}
+
 export function Home() {
   return (
     <Layout>
@@ -102,6 +114,15 @@ export function Home() {
             <h2>Spot the Difference</h2>
             <p>
               Side-by-side scenes with hidden changes. Race, co-op, or solo against the clock.
+            </p>
+            <span className="btn primary">Play</span>
+          </Link>
+          <Link className="game-card" to="/spot-it" onClick={() => unlockAudio()}>
+            <SpotItIcon />
+            <h2>Spot It</h2>
+            <p>
+              Race to tap the one matching symbol between cards. Shared pair or Tower — first to the
+              target wins.
             </p>
             <span className="btn primary">Play</span>
           </Link>

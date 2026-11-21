@@ -4,7 +4,7 @@ Shared names for KernelChaos pages and in-room phases. Use these in chat so huma
 
 React Router (`BrowserRouter` in `src/main.tsx`, routes in `src/App.tsx`) already owns URL navigation. In-room **phases** are server state (`state.phase` over WebSocket), not URL segments — one room URL hosts every phase for that seat.
 
-Games: `boggle` | `scattergories` | `mmmms` | `spotdiff`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
+Games: `boggle` | `scattergories` | `mmmms` | `spotdiff` | `spot-it`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
 
 ## URL routes
 
@@ -28,6 +28,10 @@ Games: `boggle` | `scattergories` | `mmmms` | `spotdiff`. Picture Hunt is Scatte
 | `/spotdiff/join?code=` | `SpotdiffEntry` | same | QR / deep-link join |
 | `/spotdiff/room/:code` | `SpotdiffRoom` | `src/pages/SpotdiffRoom.tsx` | Player |
 | `/spotdiff/room/:code/tv` | `SpotdiffSpectator` | `src/pages/SpotdiffSpectator.tsx` | TV |
+| `/spot-it` | `SpotItEntry` | `src/pages/SpotItEntry.tsx` | Create / join / spectate |
+| `/spot-it/join?code=` | `SpotItEntry` | same | QR / deep-link join |
+| `/spot-it/room/:code` | `SpotItRoom` | `src/pages/SpotItRoom.tsx` | Player |
+| `/spot-it/room/:code/tv` | `SpotItSpectator` | `src/pages/SpotItSpectator.tsx` | TV |
 
 Pattern shorthand: `/{game}`, `/{game}/join?code=`, `/{game}/room/:code`, `/{game}/room/:code/tv`.
 
@@ -90,6 +94,19 @@ Difficulty: `difficulty: "easy" | "medium" | "hard"` (lobby pills; scene clutter
 | `playing` | Dual SVG panels; tap diffs; hint | Panels + progress (race: counts; coop: shared marks) |
 | `results` | All circles + scores | Same |
 
+### Spot It
+
+`SpotItPhase` in `src/spotItTypes.ts`: `lobby` → `playing` → `between` → `results`
+
+Mode: `spotItMode: "shared" | "tower"` (lobby pills). Distinct from Spot the Difference (`spotdiff`).
+
+| Phase | Player | TV |
+| --- | --- | --- |
+| `lobby` | Mode / target / pack, QR, start | Lobby / waiting + QR |
+| `playing` | Cards + tap matching symbol | Cards + leaderboard |
+| `between` | 3s countdown + who scored | Same |
+| `results` | Winner + scores | Same |
+
 ## Chat shorthand
 
 Prefer route + phase (and mode when needed):
@@ -109,6 +126,9 @@ Prefer route + phase (and mode when needed):
 | spotdiff entry | `/spotdiff` |
 | spotdiff room playing | `/spotdiff/room/:code` + `phase=playing` |
 | spotdiff TV results | `/spotdiff/room/:code/tv` + `phase=results` |
+| spot-it entry | `/spot-it` |
+| spot-it room playing | `/spot-it/room/:code` + `phase=playing` |
+| spot-it TV between | `/spot-it/room/:code/tv` + `phase=between` |
 
 ## Related
 

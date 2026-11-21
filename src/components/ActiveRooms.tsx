@@ -16,7 +16,7 @@ export function ActiveRooms({
   game,
   onSelect,
 }: {
-  game: "boggle" | "scattergories" | "mmmms" | "spotdiff";
+  game: "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it";
   onSelect: (code: string) => void;
 }) {
   const [rooms, setRooms] = useState<ActiveRoomListItem[] | null>(null);

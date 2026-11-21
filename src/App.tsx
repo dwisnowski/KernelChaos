@@ -13,6 +13,9 @@ import { Settings } from "./pages/Settings.tsx";
 import { SpotdiffEntry } from "./pages/SpotdiffEntry.tsx";
 import { SpotdiffRoom } from "./pages/SpotdiffRoom.tsx";
 import { SpotdiffSpectator } from "./pages/SpotdiffSpectator.tsx";
+import { SpotItEntry } from "./pages/SpotItEntry.tsx";
+import { SpotItRoom } from "./pages/SpotItRoom.tsx";
+import { SpotItSpectator } from "./pages/SpotItSpectator.tsx";
 
 export function App() {
   return (
@@ -35,6 +38,10 @@ export function App() {
       <Route path="/spotdiff/join" element={<SpotdiffEntry />} />
       <Route path="/spotdiff/room/:code" element={<SpotdiffRoom />} />
       <Route path="/spotdiff/room/:code/tv" element={<SpotdiffSpectator />} />
+      <Route path="/spot-it" element={<SpotItEntry />} />
+      <Route path="/spot-it/join" element={<SpotItEntry />} />
+      <Route path="/spot-it/room/:code" element={<SpotItRoom />} />
+      <Route path="/spot-it/room/:code/tv" element={<SpotItSpectator />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

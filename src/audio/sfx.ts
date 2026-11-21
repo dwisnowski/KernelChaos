@@ -348,3 +348,19 @@ export function playSpotClear(): void {
   tone(659, t + 0.08, 0.09, "sine", 0.07);
   tone(784, t + 0.16, 0.16, "triangle", 0.09);
 }
+
+/** Spot It: correct match tap. */
+export function playSpotItHit(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(660, t, 0.07, "triangle", 0.08);
+  tone(880, t + 0.06, 0.12, "sine", 0.09);
+}
+
+/** Spot It: wrong symbol tap. */
+export function playSpotItMiss(): void {
+  const c = getCtx();
+  if (!c) return;
+  tone(185, c.currentTime, 0.11, "square", 0.03);
+}

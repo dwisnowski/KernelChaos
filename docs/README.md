@@ -43,3 +43,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0030 – Spot the Difference scene difficulty](adr/0030-spotdiff-scene-difficulty.md) — Lobby easy/medium/hard clutter density; current templates = easy
 - [0031 – Picture Hunt magnifying-glass loupe](adr/0031-hunt-magnifying-glass.md) — Optional player-only loupe during hunt play; pins still click-annotate
 - [0032 – Picture Hunt desktop loupe + mobile pinch](adr/0032-hunt-mobile-pinch-annotate.md) — 15rem loupe on desktop; touch pinch-zoom + temp marker → overlay; maximized viewport
+- [0033 – Spot It](adr/0033-spot-it.md) — `spot-it` rooms; Shared + Tower; order-7 deck; Funny Foods pack; race to lobby target

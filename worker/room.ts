@@ -99,15 +99,41 @@ import {
   type SpotdiffRoomState,
   type SpotdiffServerMessage,
 } from "./spotdiff/protocol.ts";
+import {
+  advanceTowerAfterScore,
+  dealSharedPair,
+  dealTowerStart,
+  towerMatchForPlayer,
+  type TowerDeal,
+} from "./spot-it/deal.ts";
+import type { SpotItCardView } from "./spot-it/layout.ts";
+import {
+  DEFAULT_SPOT_IT_MODE,
+  DEFAULT_SPOT_IT_PACK,
+  DEFAULT_SPOT_IT_TARGET,
+  SPOT_IT_BETWEEN_MS,
+  SPOT_IT_MISS_LOCK_MS,
+  isSpotItMode,
+  isSpotItPackId,
+  isSpotItTarget,
+  type SpotItClientMessage,
+  type SpotItMode,
+  type SpotItPackId,
+  type SpotItPhase,
+  type SpotItPlayerPublic,
+  type SpotItRoomState,
+  type SpotItServerMessage,
+  type SpotItTarget,
+} from "./spot-it/protocol.ts";
 
 /** Per-category: voterId → (targetPlayerId → in|out). */
 type ReviewBallotMaps = Array<Map<string, Record<string, ReviewVote>>>;
 /** Persistable form of ReviewBallotMaps. */
 type StoredReviewBallots = Array<Record<string, Record<string, ReviewVote>>>;
 
-export type GameType = "boggle" | "scattergories" | "mmmms" | "spotdiff";
+export type GameType = "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it";
 
-type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase | SpotdiffPhase;
+type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase | SpotdiffPhase | SpotItPhase;
 
 /** Max wait for clients to finish explosion animation before advancing. */
 const MMMMS_RESOLVE_TIMEOUT_MS = 15_000;
@@ -143,6 +169,8 @@ interface PlayerRecord {
   mmmmsReady: boolean;
   /** Spot the Difference: private finds (race/solo). */
   foundDiffIds: string[];
+  /** Spot It: rounds won this game. */
+  spotItScore: number;
   missStreak: number;
   lockedUntil: number | null;
 }
@@ -173,6 +201,7 @@ interface StoredPlayer {
   orbs?: OrbColor[];
   mmmmsReady?: boolean;
   foundDiffIds?: string[];
+  spotItScore?: number;
   missStreak?: number;
   lockedUntil?: number | null;
 }
@@ -181,12 +210,14 @@ type ClientMessage =
   | BoggleClientMessage
   | ScatterClientMessage
   | MmmmsClientMessage
-  | SpotdiffClientMessage;
+  | SpotdiffClientMessage
+  | SpotItClientMessage;
 type ServerMessage =
   | BoggleServerMessage
   | ScatterServerMessage
   | MmmmsServerMessage
-  | SpotdiffServerMessage;
+  | SpotdiffServerMessage
+  | SpotItServerMessage;
 
 function emptyAnswers(): string[] {
   return Array.from({ length: CATEGORIES_PER_LIST }, () => "");
@@ -266,7 +297,7 @@ function loadWords(raw: StoredPlayer["words"]): Map<string, WordRecord> {
 }
 
 function isGameType(v: unknown): v is GameType {
-  return v === "boggle" || v === "scattergories" || v === "mmmms" || v === "spotdiff";
+  return v === "boggle" || v === "scattergories" || v === "mmmms" || v === "spotdiff" || v === "spot-it";
 }
 
 function loadOrbs(raw: unknown): OrbColor[] {
@@ -333,6 +364,23 @@ export class GameRoom extends DurableObject<Env> {
   private spotHintUntil: number | null = null;
   private spotHintForPlayerId: string | null = null;
 
+  // Spot It
+  private spotItMode: SpotItMode = DEFAULT_SPOT_IT_MODE;
+  private spotItTarget: SpotItTarget = DEFAULT_SPOT_IT_TARGET;
+  private spotItPack: SpotItPackId = DEFAULT_SPOT_IT_PACK;
+  private spotItCardA: SpotItCardView | null = null;
+  private spotItCardB: SpotItCardView | null = null;
+  private spotItCenter: SpotItCardView | null = null;
+  private spotItHands = new Map<string, SpotItCardView>();
+  /** Server-only: never include in a public snapshot. */
+  private spotItMatchSymbol: number | null = null;
+  private spotItUsedCards: number[] = [];
+  private spotItPile: number[] = [];
+  private spotItTowerOrder: number[] = [];
+  private spotItLastScorerId: string | null = null;
+  private spotItLastScorerName: string | null = null;
+  private spotItWinners: string[] = [];
+
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
@@ -389,6 +437,20 @@ export class GameRoom extends DurableObject<Env> {
       spotHintDiffId?: string | null;
       spotHintUntil?: number | null;
       spotHintForPlayerId?: string | null;
+      spotItMode?: SpotItMode;
+      spotItTarget?: SpotItTarget;
+      spotItPack?: SpotItPackId;
+      spotItCardA?: SpotItCardView | null;
+      spotItCardB?: SpotItCardView | null;
+      spotItCenter?: SpotItCardView | null;
+      spotItHands?: Record<string, SpotItCardView>;
+      spotItMatchSymbol?: number | null;
+      spotItUsedCards?: number[];
+      spotItPile?: number[];
+      spotItTowerOrder?: number[];
+      spotItLastScorerId?: string | null;
+      spotItLastScorerName?: string | null;
+      spotItWinners?: string[];
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -462,6 +524,27 @@ export class GameRoom extends DurableObject<Env> {
       this.spotHintDiffId = stored.spotHintDiffId ?? null;
       this.spotHintUntil = stored.spotHintUntil ?? null;
       this.spotHintForPlayerId = stored.spotHintForPlayerId ?? null;
+      this.spotItMode = isSpotItMode(stored.spotItMode) ? stored.spotItMode : DEFAULT_SPOT_IT_MODE;
+      this.spotItTarget = isSpotItTarget(stored.spotItTarget)
+        ? stored.spotItTarget
+        : DEFAULT_SPOT_IT_TARGET;
+      this.spotItPack = isSpotItPackId(stored.spotItPack) ? stored.spotItPack : DEFAULT_SPOT_IT_PACK;
+      this.spotItCardA = stored.spotItCardA ?? null;
+      this.spotItCardB = stored.spotItCardB ?? null;
+      this.spotItCenter = stored.spotItCenter ?? null;
+      this.spotItHands = new Map(
+        stored.spotItHands && typeof stored.spotItHands === "object"
+          ? Object.entries(stored.spotItHands)
+          : [],
+      );
+      this.spotItMatchSymbol =
+        typeof stored.spotItMatchSymbol === "number" ? stored.spotItMatchSymbol : null;
+      this.spotItUsedCards = Array.isArray(stored.spotItUsedCards) ? stored.spotItUsedCards : [];
+      this.spotItPile = Array.isArray(stored.spotItPile) ? stored.spotItPile : [];
+      this.spotItTowerOrder = Array.isArray(stored.spotItTowerOrder) ? stored.spotItTowerOrder : [];
+      this.spotItLastScorerId = stored.spotItLastScorerId ?? null;
+      this.spotItLastScorerName = stored.spotItLastScorerName ?? null;
+      this.spotItWinners = Array.isArray(stored.spotItWinners) ? stored.spotItWinners : [];
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -480,6 +563,7 @@ export class GameRoom extends DurableObject<Env> {
             orbs: loadOrbs(p.orbs),
             mmmmsReady: Boolean(p.mmmmsReady),
             foundDiffIds: Array.isArray(p.foundDiffIds) ? p.foundDiffIds.filter((id) => typeof id === "string") : [],
+            spotItScore: typeof p.spotItScore === "number" ? p.spotItScore : 0,
             missStreak: typeof p.missStreak === "number" ? p.missStreak : 0,
             lockedUntil: typeof p.lockedUntil === "number" ? p.lockedUntil : null,
           },
@@ -541,6 +625,20 @@ export class GameRoom extends DurableObject<Env> {
       spotHintDiffId: this.spotHintDiffId,
       spotHintUntil: this.spotHintUntil,
       spotHintForPlayerId: this.spotHintForPlayerId,
+      spotItMode: this.spotItMode,
+      spotItTarget: this.spotItTarget,
+      spotItPack: this.spotItPack,
+      spotItCardA: this.spotItCardA,
+      spotItCardB: this.spotItCardB,
+      spotItCenter: this.spotItCenter,
+      spotItHands: Object.fromEntries(this.spotItHands.entries()),
+      spotItMatchSymbol: this.spotItMatchSymbol,
+      spotItUsedCards: this.spotItUsedCards,
+      spotItPile: this.spotItPile,
+      spotItTowerOrder: this.spotItTowerOrder,
+      spotItLastScorerId: this.spotItLastScorerId,
+      spotItLastScorerName: this.spotItLastScorerName,
+      spotItWinners: this.spotItWinners,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -553,6 +651,7 @@ export class GameRoom extends DurableObject<Env> {
         orbs: p.orbs,
         mmmmsReady: p.mmmmsReady,
         foundDiffIds: p.foundDiffIds,
+        spotItScore: p.spotItScore,
         missStreak: p.missStreak,
         lockedUntil: p.lockedUntil,
       })),
@@ -621,6 +720,9 @@ export class GameRoom extends DurableObject<Env> {
     }
     if (this.phase === "resolving" && this.resolveEndsAt != null) {
       candidates.push(this.resolveEndsAt);
+    }
+    if (this.phase === "between" && this.countdownEndsAt != null) {
+      candidates.push(this.countdownEndsAt);
     }
     if (candidates.length === 0) {
       await this.ctx.storage.deleteAlarm();
@@ -707,7 +809,26 @@ export class GameRoom extends DurableObject<Env> {
     this.spotHintDiffId = null;
     this.spotHintUntil = null;
     this.spotHintForPlayerId = null;
+    this.resetSpotItFields();
+    this.spotItMode = DEFAULT_SPOT_IT_MODE;
+    this.spotItTarget = DEFAULT_SPOT_IT_TARGET;
+    this.spotItPack = DEFAULT_SPOT_IT_PACK;
     this.loaded = true;
+  }
+
+  /** Clear per-game Spot It state (keeps mode / target / pack). */
+  private resetSpotItFields(): void {
+    this.spotItCardA = null;
+    this.spotItCardB = null;
+    this.spotItCenter = null;
+    this.spotItHands = new Map();
+    this.spotItMatchSymbol = null;
+    this.spotItUsedCards = [];
+    this.spotItPile = [];
+    this.spotItTowerOrder = [];
+    this.spotItLastScorerId = null;
+    this.spotItLastScorerName = null;
+    this.spotItWinners = [];
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -731,6 +852,10 @@ export class GameRoom extends DurableObject<Env> {
           this.spotMode = DEFAULT_SPOT_MODE;
           this.spotDiffCount = DEFAULT_SPOT_DIFF_COUNT;
           this.spotDifficulty = DEFAULT_SPOT_DIFFICULTY;
+        } else if (this.gameType === "spot-it") {
+          this.spotItMode = DEFAULT_SPOT_IT_MODE;
+          this.spotItTarget = DEFAULT_SPOT_IT_TARGET;
+          this.spotItPack = DEFAULT_SPOT_IT_PACK;
         }
         await this.persist();
         return Response.json({ code: this.code, game: this.gameType, created: true });
@@ -892,6 +1017,22 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "spotdiff") break;
         await this.handleRequestHint(attachment?.playerId);
         break;
+      case "setSpotItMode":
+        if (this.gameType !== "spot-it") break;
+        await this.handleSetSpotItMode(attachment?.playerId, msg.spotItMode);
+        break;
+      case "setSpotItTarget":
+        if (this.gameType !== "spot-it") break;
+        await this.handleSetSpotItTarget(attachment?.playerId, msg.targetScore);
+        break;
+      case "setSpotItPack":
+        if (this.gameType !== "spot-it") break;
+        await this.handleSetSpotItPack(attachment?.playerId, msg.packId);
+        break;
+      case "tapSymbol":
+        if (this.gameType !== "spot-it") break;
+        await this.handleTapSpotItSymbol(ws, attachment?.playerId, msg.symbolIndex);
+        break;
       default:
         this.send(ws, { type: "error", message: "Unknown message" });
     }
@@ -943,6 +1084,15 @@ export class GameRoom extends DurableObject<Env> {
 
     if (this.phase === "rolling" && this.gameType === "scattergories") {
       await this.beginScatterCountdown(rollLetter());
+      return;
+    }
+
+    if (this.phase === "between" && this.gameType === "spot-it") {
+      if (this.countdownEndsAt != null && this.countdownEndsAt > now) {
+        await this.ctx.storage.setAlarm(this.countdownEndsAt);
+        return;
+      }
+      await this.advanceSpotItRound();
       return;
     }
 
@@ -1103,6 +1253,7 @@ export class GameRoom extends DurableObject<Env> {
       orbs: [],
       mmmmsReady: false,
       foundDiffIds: [],
+      spotItScore: 0,
       missStreak: 0,
       lockedUntil: null,
     });
@@ -1158,6 +1309,17 @@ export class GameRoom extends DurableObject<Env> {
         myFoundDiffIds: [...player.foundDiffIds],
         lockedUntil: player.lockedUntil,
       } as ServerMessage);
+      return;
+    }
+    if (this.gameType === "spot-it") {
+      this.send(ws, {
+        type: "welcome",
+        playerId,
+        role: "player",
+        state: this.spotItSnapshot(),
+        myCard: this.spotItMyCard(playerId),
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotItServerMessage);
       return;
     }
     this.send(ws, {
@@ -1257,10 +1419,12 @@ export class GameRoom extends DurableObject<Env> {
       p.orbs = [];
       p.mmmmsReady = false;
       p.foundDiffIds = [];
+      p.spotItScore = 0;
       p.missStreak = 0;
       p.lockedUntil = null;
     }
     this.reviewBallots = emptyReviewBallots();
+    this.resetSpotItFields();
 
     this.round += 1;
     this.endsAt = null;
@@ -1276,6 +1440,49 @@ export class GameRoom extends DurableObject<Env> {
     this.spotHintDiffId = null;
     this.spotHintUntil = null;
     this.spotHintForPlayerId = null;
+
+    if (this.gameType === "spot-it") {
+      this.board = null;
+      this.missedWords = null;
+      this.possibleWords = null;
+      this.possibleWordCount = null;
+      this.possibleByLength = null;
+      this.letter = null;
+      this.categories = null;
+      this.listId = null;
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
+      this.rollerId = null;
+      this.rollerName = null;
+      this.spotPuzzle = null;
+      this.countdownEndsAt = null;
+      this.endsAt = null;
+      const seed = randomSeed();
+      try {
+        if (this.spotItMode === "shared") {
+          const used = new Set<number>();
+          const deal = dealSharedPair(seed, used);
+          this.spotItCardA = deal.cardA;
+          this.spotItCardB = deal.cardB;
+          this.spotItMatchSymbol = deal.matchSymbolIndex;
+          this.spotItUsedCards = [...used];
+        } else {
+          const deal = dealTowerStart(seed, [...this.players.keys()]);
+          this.applyTowerDeal(deal);
+        }
+      } catch (err) {
+        console.error("spot-it deal failed", err);
+        this.resetSpotItFields();
+        this.round -= 1;
+        return;
+      }
+      this.phase = "playing";
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
 
     if (this.gameType === "spotdiff") {
       this.board = null;
@@ -1486,6 +1693,7 @@ export class GameRoom extends DurableObject<Env> {
     this.spotHintDiffId = null;
     this.spotHintUntil = null;
     this.spotHintForPlayerId = null;
+    this.resetSpotItFields();
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
@@ -1495,6 +1703,7 @@ export class GameRoom extends DurableObject<Env> {
       p.orbs = [];
       p.mmmmsReady = false;
       p.foundDiffIds = [];
+      p.spotItScore = 0;
       p.missStreak = 0;
       p.lockedUntil = null;
     }
@@ -1692,6 +1901,194 @@ export class GameRoom extends DurableObject<Env> {
     this.spotHintDiffId = pick.id;
     this.spotHintUntil = now + SPOT_HINT_MS;
     this.spotHintForPlayerId = this.spotMode === "coop" ? null : playerId;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetSpotItMode(playerId: string | undefined, mode: SpotItMode): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby") return;
+    if (!isSpotItMode(mode)) return;
+    this.spotItMode = mode;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetSpotItTarget(
+    playerId: string | undefined,
+    target: SpotItTarget,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby") return;
+    if (!isSpotItTarget(target)) return;
+    this.spotItTarget = target;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetSpotItPack(playerId: string | undefined, packId: SpotItPackId): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby") return;
+    if (!isSpotItPackId(packId)) return;
+    this.spotItPack = packId;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private applyTowerDeal(deal: TowerDeal): void {
+    this.spotItCenter = deal.center;
+    this.spotItHands = deal.hands;
+    this.spotItPile = deal.pile;
+    this.spotItTowerOrder = deal.order;
+  }
+
+  private currentTowerDeal(): TowerDeal | null {
+    if (!this.spotItCenter) return null;
+    return {
+      mode: "tower",
+      center: this.spotItCenter,
+      hands: new Map(this.spotItHands),
+      pile: [...this.spotItPile],
+      order: [...this.spotItTowerOrder],
+    };
+  }
+
+  private spotItMyCard(playerId: string | null | undefined): SpotItCardView | null {
+    if (this.spotItMode !== "tower" || !playerId) return null;
+    return this.spotItHands.get(playerId) ?? null;
+  }
+
+  private finishSpotIt(winners: string[]): void {
+    this.phase = "results";
+    this.countdownEndsAt = null;
+    this.endsAt = null;
+    this.spotItWinners = winners;
+  }
+
+  private finishSpotItByHighScore(): void {
+    let best = -1;
+    const winners: string[] = [];
+    for (const p of this.players.values()) {
+      if (p.spotItScore > best) {
+        best = p.spotItScore;
+        winners.length = 0;
+        winners.push(p.id);
+      } else if (p.spotItScore === best) {
+        winners.push(p.id);
+      }
+    }
+    this.finishSpotIt(winners);
+  }
+
+  private async advanceSpotItRound(): Promise<void> {
+    this.countdownEndsAt = null;
+    const seed = randomSeed();
+    if (this.spotItMode === "shared") {
+      try {
+        const used = new Set(this.spotItUsedCards);
+        const deal = dealSharedPair(seed, used);
+        this.spotItCardA = deal.cardA;
+        this.spotItCardB = deal.cardB;
+        this.spotItMatchSymbol = deal.matchSymbolIndex;
+        this.spotItUsedCards = [...used];
+      } catch (err) {
+        console.error("spot-it advance failed", err);
+        this.finishSpotItByHighScore();
+        await this.ctx.storage.deleteAlarm();
+        await this.persist();
+        this.broadcastState();
+        return;
+      }
+    } else {
+      const current = this.currentTowerDeal();
+      const next =
+        current && this.spotItLastScorerId
+          ? advanceTowerAfterScore(current, this.spotItLastScorerId, seed)
+          : null;
+      if (!next) {
+        this.finishSpotItByHighScore();
+        await this.ctx.storage.deleteAlarm();
+        await this.persist();
+        this.broadcastState();
+        return;
+      }
+      this.applyTowerDeal(next);
+    }
+    this.phase = "playing";
+    await this.ctx.storage.deleteAlarm();
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleTapSpotItSymbol(
+    ws: WebSocket,
+    playerId: string | undefined,
+    symbolIndex: number,
+  ): Promise<void> {
+    if (!playerId || this.phase !== "playing") return;
+    const player = this.players.get(playerId);
+    if (!player) return;
+    if (typeof symbolIndex !== "number" || !Number.isInteger(symbolIndex)) return;
+    const now = Date.now();
+    if (player.lockedUntil != null && now < player.lockedUntil) {
+      this.send(ws, {
+        type: "tapResult",
+        hit: false,
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotItServerMessage);
+      return;
+    }
+
+    let expected: number | null;
+    if (this.spotItMode === "shared") {
+      expected = this.spotItMatchSymbol;
+    } else {
+      const hand = this.spotItHands.get(playerId);
+      expected = this.spotItCenter && hand ? towerMatchForPlayer(this.spotItCenter, hand) : null;
+    }
+
+    if (expected == null || symbolIndex !== expected) {
+      player.missStreak += 1;
+      if (player.missStreak >= 2) {
+        player.missStreak = 0;
+        player.lockedUntil = now + SPOT_IT_MISS_LOCK_MS;
+      }
+      await this.persist();
+      this.send(ws, {
+        type: "tapResult",
+        hit: false,
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotItServerMessage);
+      return;
+    }
+
+    // Hit: first only. Phase flips synchronously so later taps are ignored.
+    player.missStreak = 0;
+    player.spotItScore += 1;
+    this.spotItLastScorerId = playerId;
+    this.spotItLastScorerName = player.name;
+
+    if (player.spotItScore >= this.spotItTarget) {
+      this.finishSpotIt([playerId]);
+      this.send(ws, {
+        type: "tapResult",
+        hit: true,
+        lockedUntil: player.lockedUntil,
+      } satisfies SpotItServerMessage);
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
+    this.phase = "between";
+    this.countdownEndsAt = now + SPOT_IT_BETWEEN_MS;
+    this.send(ws, {
+      type: "tapResult",
+      hit: true,
+      lockedUntil: player.lockedUntil,
+    } satisfies SpotItServerMessage);
+    await this.ctx.storage.setAlarm(this.countdownEndsAt);
     await this.persist();
     this.broadcastState();
   }
@@ -2589,10 +2986,40 @@ export class GameRoom extends DurableObject<Env> {
     };
   }
 
-  private publicState(): BoggleRoomState | ScatterRoomState | MmmmsRoomState | SpotdiffRoomState {
+  private spotItSnapshot(): SpotItRoomState {
+    const tower = this.spotItMode === "tower";
+    const players: SpotItPlayerPublic[] = [...this.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+      score: p.spotItScore,
+    }));
+    const inGame = this.phase !== "lobby";
+    return {
+      game: "spot-it",
+      code: this.code,
+      phase: this.phase as SpotItPhase,
+      spotItMode: this.spotItMode,
+      targetScore: this.spotItTarget,
+      packId: this.spotItPack,
+      countdownEndsAt: this.countdownEndsAt,
+      players,
+      cardA: inGame ? (tower ? this.spotItCenter : this.spotItCardA) : null,
+      cardB: inGame && !tower ? this.spotItCardB : null,
+      centerCard: inGame && tower ? this.spotItCenter : null,
+      lastScorerId: this.spotItLastScorerId,
+      lastScorerName: this.spotItLastScorerName,
+      winners: this.phase === "results" ? [...this.spotItWinners] : [],
+      round: this.round,
+      pileRemaining: tower && inGame ? this.spotItPile.length : null,
+    };
+  }
+
+  private publicState(): BoggleRoomState | ScatterRoomState | MmmmsRoomState | SpotdiffRoomState | SpotItRoomState {
     if (this.gameType === "scattergories") return this.scatterSnapshot();
     if (this.gameType === "mmmms") return this.mmmmsSnapshot();
     if (this.gameType === "spotdiff") return this.spotdiffSnapshot(null);
+    if (this.gameType === "spot-it") return this.spotItSnapshot();
     return this.boggleSnapshot();
   }
 
@@ -2661,6 +3088,27 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    if (this.gameType === "spot-it") {
+      const state = this.spotItSnapshot();
+      for (const socket of this.ctx.getWebSockets()) {
+        if (except && socket === except) continue;
+        try {
+          const att = socket.deserializeAttachment() as Attachment | null;
+          const player = att?.playerId && !att.spectator ? this.players.get(att.playerId) : undefined;
+          const payload = JSON.stringify({
+            type: "state",
+            state,
+            myCard: player ? this.spotItMyCard(player.id) : null,
+            lockedUntil: player?.lockedUntil ?? null,
+          } satisfies SpotItServerMessage);
+          socket.send(payload);
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
+
     const state = this.publicState();
     const payload = JSON.stringify({ type: "state", state });
     for (const socket of this.ctx.getWebSockets()) {
@@ -2672,6 +3120,10 @@ export class GameRoom extends DurableObject<Env> {
       }
     }
   }
+}
+
+function randomSeed(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0]!;
 }
 
 function padAnswers(raw: string[] | undefined, playMode: ScatterPlayMode = "categories"): string[] {
