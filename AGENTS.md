@@ -30,9 +30,10 @@ URL routes and in-room phases (lobby, playing, review, …) are catalogued in [`
 | `worker/mmmms/` | Orb colors, deal/resolve attack, protocol |
 | `worker/spotdiff/` | Procedural scenes, generate, hit-test, protocol |
 | `worker/spot-it/` | Order-7 deck, packs, layout, deal, protocol |
+| `assets/spot-it/` | Symbol masters (+ gitignored Magnific sheets); game PNGs stay in `public/spot-it/` |
 | `docs/screens.md` | Screen / route / phase reference for chat |
 | `docs/adr/` | Architecture Decision Records |
-| `Makefile` | Canonical local commands (`make undef-words-cleanup-prompt` for ADR 0025) |
+| `Makefile` | Canonical local commands (`make undef-words-cleanup-prompt`; `make spot-it-process` / `spot-it-downsample-food` for ADR 0034) |
 | `.cursor/skills/` | Agent skills (e.g. ship-plan-adr, cleanup-undefined-boggle-words) |
 
 ## Non-negotiables

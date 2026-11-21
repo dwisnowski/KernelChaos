@@ -29,7 +29,7 @@ function mulberry32(seed: number): () => number {
 }
 
 /**
- * Place 8 symbols on a circular card with mild jitter, rotation, and scale.
+ * Place 8 symbols on a card with jitter, full 360° rotation, and ±30% scale.
  * Positions are roughly on a ring + one near center so they stay readable.
  */
 export function layoutCard(
@@ -41,28 +41,28 @@ export function layoutCard(
   const n = Math.min(symbolIndices.length, SPOT_IT_SYMBOLS_PER_CARD);
   const placements: SpotItPlacement[] = [];
 
-  // One near center
+  // One near center — scale roughly [0.70, 1.30]
   if (n > 0) {
     placements.push({
       symbolIndex: symbolIndices[0],
       x: 0.5 + (rand() - 0.5) * 0.12,
       y: 0.5 + (rand() - 0.5) * 0.12,
-      rotateDeg: (rand() - 0.5) * 50,
-      scale: 0.88 + rand() * 0.28,
+      rotateDeg: rand() * 360,
+      scale: 0.7 + rand() * 0.6,
     });
   }
 
-  // Remaining on a ring
+  // Remaining on a ring (slightly tighter radius so ±30% scale stays on-card)
   const ring = n - 1;
   for (let i = 0; i < ring; i++) {
     const base = (i / ring) * Math.PI * 2 + rand() * 0.25;
-    const radius = 0.28 + rand() * 0.08;
+    const radius = 0.26 + rand() * 0.06;
     placements.push({
       symbolIndex: symbolIndices[i + 1],
       x: 0.5 + Math.cos(base) * radius,
       y: 0.5 + Math.sin(base) * radius,
-      rotateDeg: (rand() - 0.5) * 70,
-      scale: 0.78 + rand() * 0.36,
+      rotateDeg: rand() * 360,
+      scale: 0.7 + rand() * 0.6,
     });
   }
 

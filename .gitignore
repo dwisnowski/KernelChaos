@@ -5,3 +5,5 @@ dist
 *.local
 .DS_Store
 node_modules/.tmp
+# Spot It Magnific 4-up source sheets (process into masters + public)
+assets/spot-it/**/sheets/

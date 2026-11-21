@@ -7,6 +7,7 @@ Architecture decisions and project notes for KernelChaos.
 - [Agent notes](../AGENTS.md) — repo map, non-negotiables, verify checklist (AI coding agents)
 - [Screen reference](./screens.md) — URL routes, in-room phases, chat shorthand
 - [Picture Hunt Magnific MCP](./hunt-magnific.md) — Creative/Precision upscale via Magnific MCP; vision-check catalogs after art
+- [Spot It Magnific packs](./spot-it-magnific.md) — 4-up symbol sheets → masters + 192² game rasters (ADR 0034)
 - [README](../readme.md) — features, develop, deploy
 
 ## Architecture Decision Records
@@ -44,3 +45,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0031 – Picture Hunt magnifying-glass loupe](adr/0031-hunt-magnifying-glass.md) — Optional player-only loupe during hunt play; pins still click-annotate
 - [0032 – Picture Hunt desktop loupe + mobile pinch](adr/0032-hunt-mobile-pinch-annotate.md) — 15rem loupe on desktop; touch pinch-zoom + temp marker → overlay; maximized viewport
 - [0033 – Spot It](adr/0033-spot-it.md) — `spot-it` rooms; Shared + Tower; order-7 deck; Funny Foods pack; race to lobby target
+- [0034 – Spot It assets + card UX](adr/0034-spot-it-assets-and-card-ux.md) — masters vs 192² public; 4-up Magnific pipeline; large square cards; 360° / ±30% layout
