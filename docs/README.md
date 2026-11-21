@@ -49,3 +49,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0035 – Spot It Kawaii Animals pack](adr/0035-spot-it-kawaii-animals-pack.md) — lobby pack `kawaii`; Magnific 4-up animals; required seagull/rabbit/cat/dog/horse/lizard/raccoon
 - [0036 – Spot It Cyber Vehicles pack](adr/0036-spot-it-cyber-vehicles-pack.md) — lobby pack `cyber`; anime cyberpunk vehicle 4-ups
 - [0037 – Spot It kana Learning mode](adr/0037-spot-it-kana-learning.md) — `learning` + `quiz`; Restaurant Kana pack; Unicode glyphs (not Magnific)
+- [0038 – Spot It Shopping Kana pack](adr/0038-spot-it-kana-shopping-pack.md) — lobby pack `kana-shopping`; tourist retail vocab

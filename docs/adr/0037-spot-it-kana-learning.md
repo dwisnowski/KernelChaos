@@ -15,7 +15,7 @@ AI image packs mangle kana; restaurant vocabulary needs **crisp Unicode** glyphs
 - **Mode:** Lobby `learning` alongside Shared / Tower. Uses the same **shared two-card** deal as `shared` (no tower hands).
 - **Scoring:** Correct symbol tap does **not** score. Server enters **`quiz`** with the matched symbol. All players race to pick the correct English among **4** options (correct + 3 pack distractors, server-seeded). Wrong English → **2s** personal lock (`SPOT_IT_QUIZ_MISS_LOCK_MS`). First correct English scores and starts a **7s `between`** teach window (`SPOT_IT_LEARNING_BETWEEN_MS`; Shared/Tower stay at 3s).
 - **Between UI:** Show matched kana + romaji syllable chips + English, then countdown.
-- **Pack:** `kana-restaurant` — 57 restaurant / eating-out words (`kana`, `reading[]`, English `label`). Pack `kind: "kana"`; cards render text glyphs (Noto Sans JP), not `<img>`.
+- **Pack:** `kana-restaurant` — 57 restaurant / eating-out words (`kana`, `reading[]`, English `label`). Pack `kind: "kana"`; cards render text glyphs (Noto Sans JP), not `<img>`. Additional kana pack: `kana-shopping` ([ADR 0038](./0038-spot-it-kana-shopping-pack.md)).
 - **Gating:** Selecting Learning auto-selects `kana-restaurant` if the current pack is not kana. Host may only pick kana packs in Learning, and only image packs in Shared/Tower. Default pack for Shared/Tower remains `food`.
 - **Protocol:** `tapQuizChoice { english }`; public quiz fields (`quizSymbolIndex`, `quizChoices`, `quizKana`, `quizReading`) and between teach fields (`lastMatchKana`, `lastMatchReading`, `lastMatchEnglish`).
 

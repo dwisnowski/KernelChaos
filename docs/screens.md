@@ -98,7 +98,7 @@ Difficulty: `difficulty: "easy" | "medium" | "hard"` (lobby pills; scene clutter
 
 `SpotItPhase` in `src/spotItTypes.ts`: `lobby` → `playing` → (`quiz` when learning) → `between` → `results`
 
-Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses the shared two-card deal, then a 4-choice English quiz before scoring. Kana packs (`kana-restaurant`) render Unicode glyphs — not Magnific image packs. Distinct from Spot the Difference (`spotdiff`).
+Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses the shared two-card deal, then a 4-choice English quiz before scoring. Kana packs (`kana-restaurant`, `kana-shopping`) render Unicode glyphs — not Magnific image packs. Distinct from Spot the Difference (`spotdiff`).
 
 | Phase | Player | TV |
 | --- | --- | --- |

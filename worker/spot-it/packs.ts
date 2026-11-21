@@ -1,4 +1,4 @@
-export type SpotItPackId = "food" | "kawaii" | "cyber" | "kana-restaurant";
+export type SpotItPackId = "food" | "kawaii" | "cyber" | "kana-restaurant" | "kana-shopping";
 
 export type SpotItPackKind = "image" | "kana";
 
@@ -264,6 +264,67 @@ const KANA_RESTAURANT: { kana: string; reading: string[]; english: string }[] = 
   { kana: "トイレ", reading: ["to", "i", "re"], english: "restroom" },
 ];
 
+/** Tourist shopping / retail vocab for learning mode (ADR 0038). Exactly 57. */
+const KANA_SHOPPING: { kana: string; reading: string[]; english: string }[] = [
+  { kana: "コンビニ", reading: ["kon", "bi", "ni"], english: "convenience store" },
+  { kana: "デパート", reading: ["de", "pa", "a", "to"], english: "department store" },
+  { kana: "スーパー", reading: ["su", "u", "pa", "a"], english: "supermarket" },
+  { kana: "おみやげ", reading: ["o", "mi", "ya", "ge"], english: "souvenir" },
+  { kana: "みせ", reading: ["mi", "se"], english: "shop" },
+  { kana: "ばいてん", reading: ["bai", "ten"], english: "kiosk / stand" },
+  { kana: "いくら", reading: ["i", "ku", "ra"], english: "how much" },
+  { kana: "えん", reading: ["en"], english: "yen" },
+  { kana: "おかね", reading: ["o", "ka", "ne"], english: "money" },
+  { kana: "げんきん", reading: ["gen", "kin"], english: "cash" },
+  { kana: "カード", reading: ["ka", "a", "do"], english: "card (credit)" },
+  { kana: "レシート", reading: ["re", "shi", "i", "to"], english: "receipt" },
+  { kana: "かいけい", reading: ["kai", "kei"], english: "checkout / register" },
+  { kana: "かいます", reading: ["ka", "i", "ma", "su"], english: "I'll buy (it)" },
+  { kana: "ください", reading: ["ku", "da", "sa", "i"], english: "please (give me)" },
+  { kana: "みせて", reading: ["mi", "se", "te"], english: "please show me" },
+  { kana: "これを", reading: ["ko", "re", "o"], english: "this one (object)" },
+  { kana: "あれを", reading: ["a", "re", "o"], english: "that one (far)" },
+  { kana: "やすい", reading: ["ya", "su", "i"], english: "cheap / inexpensive" },
+  { kana: "たかい", reading: ["ta", "ka", "i"], english: "expensive" },
+  { kana: "セール", reading: ["se", "e", "ru"], english: "sale" },
+  { kana: "わりびき", reading: ["wa", "ri", "bi", "ki"], english: "discount" },
+  { kana: "ぜいきん", reading: ["zei", "kin"], english: "tax" },
+  { kana: "ぜいこみ", reading: ["zei", "ko", "mi"], english: "tax included" },
+  { kana: "サイズ", reading: ["sa", "i", "zu"], english: "size" },
+  { kana: "おおきい", reading: ["o", "o", "ki", "i"], english: "large" },
+  { kana: "ちいさい", reading: ["chi", "i", "sa", "i"], english: "small" },
+  { kana: "みどり", reading: ["mi", "do", "ri"], english: "green" },
+  { kana: "あか", reading: ["a", "ka"], english: "red" },
+  { kana: "あお", reading: ["a", "o"], english: "blue" },
+  { kana: "しろ", reading: ["shi", "ro"], english: "white" },
+  { kana: "くろ", reading: ["ku", "ro"], english: "black" },
+  { kana: "ふく", reading: ["fu", "ku"], english: "clothes" },
+  { kana: "シャツ", reading: ["sha", "tsu"], english: "shirt" },
+  { kana: "ズボン", reading: ["zu", "bon"], english: "pants" },
+  { kana: "スカート", reading: ["su", "ka", "a", "to"], english: "skirt" },
+  { kana: "くつ", reading: ["ku", "tsu"], english: "shoes" },
+  { kana: "かばん", reading: ["ka", "ban"], english: "bag" },
+  { kana: "バッグ", reading: ["ba", "ggu"], english: "handbag" },
+  { kana: "さいふ", reading: ["sa", "i", "fu"], english: "wallet" },
+  { kana: "かさ", reading: ["ka", "sa"], english: "umbrella" },
+  { kana: "ぼうし", reading: ["bo", "u", "shi"], english: "hat" },
+  { kana: "めがね", reading: ["me", "ga", "ne"], english: "glasses" },
+  { kana: "とけい", reading: ["to", "kei"], english: "watch / clock" },
+  { kana: "カメラ", reading: ["ka", "me", "ra"], english: "camera" },
+  { kana: "でんわ", reading: ["den", "wa"], english: "phone" },
+  { kana: "バッテリー", reading: ["ba", "tte", "ri", "i"], english: "battery" },
+  { kana: "ちず", reading: ["chi", "zu"], english: "map" },
+  { kana: "えき", reading: ["e", "ki"], english: "train station" },
+  { kana: "きっぷ", reading: ["ki", "ppu"], english: "ticket" },
+  { kana: "はがき", reading: ["ha", "ga", "ki"], english: "postcard" },
+  { kana: "きって", reading: ["ki", "tte"], english: "postage stamp" },
+  { kana: "ゆうびんきょく", reading: ["yu", "u", "bin", "kyo", "ku"], english: "post office" },
+  { kana: "ドラッグストア", reading: ["do", "ra", "ggu", "su", "to", "a"], english: "drugstore" },
+  { kana: "くすり", reading: ["ku", "su", "ri"], english: "medicine" },
+  { kana: "オープン", reading: ["o", "o", "pen"], english: "open (hours)" },
+  { kana: "クローズ", reading: ["ku", "ro", "o", "zu"], english: "closed" },
+];
+
 function imageSymbols(packId: SpotItPackId, labels: string[]): SpotItSymbolMeta[] {
   return labels.map((label, i) => {
     const id = String(i).padStart(2, "0");
@@ -311,14 +372,32 @@ export const SPOT_IT_PACKS: Record<SpotItPackId, SpotItPack> = {
     kind: "kana",
     symbols: kanaSymbols(KANA_RESTAURANT),
   },
+  "kana-shopping": {
+    id: "kana-shopping",
+    label: "Shopping Kana",
+    kind: "kana",
+    symbols: kanaSymbols(KANA_SHOPPING),
+  },
 };
 
-export const SPOT_IT_PACK_IDS: SpotItPackId[] = ["food", "kawaii", "cyber", "kana-restaurant"];
+export const SPOT_IT_PACK_IDS: SpotItPackId[] = [
+  "food",
+  "kawaii",
+  "cyber",
+  "kana-restaurant",
+  "kana-shopping",
+];
 export const DEFAULT_SPOT_IT_PACK: SpotItPackId = "food";
 export const DEFAULT_KANA_PACK: SpotItPackId = "kana-restaurant";
 
 export function isSpotItPackId(v: unknown): v is SpotItPackId {
-  return v === "food" || v === "kawaii" || v === "cyber" || v === "kana-restaurant";
+  return (
+    v === "food" ||
+    v === "kawaii" ||
+    v === "cyber" ||
+    v === "kana-restaurant" ||
+    v === "kana-shopping"
+  );
 }
 
 export function getSpotItPack(id: SpotItPackId): SpotItPack {
