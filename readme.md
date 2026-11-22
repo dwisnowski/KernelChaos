@@ -17,6 +17,8 @@ Family games over the internet — a [Wild Idea Zone](https://www.wildideazone.c
 
 **Spot It** — race to tap the one matching symbol between cards (Shared pair or Tower). First to 10/25/50/75 wins. Distinct from Spot the Difference.
 
+**Chaos Wheel** — spin for cash, call consonants, buy vowels, and solve original family puzzles on the phone + TV show floor.
+
 ## Develop
 
 ```bash

@@ -364,3 +364,55 @@ export function playSpotItMiss(): void {
   if (!c) return;
   tone(185, c.currentTime, 0.11, "square", 0.03);
 }
+
+/** Chaos Wheel: soft tick while the wheel spins. */
+export function playWheelSpinTick(): void {
+  const c = getCtx();
+  if (!c) return;
+  tone(240 + Math.random() * 80, c.currentTime, 0.03, "square", 0.02);
+}
+
+/** Chaos Wheel: wedge lands. */
+export function playWheelLand(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(392, t, 0.08, "triangle", 0.07);
+  tone(523, t + 0.07, 0.14, "sine", 0.08);
+}
+
+/** Chaos Wheel: letter revealed. */
+export function playWheelLetter(): void {
+  const c = getCtx();
+  if (!c) return;
+  tone(660, c.currentTime, 0.09, "triangle", 0.06);
+}
+
+/** Chaos Wheel: vowel purchase. */
+export function playWheelVowel(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(523, t, 0.07, "sine", 0.05);
+  tone(659, t + 0.06, 0.1, "sine", 0.06);
+}
+
+/** Chaos Wheel: bankrupt sting. */
+export function playWheelBankrupt(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(220, t, 0.16, "sawtooth", 0.05);
+  tone(110, t + 0.12, 0.28, "square", 0.04);
+}
+
+/** Chaos Wheel: puzzle solved. */
+export function playWheelSolve(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(523, t, 0.1, "sine", 0.08);
+  tone(659, t + 0.09, 0.1, "sine", 0.08);
+  tone(784, t + 0.18, 0.1, "sine", 0.09);
+  tone(1046, t + 0.28, 0.22, "triangle", 0.1);
+}

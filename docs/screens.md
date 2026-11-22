@@ -4,7 +4,7 @@ Shared names for KernelChaos pages and in-room phases. Use these in chat so huma
 
 React Router (`BrowserRouter` in `src/main.tsx`, routes in `src/App.tsx`) already owns URL navigation. In-room **phases** are server state (`state.phase` over WebSocket), not URL segments — one room URL hosts every phase for that seat.
 
-Games: `boggle` | `scattergories` | `mmmms` | `spotdiff` | `spot-it`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
+Games: `boggle` | `scattergories` | `mmmms` | `spotdiff` | `spot-it` | `wheel`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
 
 ## URL routes
 
@@ -32,6 +32,10 @@ Games: `boggle` | `scattergories` | `mmmms` | `spotdiff` | `spot-it`. Picture Hu
 | `/spot-it/join?code=` | `SpotItEntry` | same | QR / deep-link join |
 | `/spot-it/room/:code` | `SpotItRoom` | `src/pages/SpotItRoom.tsx` | Player |
 | `/spot-it/room/:code/tv` | `SpotItSpectator` | `src/pages/SpotItSpectator.tsx` | TV |
+| `/wheel` | `WheelEntry` | `src/pages/WheelEntry.tsx` | Create / join / spectate |
+| `/wheel/join?code=` | `WheelEntry` | same | QR / deep-link join |
+| `/wheel/room/:code` | `WheelRoom` | `src/pages/WheelRoom.tsx` | Player |
+| `/wheel/room/:code/tv` | `WheelSpectator` | `src/pages/WheelSpectator.tsx` | TV |
 
 Pattern shorthand: `/{game}`, `/{game}/join?code=`, `/{game}/room/:code`, `/{game}/room/:code/tv`.
 
@@ -108,6 +112,19 @@ Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses
 | `between` | Countdown + who scored (3s shared/tower; 7s learning teach + kana reading chips) | Same |
 | `results` | Winner + scores | Same |
 
+### Chaos Wheel
+
+`WheelPhase` in `src/wheelTypes.ts`: `lobby` → `playing` → `between` → `playing` … → `results`
+
+Inside `playing`, `turnPhase`: `spin` | `spinning` | `consonant` | `action` | `vowel` | `solve`. Lobby: host picks rounds `3 | 5 | 7` (default 3); start needs ≥2 players.
+
+| Phase | Player | TV |
+| --- | --- | --- |
+| `lobby` | Rounds pills, QR, start | Lobby / waiting + code |
+| `playing` | Wheel + puzzle board + letter pad / actions when your turn | Oversized board + wheel + scores |
+| `between` | Solved reveal (~4s) | Same |
+| `results` | Totals + winners | Same |
+
 ## Chat shorthand
 
 Prefer route + phase (and mode when needed):
@@ -131,6 +148,9 @@ Prefer route + phase (and mode when needed):
 | spot-it room playing | `/spot-it/room/:code` + `phase=playing` |
 | spot-it room quiz | `/spot-it/room/:code` + `phase=quiz` (learning) |
 | spot-it TV between | `/spot-it/room/:code/tv` + `phase=between` |
+| wheel entry | `/wheel` |
+| wheel room playing | `/wheel/room/:code` + `phase=playing` |
+| wheel TV between | `/wheel/room/:code/tv` + `phase=between` |
 
 ## Related
 

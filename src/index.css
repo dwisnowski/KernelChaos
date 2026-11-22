@@ -4263,6 +4263,312 @@ input {
   }
 }
 
+/* —— Chaos Wheel —— */
+.chaos-wheel {
+  position: relative;
+  margin: 0 auto;
+  filter: drop-shadow(0 12px 28px rgba(14, 31, 53, 0.28));
+}
+
+.chaos-wheel-canvas,
+.chaos-wheel-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.chaos-wheel-fx {
+  z-index: 2;
+}
+
+.puzzle-board {
+  text-align: center;
+  margin: 0.75rem 0 1rem;
+}
+
+.puzzle-category {
+  margin: 0 0 0.65rem;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  color: var(--muted, #5a6b7d);
+}
+
+.puzzle-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.puzzle-word {
+  display: flex;
+  gap: 0.28rem;
+}
+
+.puzzle-tile {
+  width: 1.65rem;
+  height: 2.1rem;
+  border-radius: 0.35rem;
+  border: 2px solid color-mix(in srgb, var(--ink, #0e1f35) 35%, transparent);
+  background: color-mix(in srgb, var(--bg1, #fff) 80%, var(--accent, #1a6bff) 8%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--ink, #0e1f35);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.puzzle-tile.revealed {
+  background: linear-gradient(160deg, #fff8e7, #ffe7a0);
+  border-color: #e6a100;
+  animation: wheel-tile-pop 0.35s ease-out;
+}
+
+.puzzle-board-large .puzzle-tile {
+  width: 2.4rem;
+  height: 3rem;
+  font-size: 1.45rem;
+}
+
+@keyframes wheel-tile-pop {
+  from {
+    transform: scale(0.7);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.letter-pad {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+  max-width: 22rem;
+  margin: 0.5rem auto;
+}
+
+.letter-key {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--ink, #0e1f35) 18%, transparent);
+  background: var(--bg1, #fff);
+  color: var(--ink, #0e1f35);
+  border-radius: 0.45rem;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0.55rem 0;
+  cursor: pointer;
+}
+
+.letter-key:disabled,
+.letter-key.used {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.letter-key:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.wheel-score-rail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+}
+
+.wheel-score-seat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 6.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--bg1, #fff) 70%, transparent);
+  border: 1px solid transparent;
+}
+
+.wheel-score-seat.active {
+  border-color: var(--accent, #1a6bff);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #1a6bff) 25%, transparent);
+}
+
+.wheel-score-seat.me {
+  background: color-mix(in srgb, var(--accent, #1a6bff) 12%, var(--bg1, #fff));
+}
+
+.wheel-score-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.wheel-free-spin {
+  margin-left: 0.35rem;
+  font-style: normal;
+  font-size: 0.75rem;
+  color: #b45309;
+  background: #ffe7a0;
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+}
+
+.wheel-score-banks {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.wheel-round-bank {
+  color: var(--accent, #1a6bff);
+  font-weight: 700;
+}
+
+.wheel-total-score {
+  color: var(--muted, #5a6b7d);
+}
+
+.wheel-play,
+.wheel-tv-play {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 1.5rem;
+}
+
+.wheel-play-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.wheel-round-label {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.wheel-stage {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.wheel-banner {
+  text-align: center;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0.25rem 0;
+}
+
+.wheel-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.wheel-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.wheel-spin-btn {
+  min-width: 8rem;
+  font-size: 1.15rem;
+  padding: 0.75rem 1.4rem;
+}
+
+.wheel-solve-form {
+  width: min(100%, 22rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.used-letters {
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.wheel-results,
+.wheel-tv-results {
+  max-width: 28rem;
+  margin: 1rem auto;
+  text-align: center;
+}
+
+.wheel-results ol,
+.wheel-tv-results ol {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.wheel-results li,
+.wheel-tv-results li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.35rem;
+  background: color-mix(in srgb, var(--bg1, #fff) 80%, transparent);
+}
+
+.wheel-results li.winner,
+.wheel-tv-results li.winner {
+  background: linear-gradient(120deg, #ffe7a0, #ffd35c);
+  font-weight: 700;
+}
+
+.wheel-tv-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1.25rem;
+  align-items: center;
+  padding: 0.5rem 1rem 1.5rem;
+}
+
+.wheel-tv-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.tv-lobby.wheel-tv {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+@media (max-width: 900px) {
+  .wheel-tv-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .letter-pad {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

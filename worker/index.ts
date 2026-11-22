@@ -70,7 +70,12 @@ export default {
     if (url.pathname === "/api/rooms" && request.method === "GET") {
       const raw = url.searchParams.get("game");
       const game: ActiveRoomGame =
-        raw === "scattergories" || raw === "boggle" || raw === "mmmms" || raw === "spotdiff" || raw === "spot-it"
+        raw === "scattergories" ||
+        raw === "boggle" ||
+        raw === "mmmms" ||
+        raw === "spotdiff" ||
+        raw === "spot-it" ||
+        raw === "wheel"
           ? raw
           : "boggle";
       try {
@@ -91,7 +96,8 @@ export default {
           body.game === "boggle" ||
           body.game === "mmmms" ||
           body.game === "spotdiff" ||
-          body.game === "spot-it"
+          body.game === "spot-it" ||
+          body.game === "wheel"
         ) {
           game = body.game;
         }

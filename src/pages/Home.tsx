@@ -74,6 +74,21 @@ function SpotItIcon() {
   );
 }
 
+function WheelIcon() {
+  return (
+    <svg className="game-card-icon" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="24" cy="24" r="5" fill="none" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M24 6v12M24 30v12M6 24h12M30 24h12M12.5 12.5l8.5 8.5M27 27l8.5 8.5M35.5 12.5L27 21M21 27l-8.5 8.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function Home() {
   return (
     <Layout>
@@ -123,6 +138,14 @@ export function Home() {
             <p>
               Race to tap the one matching symbol between cards. Shared pair or Tower — first to the
               target wins.
+            </p>
+            <span className="btn primary">Play</span>
+          </Link>
+          <Link className="game-card" to="/wheel" onClick={() => unlockAudio()}>
+            <WheelIcon />
+            <h2>Chaos Wheel</h2>
+            <p>
+              Spin for cash, call letters, buy vowels, and solve the puzzle on the living-room TV.
             </p>
             <span className="btn primary">Play</span>
           </Link>

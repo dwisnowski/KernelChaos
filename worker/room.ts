@@ -130,15 +130,41 @@ import {
   type SpotItServerMessage,
   type SpotItTarget,
 } from "./spot-it/protocol.ts";
+import {
+  countLetterInAnswer,
+  isFullyRevealed,
+  normalizeGuess,
+  pickPuzzle,
+  toPublicPuzzle,
+  type WheelPuzzle,
+} from "./wheel/puzzles.ts";
+import {
+  DEFAULT_WHEEL_ROUNDS,
+  WHEEL_BETWEEN_MS,
+  isConsonant,
+  isVowel,
+  isWheelRoundCount,
+  type WheelClientMessage,
+  type WheelLastSpin,
+  type WheelPhase,
+  type WheelPlayerPublic,
+  type WheelPlayerResult,
+  type WheelRoomState,
+  type WheelRoundCount,
+  type WheelServerMessage,
+  type WheelTurnPhase,
+} from "./wheel/protocol.ts";
+import { addConsonantWinnings, applyVowelPurchase, bankRoundIntoTotal, canBuyVowel } from "./wheel/scoring.ts";
+import { WHEEL_WEDGES, pickSpin } from "./wheel/wheel.ts";
 
 /** Per-category: voterId → (targetPlayerId → in|out). */
 type ReviewBallotMaps = Array<Map<string, Record<string, ReviewVote>>>;
 /** Persistable form of ReviewBallotMaps. */
 type StoredReviewBallots = Array<Record<string, Record<string, ReviewVote>>>;
 
-export type GameType = "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it";
+export type GameType = "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it" | "wheel";
 
-type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase | SpotdiffPhase | SpotItPhase;
+type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase | SpotdiffPhase | SpotItPhase | WheelPhase;
 
 /** Max wait for clients to finish explosion animation before advancing. */
 const MMMMS_RESOLVE_TIMEOUT_MS = 15_000;
@@ -178,6 +204,10 @@ interface PlayerRecord {
   spotItScore: number;
   missStreak: number;
   lockedUntil: number | null;
+  /** Chaos Wheel banks. */
+  wheelRoundBank: number;
+  wheelTotalScore: number;
+  wheelFreeSpins: number;
 }
 
 interface Attachment {
@@ -209,6 +239,9 @@ interface StoredPlayer {
   spotItScore?: number;
   missStreak?: number;
   lockedUntil?: number | null;
+  wheelRoundBank?: number;
+  wheelTotalScore?: number;
+  wheelFreeSpins?: number;
 }
 
 type ClientMessage =
@@ -216,13 +249,15 @@ type ClientMessage =
   | ScatterClientMessage
   | MmmmsClientMessage
   | SpotdiffClientMessage
-  | SpotItClientMessage;
+  | SpotItClientMessage
+  | WheelClientMessage;
 type ServerMessage =
   | BoggleServerMessage
   | ScatterServerMessage
   | MmmmsServerMessage
   | SpotdiffServerMessage
-  | SpotItServerMessage;
+  | SpotItServerMessage
+  | WheelServerMessage;
 
 function emptyAnswers(): string[] {
   return Array.from({ length: CATEGORIES_PER_LIST }, () => "");
@@ -302,7 +337,14 @@ function loadWords(raw: StoredPlayer["words"]): Map<string, WordRecord> {
 }
 
 function isGameType(v: unknown): v is GameType {
-  return v === "boggle" || v === "scattergories" || v === "mmmms" || v === "spotdiff" || v === "spot-it";
+  return (
+    v === "boggle" ||
+    v === "scattergories" ||
+    v === "mmmms" ||
+    v === "spotdiff" ||
+    v === "spot-it" ||
+    v === "wheel"
+  );
 }
 
 function loadOrbs(raw: unknown): OrbColor[] {
@@ -393,6 +435,21 @@ export class GameRoom extends DurableObject<Env> {
   private spotItLastMatchReading: string[] | null = null;
   private spotItLastMatchEnglish: string | null = null;
 
+  // Chaos Wheel
+  private wheelRoundCount: WheelRoundCount = DEFAULT_WHEEL_ROUNDS;
+  private wheelRoundIndex = 0;
+  private wheelTurnPhase: WheelTurnPhase | null = null;
+  private wheelCurrentPlayerId: string | null = null;
+  private wheelPuzzle: WheelPuzzle | null = null;
+  private wheelRevealed = new Set<string>();
+  private wheelUsedLetters: string[] = [];
+  private wheelUsedPuzzleIds: string[] = [];
+  private wheelLastSpin: WheelLastSpin | null = null;
+  private wheelPendingCash: number | null = null;
+  private wheelLastSolverId: string | null = null;
+  private wheelLastSolverName: string | null = null;
+  private wheelWinners: string[] = [];
+
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
@@ -470,6 +527,19 @@ export class GameRoom extends DurableObject<Env> {
       spotItLastMatchKana?: string | null;
       spotItLastMatchReading?: string[] | null;
       spotItLastMatchEnglish?: string | null;
+      wheelRoundCount?: WheelRoundCount;
+      wheelRoundIndex?: number;
+      wheelTurnPhase?: WheelTurnPhase | null;
+      wheelCurrentPlayerId?: string | null;
+      wheelPuzzle?: WheelPuzzle | null;
+      wheelRevealed?: string[];
+      wheelUsedLetters?: string[];
+      wheelUsedPuzzleIds?: string[];
+      wheelLastSpin?: WheelLastSpin | null;
+      wheelPendingCash?: number | null;
+      wheelLastSolverId?: string | null;
+      wheelLastSolverName?: string | null;
+      wheelWinners?: string[];
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -578,6 +648,30 @@ export class GameRoom extends DurableObject<Env> {
         ? stored.spotItLastMatchReading
         : null;
       this.spotItLastMatchEnglish = stored.spotItLastMatchEnglish ?? null;
+      this.wheelRoundCount = isWheelRoundCount(stored.wheelRoundCount)
+        ? stored.wheelRoundCount
+        : DEFAULT_WHEEL_ROUNDS;
+      this.wheelRoundIndex = typeof stored.wheelRoundIndex === "number" ? stored.wheelRoundIndex : 0;
+      this.wheelTurnPhase = stored.wheelTurnPhase ?? null;
+      this.wheelCurrentPlayerId = stored.wheelCurrentPlayerId ?? null;
+      this.wheelPuzzle = stored.wheelPuzzle ?? null;
+      this.wheelRevealed = new Set(
+        Array.isArray(stored.wheelRevealed)
+          ? stored.wheelRevealed.filter((ch) => typeof ch === "string")
+          : [],
+      );
+      this.wheelUsedLetters = Array.isArray(stored.wheelUsedLetters)
+        ? stored.wheelUsedLetters.filter((ch) => typeof ch === "string")
+        : [];
+      this.wheelUsedPuzzleIds = Array.isArray(stored.wheelUsedPuzzleIds)
+        ? stored.wheelUsedPuzzleIds.filter((id) => typeof id === "string")
+        : [];
+      this.wheelLastSpin = stored.wheelLastSpin ?? null;
+      this.wheelPendingCash =
+        typeof stored.wheelPendingCash === "number" ? stored.wheelPendingCash : null;
+      this.wheelLastSolverId = stored.wheelLastSolverId ?? null;
+      this.wheelLastSolverName = stored.wheelLastSolverName ?? null;
+      this.wheelWinners = Array.isArray(stored.wheelWinners) ? stored.wheelWinners : [];
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -599,6 +693,9 @@ export class GameRoom extends DurableObject<Env> {
             spotItScore: typeof p.spotItScore === "number" ? p.spotItScore : 0,
             missStreak: typeof p.missStreak === "number" ? p.missStreak : 0,
             lockedUntil: typeof p.lockedUntil === "number" ? p.lockedUntil : null,
+            wheelRoundBank: typeof p.wheelRoundBank === "number" ? p.wheelRoundBank : 0,
+            wheelTotalScore: typeof p.wheelTotalScore === "number" ? p.wheelTotalScore : 0,
+            wheelFreeSpins: typeof p.wheelFreeSpins === "number" ? p.wheelFreeSpins : 0,
           },
         ]),
       );
@@ -679,6 +776,19 @@ export class GameRoom extends DurableObject<Env> {
       spotItLastMatchKana: this.spotItLastMatchKana,
       spotItLastMatchReading: this.spotItLastMatchReading,
       spotItLastMatchEnglish: this.spotItLastMatchEnglish,
+      wheelRoundCount: this.wheelRoundCount,
+      wheelRoundIndex: this.wheelRoundIndex,
+      wheelTurnPhase: this.wheelTurnPhase,
+      wheelCurrentPlayerId: this.wheelCurrentPlayerId,
+      wheelPuzzle: this.wheelPuzzle,
+      wheelRevealed: [...this.wheelRevealed],
+      wheelUsedLetters: this.wheelUsedLetters,
+      wheelUsedPuzzleIds: this.wheelUsedPuzzleIds,
+      wheelLastSpin: this.wheelLastSpin,
+      wheelPendingCash: this.wheelPendingCash,
+      wheelLastSolverId: this.wheelLastSolverId,
+      wheelLastSolverName: this.wheelLastSolverName,
+      wheelWinners: this.wheelWinners,
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -694,6 +804,9 @@ export class GameRoom extends DurableObject<Env> {
         spotItScore: p.spotItScore,
         missStreak: p.missStreak,
         lockedUntil: p.lockedUntil,
+        wheelRoundBank: p.wheelRoundBank,
+        wheelTotalScore: p.wheelTotalScore,
+        wheelFreeSpins: p.wheelFreeSpins,
       })),
     });
     await this.syncActiveDirectory();
@@ -754,6 +867,14 @@ export class GameRoom extends DurableObject<Env> {
     }
     if (this.phase === "playing" && this.endsAt != null) {
       candidates.push(this.endsAt);
+    }
+    if (
+      this.phase === "playing" &&
+      this.gameType === "wheel" &&
+      this.wheelTurnPhase === "spinning" &&
+      this.wheelLastSpin != null
+    ) {
+      candidates.push(this.wheelLastSpin.endsAt);
     }
     if (this.phase === "rolling" && this.rollEndsAt != null) {
       candidates.push(this.rollEndsAt);
@@ -853,7 +974,25 @@ export class GameRoom extends DurableObject<Env> {
     this.spotItMode = DEFAULT_SPOT_IT_MODE;
     this.spotItTarget = DEFAULT_SPOT_IT_TARGET;
     this.spotItPack = DEFAULT_SPOT_IT_PACK;
+    this.resetWheelFields();
+    this.wheelRoundCount = DEFAULT_WHEEL_ROUNDS;
     this.loaded = true;
+  }
+
+  /** Clear per-game Chaos Wheel state (keeps roundCount). */
+  private resetWheelFields(): void {
+    this.wheelRoundIndex = 0;
+    this.wheelTurnPhase = null;
+    this.wheelCurrentPlayerId = null;
+    this.wheelPuzzle = null;
+    this.wheelRevealed = new Set();
+    this.wheelUsedLetters = [];
+    this.wheelUsedPuzzleIds = [];
+    this.wheelLastSpin = null;
+    this.wheelPendingCash = null;
+    this.wheelLastSolverId = null;
+    this.wheelLastSolverName = null;
+    this.wheelWinners = [];
   }
 
   /** Clear per-game Spot It state (keeps mode / target / pack). */
@@ -919,6 +1058,8 @@ export class GameRoom extends DurableObject<Env> {
           this.spotItMode = DEFAULT_SPOT_IT_MODE;
           this.spotItTarget = DEFAULT_SPOT_IT_TARGET;
           this.spotItPack = DEFAULT_SPOT_IT_PACK;
+        } else if (this.gameType === "wheel") {
+          this.wheelRoundCount = DEFAULT_WHEEL_ROUNDS;
         }
         await this.persist();
         return Response.json({ code: this.code, game: this.gameType, created: true });
@@ -1100,6 +1241,30 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "spot-it") break;
         await this.handleTapSpotItQuizChoice(ws, attachment?.playerId, msg.english);
         break;
+      case "setWheelRounds":
+        if (this.gameType !== "wheel") break;
+        await this.handleSetWheelRounds(attachment?.playerId, msg.roundCount);
+        break;
+      case "spin":
+        if (this.gameType !== "wheel") break;
+        await this.handleWheelSpin(attachment?.playerId);
+        break;
+      case "guessLetter":
+        if (this.gameType !== "wheel") break;
+        await this.handleWheelGuessLetter(attachment?.playerId, msg.letter);
+        break;
+      case "buyVowel":
+        if (this.gameType !== "wheel") break;
+        await this.handleWheelBuyVowel(attachment?.playerId);
+        break;
+      case "chooseSolve":
+        if (this.gameType !== "wheel") break;
+        await this.handleWheelChooseSolve(attachment?.playerId);
+        break;
+      case "solve":
+        if (this.gameType !== "wheel") break;
+        await this.handleWheelSolve(attachment?.playerId, msg.guess);
+        break;
       default:
         this.send(ws, { type: "error", message: "Unknown message" });
     }
@@ -1160,6 +1325,29 @@ export class GameRoom extends DurableObject<Env> {
         return;
       }
       await this.advanceSpotItRound();
+      return;
+    }
+
+    if (this.phase === "between" && this.gameType === "wheel") {
+      if (this.countdownEndsAt != null && this.countdownEndsAt > now) {
+        await this.ctx.storage.setAlarm(this.countdownEndsAt);
+        return;
+      }
+      await this.advanceWheelAfterBetween();
+      return;
+    }
+
+    if (
+      this.phase === "playing" &&
+      this.gameType === "wheel" &&
+      this.wheelTurnPhase === "spinning" &&
+      this.wheelLastSpin != null
+    ) {
+      if (this.wheelLastSpin.endsAt > now) {
+        await this.ctx.storage.setAlarm(this.wheelLastSpin.endsAt);
+        return;
+      }
+      await this.resolveWheelSpin();
       return;
     }
 
@@ -1323,6 +1511,9 @@ export class GameRoom extends DurableObject<Env> {
       spotItScore: 0,
       missStreak: 0,
       lockedUntil: null,
+      wheelRoundBank: 0,
+      wheelTotalScore: 0,
+      wheelFreeSpins: 0,
     });
     ws.serializeAttachment({ playerId: id } satisfies Attachment);
     await this.persist();
@@ -1387,6 +1578,15 @@ export class GameRoom extends DurableObject<Env> {
         myCard: this.spotItMyCard(playerId),
         lockedUntil: player.lockedUntil,
       } satisfies SpotItServerMessage);
+      return;
+    }
+    if (this.gameType === "wheel") {
+      this.send(ws, {
+        type: "welcome",
+        playerId,
+        role: "player",
+        state: this.wheelSnapshot(),
+      } satisfies WheelServerMessage);
       return;
     }
     this.send(ws, {
@@ -1473,6 +1673,8 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "lobby" && this.phase !== "results") return;
     if (this.gameType === "mmmms") {
       if (this.players.size !== 2) return;
+    } else if (this.gameType === "wheel") {
+      if (this.players.size < 2) return;
     } else if (this.players.size < 1) {
       return;
     }
@@ -1489,9 +1691,13 @@ export class GameRoom extends DurableObject<Env> {
       p.spotItScore = 0;
       p.missStreak = 0;
       p.lockedUntil = null;
+      p.wheelRoundBank = 0;
+      p.wheelTotalScore = 0;
+      p.wheelFreeSpins = 0;
     }
     this.reviewBallots = emptyReviewBallots();
     this.resetSpotItFields();
+    this.resetWheelFields();
 
     this.round += 1;
     this.endsAt = null;
@@ -1545,6 +1751,31 @@ export class GameRoom extends DurableObject<Env> {
         this.round -= 1;
         return;
       }
+      this.phase = "playing";
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
+    if (this.gameType === "wheel") {
+      this.board = null;
+      this.missedWords = null;
+      this.possibleWords = null;
+      this.possibleWordCount = null;
+      this.possibleByLength = null;
+      this.letter = null;
+      this.categories = null;
+      this.listId = null;
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
+      this.rollerId = null;
+      this.rollerName = null;
+      this.spotPuzzle = null;
+      this.countdownEndsAt = null;
+      this.endsAt = null;
+      this.beginWheelRound(0);
       this.phase = "playing";
       await this.ctx.storage.deleteAlarm();
       await this.persist();
@@ -1762,6 +1993,7 @@ export class GameRoom extends DurableObject<Env> {
     this.spotHintUntil = null;
     this.spotHintForPlayerId = null;
     this.resetSpotItFields();
+    this.resetWheelFields();
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
@@ -1774,6 +2006,9 @@ export class GameRoom extends DurableObject<Env> {
       p.spotItScore = 0;
       p.missStreak = 0;
       p.lockedUntil = null;
+      p.wheelRoundBank = 0;
+      p.wheelTotalScore = 0;
+      p.wheelFreeSpins = 0;
     }
     await this.ctx.storage.deleteAlarm();
     await this.persist();
@@ -3197,11 +3432,317 @@ export class GameRoom extends DurableObject<Env> {
     };
   }
 
-  private publicState(): BoggleRoomState | ScatterRoomState | MmmmsRoomState | SpotdiffRoomState | SpotItRoomState {
+  private async handleSetWheelRounds(
+    playerId: string | undefined,
+    roundCount: WheelRoundCount,
+  ): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!isWheelRoundCount(roundCount)) return;
+    this.wheelRoundCount = roundCount;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private beginWheelRound(roundIndex: number): void {
+    this.wheelRoundIndex = roundIndex;
+    const puzzle = pickPuzzle(this.wheelUsedPuzzleIds);
+    this.wheelPuzzle = puzzle;
+    this.wheelUsedPuzzleIds = [...this.wheelUsedPuzzleIds, puzzle.id];
+    this.wheelRevealed = new Set();
+    this.wheelUsedLetters = [];
+    this.wheelLastSpin = null;
+    this.wheelPendingCash = null;
+    this.wheelLastSolverId = null;
+    this.wheelLastSolverName = null;
+    for (const p of this.players.values()) {
+      p.wheelRoundBank = 0;
+    }
+    const seats = [...this.players.keys()];
+    this.wheelCurrentPlayerId = seats[roundIndex % seats.length] ?? seats[0] ?? null;
+    this.wheelTurnPhase = "spin";
+  }
+
+  private wheelSeatOrder(): string[] {
+    return [...this.players.keys()];
+  }
+
+  private advanceWheelSeat(): void {
+    const seats = this.wheelSeatOrder();
+    if (seats.length === 0) {
+      this.wheelCurrentPlayerId = null;
+      return;
+    }
+    const cur = this.wheelCurrentPlayerId;
+    const idx = cur ? seats.indexOf(cur) : -1;
+    const next = seats[(idx + 1) % seats.length]!;
+    this.wheelCurrentPlayerId = next;
+    this.wheelTurnPhase = "spin";
+    this.wheelPendingCash = null;
+    this.wheelLastSpin = null;
+  }
+
+  private async handleWheelSpin(playerId: string | undefined): Promise<void> {
+    if (!playerId || playerId !== this.wheelCurrentPlayerId) return;
+    if (this.phase !== "playing") return;
+    if (this.wheelTurnPhase !== "spin" && this.wheelTurnPhase !== "action") return;
+    const { lastSpin } = pickSpin();
+    this.wheelLastSpin = lastSpin;
+    this.wheelTurnPhase = "spinning";
+    this.wheelPendingCash = null;
+    await this.ctx.storage.setAlarm(lastSpin.endsAt);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async resolveWheelSpin(): Promise<void> {
+    if (this.gameType !== "wheel" || this.phase !== "playing") return;
+    if (this.wheelTurnPhase !== "spinning" || !this.wheelLastSpin) return;
+    const wedge = WHEEL_WEDGES[this.wheelLastSpin.wedgeIndex];
+    if (!wedge) {
+      this.wheelTurnPhase = "spin";
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+    const player = this.wheelCurrentPlayerId
+      ? this.players.get(this.wheelCurrentPlayerId)
+      : undefined;
+
+    if (wedge.kind === "bankrupt") {
+      if (player) player.wheelRoundBank = 0;
+      this.advanceWheelSeat();
+    } else if (wedge.kind === "loseTurn") {
+      if (player && player.wheelFreeSpins > 0) {
+        player.wheelFreeSpins -= 1;
+        this.wheelTurnPhase = "spin";
+        this.wheelPendingCash = null;
+      } else {
+        this.advanceWheelSeat();
+      }
+    } else if (wedge.kind === "freeSpin") {
+      if (player) player.wheelFreeSpins += 1;
+      this.wheelTurnPhase = "action";
+      this.wheelPendingCash = null;
+    } else {
+      this.wheelPendingCash = wedge.value ?? 0;
+      this.wheelTurnPhase = "consonant";
+    }
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleWheelGuessLetter(
+    playerId: string | undefined,
+    letterRaw: string,
+  ): Promise<void> {
+    if (!playerId || playerId !== this.wheelCurrentPlayerId) return;
+    if (this.phase !== "playing" || !this.wheelPuzzle) return;
+    const letter = letterRaw.trim().toUpperCase();
+    if (!/^[A-Z]$/.test(letter)) return;
+    if (this.wheelUsedLetters.includes(letter)) return;
+
+    const player = this.players.get(playerId);
+    if (!player) return;
+
+    if (this.wheelTurnPhase === "consonant") {
+      if (!isConsonant(letter)) return;
+      this.wheelUsedLetters = [...this.wheelUsedLetters, letter];
+      const count = countLetterInAnswer(this.wheelPuzzle.answer, letter);
+      if (count > 0) {
+        this.wheelRevealed.add(letter);
+        player.wheelRoundBank = addConsonantWinnings(
+          player.wheelRoundBank,
+          this.wheelPendingCash ?? 0,
+          count,
+        );
+        this.wheelPendingCash = null;
+        if (isFullyRevealed(this.wheelPuzzle.answer, this.wheelRevealed)) {
+          await this.completeWheelSolve(player);
+          return;
+        }
+        this.wheelTurnPhase = "action";
+      } else {
+        this.advanceWheelSeat();
+      }
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
+    if (this.wheelTurnPhase === "vowel") {
+      if (!isVowel(letter)) return;
+      if (!canBuyVowel(player.wheelRoundBank)) {
+        this.wheelTurnPhase = "action";
+        await this.persist();
+        this.broadcastState();
+        return;
+      }
+      this.wheelUsedLetters = [...this.wheelUsedLetters, letter];
+      player.wheelRoundBank = applyVowelPurchase(player.wheelRoundBank);
+      const count = countLetterInAnswer(this.wheelPuzzle.answer, letter);
+      if (count > 0) {
+        this.wheelRevealed.add(letter);
+        if (isFullyRevealed(this.wheelPuzzle.answer, this.wheelRevealed)) {
+          await this.completeWheelSolve(player);
+          return;
+        }
+      }
+      this.wheelTurnPhase = "action";
+      await this.persist();
+      this.broadcastState();
+    }
+  }
+
+  private async handleWheelBuyVowel(playerId: string | undefined): Promise<void> {
+    if (!playerId || playerId !== this.wheelCurrentPlayerId) return;
+    if (this.phase !== "playing" || this.wheelTurnPhase !== "action") return;
+    const player = this.players.get(playerId);
+    if (!player || !canBuyVowel(player.wheelRoundBank)) return;
+    this.wheelTurnPhase = "vowel";
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleWheelChooseSolve(playerId: string | undefined): Promise<void> {
+    if (!playerId || playerId !== this.wheelCurrentPlayerId) return;
+    if (this.phase !== "playing" || this.wheelTurnPhase !== "action") return;
+    this.wheelTurnPhase = "solve";
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleWheelSolve(playerId: string | undefined, guessRaw: string): Promise<void> {
+    if (!playerId || playerId !== this.wheelCurrentPlayerId) return;
+    if (this.phase !== "playing" || this.wheelTurnPhase !== "solve") return;
+    if (!this.wheelPuzzle) return;
+    const player = this.players.get(playerId);
+    if (!player) return;
+    const guess = normalizeGuess(guessRaw);
+    if (!guess) return;
+    if (guess === this.wheelPuzzle.answer) {
+      await this.completeWheelSolve(player);
+      return;
+    }
+    this.advanceWheelSeat();
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async completeWheelSolve(player: PlayerRecord): Promise<void> {
+    if (!this.wheelPuzzle) return;
+    for (const ch of this.wheelPuzzle.answer) {
+      if (ch !== " ") this.wheelRevealed.add(ch);
+    }
+    const banked = bankRoundIntoTotal(player.wheelTotalScore, player.wheelRoundBank);
+    player.wheelTotalScore = banked.totalScore;
+    player.wheelRoundBank = banked.roundBank;
+    this.wheelLastSolverId = player.id;
+    this.wheelLastSolverName = player.name;
+    this.wheelTurnPhase = null;
+    this.wheelPendingCash = null;
+    this.phase = "between";
+    this.countdownEndsAt = Date.now() + WHEEL_BETWEEN_MS;
+    await this.ctx.storage.setAlarm(this.countdownEndsAt);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async advanceWheelAfterBetween(): Promise<void> {
+    this.countdownEndsAt = null;
+    const nextIndex = this.wheelRoundIndex + 1;
+    if (nextIndex >= this.wheelRoundCount) {
+      this.finishWheelGame();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+    this.beginWheelRound(nextIndex);
+    this.phase = "playing";
+    await this.ctx.storage.deleteAlarm();
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private finishWheelGame(): void {
+    this.phase = "results";
+    this.wheelTurnPhase = null;
+    this.wheelCurrentPlayerId = null;
+    this.wheelPendingCash = null;
+    this.wheelLastSpin = null;
+    let best = -1;
+    const winners: string[] = [];
+    for (const p of this.players.values()) {
+      if (p.wheelTotalScore > best) {
+        best = p.wheelTotalScore;
+        winners.length = 0;
+        winners.push(p.id);
+      } else if (p.wheelTotalScore === best) {
+        winners.push(p.id);
+      }
+    }
+    this.wheelWinners = winners;
+  }
+
+  private wheelSnapshot(): WheelRoomState {
+    const players: WheelPlayerPublic[] = [...this.players.values()].map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+      roundBank: p.wheelRoundBank,
+      totalScore: p.wheelTotalScore,
+      freeSpins: p.wheelFreeSpins,
+    }));
+    const results: WheelPlayerResult[] =
+      this.phase === "results"
+        ? [...this.players.values()]
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              totalScore: p.wheelTotalScore,
+            }))
+            .sort((a, b) => b.totalScore - a.totalScore)
+        : [];
+    const revealAll = this.phase === "between" || this.phase === "results";
+    const revealed = revealAll && this.wheelPuzzle
+      ? new Set(
+          [...this.wheelPuzzle.answer].filter((ch) => ch !== " "),
+        )
+      : this.wheelRevealed;
+    return {
+      game: "wheel",
+      code: this.code,
+      phase: this.phase as WheelPhase,
+      turnPhase: this.phase === "playing" ? this.wheelTurnPhase : null,
+      roundCount: this.wheelRoundCount,
+      roundIndex: this.wheelRoundIndex,
+      players,
+      currentPlayerId: this.wheelCurrentPlayerId,
+      puzzle: this.wheelPuzzle ? toPublicPuzzle(this.wheelPuzzle, revealed) : null,
+      usedLetters: [...this.wheelUsedLetters],
+      wedges: WHEEL_WEDGES,
+      lastSpin: this.wheelLastSpin,
+      pendingCash: this.wheelPendingCash,
+      betweenEndsAt: this.phase === "between" ? this.countdownEndsAt : null,
+      lastSolverId: this.wheelLastSolverId,
+      lastSolverName: this.wheelLastSolverName,
+      results,
+      winners: this.phase === "results" ? [...this.wheelWinners] : [],
+    };
+  }
+
+  private publicState():
+    | BoggleRoomState
+    | ScatterRoomState
+    | MmmmsRoomState
+    | SpotdiffRoomState
+    | SpotItRoomState
+    | WheelRoomState {
     if (this.gameType === "scattergories") return this.scatterSnapshot();
     if (this.gameType === "mmmms") return this.mmmmsSnapshot();
     if (this.gameType === "spotdiff") return this.spotdiffSnapshot(null);
     if (this.gameType === "spot-it") return this.spotItSnapshot();
+    if (this.gameType === "wheel") return this.wheelSnapshot();
     return this.boggleSnapshot();
   }
 
@@ -3283,6 +3824,20 @@ export class GameRoom extends DurableObject<Env> {
             myCard: player ? this.spotItMyCard(player.id) : null,
             lockedUntil: player?.lockedUntil ?? null,
           } satisfies SpotItServerMessage);
+          socket.send(payload);
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
+
+    if (this.gameType === "wheel") {
+      const state = this.wheelSnapshot();
+      const payload = JSON.stringify({ type: "state", state } satisfies WheelServerMessage);
+      for (const socket of this.ctx.getWebSockets()) {
+        if (except && socket === except) continue;
+        try {
           socket.send(payload);
         } catch {
           /* ignore */

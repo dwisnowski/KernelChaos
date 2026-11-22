@@ -1,4 +1,4 @@
-export type ActiveRoomGame = "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it";
+export type ActiveRoomGame = "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it" | "wheel";
 
 export interface ActiveRoomRow {
   code: string;
