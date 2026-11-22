@@ -4324,13 +4324,14 @@ input {
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 700;
   font-size: 1.05rem;
-  color: var(--ink, #0e1f35);
+  color: #0a0a0a;
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.06);
 }
 
 .puzzle-tile.revealed {
   background: linear-gradient(160deg, #fff8e7, #ffe7a0);
   border-color: #e6a100;
+  color: #0a0a0a;
   animation: wheel-tile-pop 0.35s ease-out;
 }
 
