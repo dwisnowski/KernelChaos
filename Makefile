@@ -38,11 +38,8 @@ deploy:
 lint:
 	$(NPM) run lint
 
-hunt-coverage:
-	$(NPM) run hunt:coverage
-
-hunt-compose:
-	$(NPM) run hunt:compose
+hunt-prompt:
+	$(NPM) run hunt:prompt -- $(SCENE)
 
 undef-words-cleanup-prompt:
 	@cat scripts/undef-words-cleanup-prompt.txt

@@ -1,39 +1,12 @@
-import aquarium from "./data/aquarium.json";
-import bakery from "./data/bakery.json";
-import beach from "./data/beach.json";
-import campsite from "./data/campsite.json";
-import carnival from "./data/carnival.json";
-import classroom from "./data/classroom.json";
-import farm from "./data/farm.json";
-import garage from "./data/garage.json";
-import kitchen from "./data/kitchen.json";
-import park from "./data/park.json";
-import playroom from "./data/playroom.json";
-import shop from "./data/shop.json";
-import space from "./data/space.json";
-import train from "./data/train.json";
-import zoo from "./data/zoo.json";
-import { normalizeAnswer } from "../normalize.ts";
+import beachChaos from "./data/beach-chaos.json";
+import castleTransylvania from "./data/castle-transylvania.json";
+import spacePort from "./data/space-port.json";
 
-/** Normalized bounding box (fractions of image width/height). */
-export interface HuntBox {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface HuntObject {
-  id: string;
-  names: string[];
-  box?: HuntBox | null;
-}
-
+/** Image-only hunt scene — no answer key; scoring is peer In/Out (ADR 0028 / 0041). */
 export interface HuntScene {
   id: string;
   title: string;
   imageUrl: string;
-  objects: HuntObject[];
 }
 
 /** Cap free-text finds per player per round. */
@@ -43,23 +16,6 @@ interface HuntSceneJson {
   id: string;
   title: string;
   imageUrl: string;
-  objects: { id: string; names: string[]; box?: HuntBox | null }[];
-}
-
-function normalizeBox(raw: HuntBox | null | undefined): HuntBox | null {
-  if (!raw || typeof raw !== "object") return null;
-  const x = Number(raw.x);
-  const y = Number(raw.y);
-  const w = Number(raw.w);
-  const h = Number(raw.h);
-  if (![x, y, w, h].every((n) => Number.isFinite(n))) return null;
-  if (w <= 0 || h <= 0) return null;
-  return {
-    x: Math.min(1, Math.max(0, x)),
-    y: Math.min(1, Math.max(0, y)),
-    w: Math.min(1 - Math.min(1, Math.max(0, x)), Math.max(0.01, w)),
-    h: Math.min(1 - Math.min(1, Math.max(0, y)), Math.max(0.01, h)),
-  };
 }
 
 function loadScene(raw: HuntSceneJson): HuntScene {
@@ -67,52 +23,17 @@ function loadScene(raw: HuntSceneJson): HuntScene {
     id: raw.id,
     title: raw.title,
     imageUrl: raw.imageUrl,
-    objects: raw.objects.map((o) => ({
-      id: o.id,
-      names: [
-        ...new Set(
-          o.names.map((n) => normalizeAnswer(n)).filter(Boolean),
-        ),
-      ],
-      box: normalizeBox(o.box),
-    })),
   };
 }
 
-/** Catalog order: legacy scenes first, then new dense packs. */
 export const HUNT_SCENES: HuntScene[] = [
-  loadScene(shop as HuntSceneJson),
-  loadScene(carnival as HuntSceneJson),
-  loadScene(kitchen as HuntSceneJson),
-  loadScene(playroom as HuntSceneJson),
-  loadScene(farm as HuntSceneJson),
-  loadScene(beach as HuntSceneJson),
-  loadScene(park as HuntSceneJson),
-  loadScene(classroom as HuntSceneJson),
-  loadScene(garage as HuntSceneJson),
-  loadScene(bakery as HuntSceneJson),
-  loadScene(zoo as HuntSceneJson),
-  loadScene(train as HuntSceneJson),
-  loadScene(space as HuntSceneJson),
-  loadScene(campsite as HuntSceneJson),
-  loadScene(aquarium as HuntSceneJson),
+  loadScene(spacePort as HuntSceneJson),
+  loadScene(beachChaos as HuntSceneJson),
+  loadScene(castleTransylvania as HuntSceneJson),
 ];
 
-function cloneObjects(objects: HuntObject[]): HuntObject[] {
-  return objects.map((o) => ({
-    id: o.id,
-    names: [...o.names],
-    box: o.box ? { ...o.box } : null,
-  }));
-}
-
 export function scenesCatalog(): HuntScene[] {
-  return HUNT_SCENES.map((s) => ({
-    id: s.id,
-    title: s.title,
-    imageUrl: s.imageUrl,
-    objects: cloneObjects(s.objects),
-  }));
+  return HUNT_SCENES.map((s) => ({ ...s }));
 }
 
 export function getScene(id: string): HuntScene | undefined {
@@ -129,22 +50,12 @@ export function pickScene(usedIds: Set<string>, preferredId: string | null): Hun
   if (preferredId) {
     const preferred = all.find((s) => s.id === preferredId);
     if (preferred && !usedIds.has(preferred.id)) {
-      return {
-        id: preferred.id,
-        title: preferred.title,
-        imageUrl: preferred.imageUrl,
-        objects: cloneObjects(preferred.objects),
-      };
+      return { ...preferred };
     }
   }
   const available = all.filter((s) => !usedIds.has(s.id));
   const pool = available.length > 0 ? available : all;
   const bytes = crypto.getRandomValues(new Uint8Array(1));
   const scene = pool[bytes[0]! % pool.length]!;
-  return {
-    id: scene.id,
-    title: scene.title,
-    imageUrl: scene.imageUrl,
-    objects: cloneObjects(scene.objects),
-  };
+  return { ...scene };
 }
