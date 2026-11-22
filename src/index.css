@@ -16,6 +16,10 @@
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Outfit", system-ui, sans-serif;
   --radius: 18px;
+  /* Primary play surface ≈ 80% of the shorter viewport edge (iPad + desktop).
+     Keep as a formula with var(--play-chrome) so tablet chrome overrides apply. */
+  --play-chrome: 11rem;
+  --play-surface: min(80vmin, calc(100dvh - var(--play-chrome)));
   color: var(--ink);
   background:
     radial-gradient(1200px 600px at 10% -10%, var(--glow0) 0%, transparent 55%),
@@ -55,6 +59,8 @@ input {
 }
 
 .app-shell {
+  /* Recompute on the shell so --play-chrome overrides (tablet play) take effect. */
+  --play-surface: min(80vmin, calc(100dvh - var(--play-chrome)));
   min-height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -760,7 +766,8 @@ input {
   container-type: inline-size;
   container-name: board;
   position: relative;
-  width: min(100%, 520px, calc(100dvh - 12rem));
+  /* Tablet/desktop: ~80% of the shorter viewport edge. */
+  width: min(100%, var(--play-surface));
   aspect-ratio: 1;
   height: auto;
   max-width: 100%;
@@ -776,43 +783,61 @@ input {
 
 .boggle-board.size-6 {
   --gap-frac: 0.03;
-  width: min(100%, 520px, calc(100dvh - 11rem));
 }
 
-/* Desktop two-column play: board ~80% of .play-screen (not the old 520/640px caps). */
-@container play (min-width: 820px) {
-  .play-screen > .board-wrap > .boggle-board {
-    width: min(80cqi, 100%, calc(100dvh - 12rem));
-  }
-
-  .play-screen > .board-wrap > .boggle-board.size-6 {
-    width: min(80cqi, 100%, calc(100dvh - 11rem));
-  }
-}
-
-/* Phone play: edge-to-edge board, compact chrome so tiles can fill the screen. */
-@media (max-width: 819px) {
-  .app-shell:has(.play-screen) {
+/* Phones + iPads as players: compact chrome during active play. */
+@media (max-width: 1024px) {
+  .app-shell:has(.play-screen),
+  .app-shell:has(.spot-it-play),
+  .app-shell:has(.spot-play),
+  .app-shell:has(.mmmms-play),
+  .app-shell:has(.wheel-play) {
+    --play-chrome: 9rem;
+    --play-surface: min(80vmin, calc(100dvh - var(--play-chrome)));
     padding: 0.35rem max(0.35rem, env(safe-area-inset-right)) 0.35rem
       max(0.35rem, env(safe-area-inset-left));
     gap: 0.35rem;
   }
 
-  .app-shell:has(.play-screen) .wiz-footer {
+  .app-shell:has(.play-screen) .wiz-footer,
+  .app-shell:has(.spot-it-play) .wiz-footer,
+  .app-shell:has(.spot-play) .wiz-footer,
+  .app-shell:has(.mmmms-play) .wiz-footer,
+  .app-shell:has(.wheel-play) .wiz-footer {
     display: none;
   }
 
-  .app-shell:has(.play-screen) .app-header {
+  .app-shell:has(.play-screen) .app-header,
+  .app-shell:has(.spot-it-play) .app-header,
+  .app-shell:has(.spot-play) .app-header,
+  .app-shell:has(.mmmms-play) .app-header,
+  .app-shell:has(.wheel-play) .app-header {
     gap: 0.35rem;
   }
 
-  .app-shell:has(.play-screen) .brand-title {
+  .app-shell:has(.play-screen) .brand-title,
+  .app-shell:has(.spot-it-play) .brand-title,
+  .app-shell:has(.spot-play) .brand-title,
+  .app-shell:has(.mmmms-play) .brand-title,
+  .app-shell:has(.wheel-play) .brand-title {
     font-size: 0.95rem;
   }
 
   .app-shell:has(.play-screen) .header-actions .header-tv-link,
   .app-shell:has(.play-screen) .header-actions .mute-btn,
-  .app-shell:has(.play-screen) .header-actions .settings-link {
+  .app-shell:has(.play-screen) .header-actions .settings-link,
+  .app-shell:has(.spot-it-play) .header-actions .header-tv-link,
+  .app-shell:has(.spot-it-play) .header-actions .mute-btn,
+  .app-shell:has(.spot-it-play) .header-actions .settings-link,
+  .app-shell:has(.spot-play) .header-actions .header-tv-link,
+  .app-shell:has(.spot-play) .header-actions .mute-btn,
+  .app-shell:has(.spot-play) .header-actions .settings-link,
+  .app-shell:has(.mmmms-play) .header-actions .header-tv-link,
+  .app-shell:has(.mmmms-play) .header-actions .mute-btn,
+  .app-shell:has(.mmmms-play) .header-actions .settings-link,
+  .app-shell:has(.wheel-play) .header-actions .header-tv-link,
+  .app-shell:has(.wheel-play) .header-actions .mute-btn,
+  .app-shell:has(.wheel-play) .header-actions .settings-link {
     min-height: 2rem;
     padding: 0.3rem 0.55rem;
     font-size: 0.78rem;
@@ -834,11 +859,11 @@ input {
   .play-screen .player-activity {
     font-size: 0.82rem;
   }
+}
 
-  .play-screen .boggle-board {
-    width: min(100%, calc(100dvh - 9.5rem));
-  }
-
+/* Phone portrait/landscape: use full width (80vmin would shrink a tall phone). */
+@media (max-width: 599px) {
+  .play-screen .boggle-board,
   .play-screen .boggle-board.size-6 {
     width: min(100%, calc(100dvh - 9rem));
   }
@@ -1451,6 +1476,58 @@ input {
   justify-items: start;
 }
 
+.results-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Portrait: center results chrome and host controls under the cards. */
+@media (orientation: portrait) {
+  .results-screen {
+    justify-items: center;
+  }
+
+  .results-title,
+  .winner-banner,
+  .results-legend {
+    text-align: center;
+  }
+
+  .results-grid {
+    width: 100%;
+  }
+
+  .results-actions {
+    width: min(100%, 28rem);
+    justify-items: center;
+  }
+
+  .results-actions .board-size,
+  .results-actions .round-time {
+    width: 100%;
+  }
+
+  .results-actions .board-size h2,
+  .results-actions .round-time-header h2 {
+    text-align: center;
+  }
+
+  .results-actions .size-pills {
+    justify-content: center;
+  }
+
+  .results-actions .round-time-header {
+    justify-content: center;
+  }
+
+  .results-actions .round-ticks {
+    justify-content: space-between;
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -2008,31 +2085,45 @@ input {
     align-items: start;
   }
 
+  .results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Wide desktops only: side meta. iPad landscape stays single-column so the board can hit ~80vmin. */
+@media (min-width: 1100px) {
   .play-screen {
     grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-areas:
+      "meta board"
+      "chips chips";
     align-items: start;
   }
 
   .play-meta {
-    order: 0;
+    grid-area: meta;
   }
 
   .board-wrap {
-    order: 1;
+    grid-area: board;
   }
 
   .word-chips {
-    grid-column: 1 / -1;
-  }
-
-  .results-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-area: chips;
   }
 }
 
 @media (min-width: 1200px) {
   .app-main {
     width: min(1280px, 100%);
+  }
+
+  .app-main:has(.play-screen),
+  .app-main:has(.spot-it-play),
+  .app-main:has(.spot-play),
+  .app-main:has(.mmmms-play),
+  .app-main:has(.wheel-play) {
+    width: min(1400px, 100%);
   }
 
   .room-code {
@@ -2043,7 +2134,6 @@ input {
     width: 280px;
   }
 
-  /* Keep play as meta | board so the board can reach ~80cqi; chips stay full-width below. */
   .play-screen {
     grid-template-columns: 260px minmax(0, 1fr);
   }
@@ -2147,6 +2237,51 @@ input {
   border-bottom: 1px solid var(--stroke);
 }
 
+/* Picture Hunt: one compact toolbar row so the scene gets the viewport. */
+.scatter-hunt-play .scatter-play-header {
+  flex-wrap: nowrap;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.5rem;
+  padding-block: 0.35rem;
+  min-height: 0;
+}
+
+.scatter-hunt-play .scatter-play-header > div:first-child {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.scatter-hunt-play .scatter-play-header .lobby-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.scatter-hunt-play .scatter-letter-sm {
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.scatter-hunt-play .hunt-find-count {
+  margin: 0;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.scatter-hunt-play .scatter-play-header .timer {
+  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.scatter-hunt-play .hunt-magnify-toggle {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+}
+
 .scatter-form {
   display: grid;
   gap: 0.65rem;
@@ -2157,6 +2292,10 @@ input {
   grid-template-columns: minmax(5.5rem, 7.5rem) minmax(0, 1fr);
   gap: 0.85rem;
   align-items: start;
+}
+
+.hunt-play-layout.is-scene-only {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .scatter-hunt-play .hunt-play-layout {
@@ -2211,6 +2350,9 @@ input {
 
 .hunt-play-main {
   min-width: 0;
+  display: grid;
+  justify-items: center;
+  align-content: start;
 }
 
 .scatter-hunt-play.hunt-flash-ok {
@@ -2250,7 +2392,8 @@ input {
   margin: 0;
   width: 100%;
   min-height: calc(100dvh - 9rem);
-  align-content: center;
+  justify-items: center;
+  place-content: center;
 }
 
 .hunt-scene-frame {
@@ -2258,6 +2401,7 @@ input {
   width: fit-content;
   max-width: 100%;
   margin-inline: auto;
+  justify-self: center;
 }
 
 .hunt-scene-review .hunt-scene-frame {
@@ -2291,9 +2435,9 @@ input {
 .hunt-loupe {
   position: absolute;
   z-index: 4;
-  width: 15rem;
-  height: 15rem;
-  margin: -7.5rem 0 0 -7.5rem;
+  width: 30rem;
+  height: 30rem;
+  margin: -15rem 0 0 -15rem;
   border-radius: 50%;
   border: 3px solid color-mix(in srgb, var(--ink) 55%, #fff);
   box-shadow:
@@ -2303,6 +2447,62 @@ input {
   background-repeat: no-repeat;
   background-color: color-mix(in srgb, var(--bg0) 30%, transparent);
   pointer-events: none;
+}
+
+/* Center reticle: ring + open crosshair + accent aim dot. */
+.hunt-loupe-reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.35rem;
+  height: 2.35rem;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--bg0) 55%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--bg0) 25%, transparent);
+  background: radial-gradient(circle at center, var(--accent) 0 2.5px, transparent 2.75px);
+  pointer-events: none;
+}
+
+.hunt-loupe-reticle::before,
+.hunt-loupe-reticle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  filter: drop-shadow(0 0 1px color-mix(in srgb, var(--bg0) 70%, transparent));
+}
+
+.hunt-loupe-reticle::before {
+  width: 100%;
+  height: 2px;
+  margin: -1px 0 0 -50%;
+  background: linear-gradient(
+    to right,
+    #fff 0,
+    #fff 0.55rem,
+    transparent 0.55rem,
+    transparent calc(100% - 0.55rem),
+    #fff calc(100% - 0.55rem),
+    #fff 100%
+  );
+}
+
+.hunt-loupe-reticle::after {
+  width: 2px;
+  height: 100%;
+  margin: -50% 0 0 -1px;
+  background: linear-gradient(
+    to bottom,
+    #fff 0,
+    #fff 0.55rem,
+    transparent 0.55rem,
+    transparent calc(100% - 0.55rem),
+    #fff calc(100% - 0.55rem),
+    #fff 100%
+  );
 }
 
 .hunt-magnify-toggle {
@@ -2548,11 +2748,6 @@ input {
   max-width: 8rem;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.hunt-pin-hint {
-  margin: 0;
-  font-size: 0.85rem;
 }
 
 .hunt-draft-popover {
@@ -3283,7 +3478,8 @@ input {
 
 .mmmms-boards.is-organize-solo {
   grid-template-columns: 1fr;
-  max-width: 28rem;
+  width: min(100%, var(--play-surface));
+  max-width: none;
   margin-inline: auto;
 }
 
@@ -3798,6 +3994,8 @@ input {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.65rem;
+  width: min(100%, calc(var(--play-surface) * 2 + 0.65rem));
+  margin-inline: auto;
 }
 
 .spot-panels-tv {
@@ -3807,6 +4005,14 @@ input {
 @media (max-width: 640px) {
   .spot-panels {
     grid-template-columns: 1fr;
+    width: min(100%, var(--play-surface));
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) and (orientation: portrait) {
+  .spot-panels {
+    grid-template-columns: 1fr;
+    width: min(100%, var(--play-surface));
   }
 }
 
@@ -4026,8 +4232,8 @@ input {
 
 .spot-it-card {
   position: relative;
-  /* Fill the column; cap by leftover viewport height so two squares fit. */
-  width: min(100%, calc(100dvh - 11rem));
+  /* Side-by-side: each card up to ~80% of half the short viewport. */
+  width: min(100%, calc(var(--play-surface) * 0.92));
   aspect-ratio: 1;
   border-radius: 14%;
   background:
@@ -4242,7 +4448,29 @@ input {
   font-size: 0.85rem;
 }
 
-@media (max-width: 720px) {
+/* iPad portrait + phones: stack cards; each ~80% of short edge (phones: full width). */
+@media (max-width: 1024px) and (orientation: portrait) {
+  .spot-it-board {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0.65rem;
+  }
+
+  .spot-it-card {
+    width: min(100%, var(--play-surface), calc(50dvh - 2.5rem));
+  }
+
+  .spot-it-tv-cards .spot-it-card {
+    width: min(100%, var(--play-surface), calc(48dvh - 2rem));
+  }
+
+  .spot-it-tv-lobby,
+  .spot-it-tv-play {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 599px) {
   .spot-it-board {
     grid-template-columns: 1fr;
     justify-items: center;
@@ -4268,6 +4496,12 @@ input {
   position: relative;
   margin: 0 auto;
   filter: drop-shadow(0 12px 28px rgba(14, 31, 53, 0.28));
+}
+
+.wheel-stage .chaos-wheel {
+  width: min(100%, var(--play-surface));
+  aspect-ratio: 1;
+  height: auto;
 }
 
 .chaos-wheel-canvas,
@@ -4339,6 +4573,21 @@ input {
   width: 2.4rem;
   height: 3rem;
   font-size: 1.45rem;
+}
+
+@media (min-width: 600px) {
+  .wheel-play .puzzle-tile {
+    width: clamp(1.65rem, 4.2vmin, 2.55rem);
+    height: clamp(2.1rem, 5.4vmin, 3.25rem);
+    font-size: clamp(1.05rem, 2.8vmin, 1.55rem);
+  }
+
+  .wheel-play .puzzle-board-large .puzzle-tile,
+  .wheel-tv-play .puzzle-board-large .puzzle-tile {
+    width: clamp(2.4rem, 5.5vmin, 3.4rem);
+    height: clamp(3rem, 7vmin, 4.2rem);
+    font-size: clamp(1.45rem, 3.4vmin, 2rem);
+  }
 }
 
 @keyframes wheel-tile-pop {

@@ -3572,11 +3572,14 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private applyBankrupt(player: PlayerRecord): void {
+    const before = player.wheelRoundBank;
     if (player.wheelInsurance) {
       player.wheelInsurance = false;
-      player.wheelRoundBank = Math.floor(player.wheelRoundBank / 2);
+      player.wheelRoundBank = Math.floor(before / 2);
+      this.wheelJackpot += before - player.wheelRoundBank;
       return;
     }
+    this.wheelJackpot += before;
     player.wheelRoundBank = 0;
   }
 

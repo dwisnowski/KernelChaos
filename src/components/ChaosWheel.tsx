@@ -1,5 +1,5 @@
 import { animate } from "animejs";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { WheelLastSpin, WheelWedge } from "../wheelTypes.ts";
 import { createBurstScene, type BurstScene } from "../fx/burstScene.ts";
 
@@ -105,7 +105,8 @@ interface Props {
   onSettled?: (wedgeIndex: number) => void;
 }
 
-export function ChaosWheel({ wedges, lastSpin, size = 320, className, onSettled }: Props) {
+export function ChaosWheel({ wedges, lastSpin, size: sizeProp, className, onSettled }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fxRef = useRef<HTMLCanvasElement>(null);
   const angleRef = useRef(0);
@@ -113,6 +114,20 @@ export function ChaosWheel({ wedges, lastSpin, size = 320, className, onSettled 
   const settledKey = useRef<string | null>(null);
   const onSettledRef = useRef(onSettled);
   onSettledRef.current = onSettled;
+  const [autoSize, setAutoSize] = useState(320);
+  const size = sizeProp ?? autoSize;
+
+  useEffect(() => {
+    if (sizeProp != null) return;
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = Math.floor(entries[0]?.contentRect.width ?? 0);
+      if (w > 0) setAutoSize(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [sizeProp]);
 
   useEffect(() => {
     const fx = fxRef.current;
@@ -190,8 +205,9 @@ export function ChaosWheel({ wedges, lastSpin, size = 320, className, onSettled 
 
   return (
     <div
+      ref={rootRef}
       className={className ? `chaos-wheel ${className}` : "chaos-wheel"}
-      style={{ width: size, height: size }}
+      style={sizeProp != null ? { width: sizeProp, height: sizeProp } : undefined}
     >
       <canvas ref={canvasRef} className="chaos-wheel-canvas" aria-hidden="true" />
       <canvas ref={fxRef} className="chaos-wheel-fx" aria-hidden="true" />

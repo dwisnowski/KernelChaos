@@ -14,7 +14,6 @@ import { BoggleBoard } from "../components/BoggleBoard.tsx";
 import { BonusBadges } from "../components/BonusBadges.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { Lobby } from "../components/Lobby.tsx";
-import { OpenTvButton } from "../components/OpenTvButton.tsx";
 import { WordLengthCoverageBars } from "../components/WordLengthCoverageBars.tsx";
 import { useRoom } from "../hooks/useRoom.ts";
 import { BONUS_LABELS, type BonusId } from "../types.ts";
@@ -285,7 +284,6 @@ export function BoggleRoom() {
             ))}
           </div>
           <div className="results-actions">
-            <OpenTvButton roomCode={roomCode} />
             {me?.isHost ? (
               <>
                 <div className="board-size">
@@ -340,26 +338,28 @@ export function BoggleRoom() {
                     <span>2:00</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() => {
-                    unlockAudio();
-                    start();
-                  }}
-                >
-                  Play again
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    unlockAudio();
-                    playAgain();
-                  }}
-                >
-                  Back to lobby
-                </button>
+                <div className="results-action-row">
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => {
+                      unlockAudio();
+                      start();
+                    }}
+                  >
+                    Play again
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      unlockAudio();
+                      playAgain();
+                    }}
+                  >
+                    Back to lobby
+                  </button>
+                </div>
               </>
             ) : (
               <p className="waiting">Waiting for host…</p>

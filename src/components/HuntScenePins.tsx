@@ -41,8 +41,8 @@ interface Props {
 }
 
 const LOUPE_ZOOM = 2.25;
-/** Diameter in rem; keep in sync with `.hunt-loupe` CSS. */
-const LOUPE_DIAMETER_REM = 15;
+  /** Diameter in rem; keep in sync with `.hunt-loupe` CSS. Zoom stays at LOUPE_ZOOM. */
+  const LOUPE_DIAMETER_REM = 30;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const TAP_MOVE_PX = 10;
@@ -430,7 +430,11 @@ export function HuntScenePins({
           {draftPopover}
         </div>
       ) : null}
-      {showLoupe ? <div className="hunt-loupe" style={loupeStyle} aria-hidden /> : null}
+      {showLoupe ? (
+        <div className="hunt-loupe" style={loupeStyle} aria-hidden>
+          <span className="hunt-loupe-reticle" />
+        </div>
+      ) : null}
     </div>
   );
 

@@ -28,7 +28,6 @@ import { HuntReview } from "../components/HuntReview.tsx";
 import { HuntScenePins } from "../components/HuntScenePins.tsx";
 import { Layout } from "../components/Layout.tsx";
 import { LetterDie } from "../components/LetterDie.tsx";
-import { OpenTvButton } from "../components/OpenTvButton.tsx";
 import { ScatterLobby } from "../components/ScatterLobby.tsx";
 import { ScatterReview } from "../components/ScatterReview.tsx";
 import { useScattergoriesRoom } from "../hooks/useScattergoriesRoom.ts";
@@ -387,23 +386,16 @@ export function ScattergoriesRoom() {
               ))}
             </ul>
           ) : null}
-          <div className="hunt-play-layout">
-            {!touchHunt ? (
+          <div className={`hunt-play-layout${!touchHunt && huntFinds.length === 0 ? " is-scene-only" : ""}`}>
+            {!touchHunt && huntFinds.length > 0 ? (
               <div className="hunt-play-side">
-                <p className="muted hunt-pin-hint">
-                  {huntMagnify
-                    ? "Magnify on — tap to pin a find"
-                    : "Tap the picture to pin a find"}
-                </p>
-                {huntFinds.length > 0 ? (
-                  <ul className="hunt-find-list" aria-label="Your finds">
-                    {huntFinds.map((word, i) => (
-                      <li key={`${word}-${i}`}>
-                        <span>{word}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
+                <ul className="hunt-find-list" aria-label="Your finds">
+                  {huntFinds.map((word, i) => (
+                    <li key={`${word}-${i}`}>
+                      <span>{word}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
             <div className="hunt-play-main">
@@ -682,7 +674,6 @@ export function ScattergoriesRoom() {
               ) : (
                 <p className="waiting">Waiting for the host…</p>
               )}
-              <OpenTvButton roomCode={roomCode} game="scattergories" />
             </div>
             {isHunt && state.sceneImageUrl ? (
               <HuntScenePins

@@ -193,7 +193,7 @@ export function WheelRoom() {
           />
 
           <div className="wheel-stage">
-            <ChaosWheel wedges={state.wedges} lastSpin={state.lastSpin} size={280} />
+            <ChaosWheel wedges={state.wedges} lastSpin={state.lastSpin} />
           </div>
 
           {state.phase === "playing" && state.lastOutcome ? (

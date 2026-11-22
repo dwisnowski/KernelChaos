@@ -1,0 +1,28 @@
+---
+description: Phone and iPad player layouts — play surfaces must fill ~80% of the view in portrait and landscape
+globs: src/**/*.{css,tsx}
+alwaysApply: false
+---
+
+# Player device layouts (iPhone + iPad)
+
+Phones and iPads are **player** devices for every game. TV routes stay large-display; do not design player play screens for mouse-only desktop chrome.
+
+## Play surface size
+
+- Primary interactive surface (Boggle board, Spot It cards, Spot Diff panels, Chaos Wheel, M&Ms organize stack, Hunt scene) should dominate the viewport.
+- On tablet and desktop player widths (≥600px), target about **80% of the shorter viewport edge** via `--play-surface` / `80vmin` in `src/index.css`.
+- On phones (≤599px), prefer **near full-bleed** width (`min(100%, calc(100dvh - chrome))`), not `80vmin` (that shrinks tall phones).
+- Do **not** reintroduce fixed caps like `520px` / `640px` on play boards.
+
+## Breakpoints
+
+- **≤1024px** during active play: compact header, hide WIZ footer, tighter padding (phones + iPads).
+- **Play two-column (meta | board)** only from **≥1100px** so iPad landscape stays single-column and the board can reach ~80vmin.
+- Validate both **portrait and landscape** for at least: iPhone (~390×844), iPad (~768×1024 and ~1024×768), and a wide desktop.
+
+## When changing game UI
+
+1. Size the main play control with `--play-surface` (or the phone full-bleed exception).
+2. Keep chrome (timer, scores, pads) secondary — shrink it before shrinking the board/cards/wheel.
+3. Smoke the touched game at iPhone and iPad sizes in both orientations before claiming done.

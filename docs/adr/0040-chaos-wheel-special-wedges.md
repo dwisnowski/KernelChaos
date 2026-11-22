@@ -16,7 +16,7 @@ Rebuild the wheel to ~30 mixed cash slices plus one of each special (two Free Sp
 | --- | --- |
 | `payEach` | Pay $50×rivals from round bank or lose turn; else transfer and call consonant at $0 |
 | `double` / `flatBonus` / `half` | Bank math → `action` |
-| `jackpot` | Claim pot; pot grows +50 on every successful spin settle (before claim) |
+| `jackpot` | Claim pot; pot grows +50 on every successful spin settle (before claim). Full Bankrupt (and insured half-loss) dumps the lost round bank into the pot. Wheel has one `BANKRUPT` and a cash `1000` in place of a second. |
 | `swapBanks` / `steal` | Versus others (solo no-op) → `action` |
 | `freeLetter` / `mystery` / `wildVowel` | Reveal or free vowel path |
 | `passWheel` | Advance seat; Free Spin does not cancel |

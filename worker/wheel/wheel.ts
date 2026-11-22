@@ -36,7 +36,7 @@ export const WHEEL_WEDGES: WheelWedge[] = [
   { kind: "insurance", label: "INSURE" },
   { kind: "freeSpin", label: "FREE SPIN" },
   { kind: "cash", value: 300, label: "300" },
-  { kind: "bankrupt", label: "BANKRUPT" },
+  { kind: "cash", value: 1000, label: "1000" },
 ];
 
 const TAU = Math.PI * 2;
