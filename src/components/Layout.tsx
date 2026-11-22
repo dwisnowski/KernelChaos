@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { isMuted, setMuted, unlockAudio } from "../audio/sfx.ts";
-import { useState } from "react";
 import { BackToPlayerButton } from "./BackToPlayerButton.tsx";
 import { OpenTvButton } from "./OpenTvButton.tsx";
+import { PalettePicker } from "./PalettePicker.tsx";
 
 export function Layout({
   children,
@@ -27,6 +27,29 @@ export function Layout({
   };
 }) {
   const [mute, setMute] = useState(isMuted);
+  const [colorsOpen, setColorsOpen] = useState(false);
+  const colorsPanelId = useId();
+  const colorsWrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!colorsOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setColorsOpen(false);
+    }
+    function onPointer(e: MouseEvent | PointerEvent) {
+      const root = colorsWrapRef.current;
+      if (!root) return;
+      if (e.target instanceof Node && !root.contains(e.target)) {
+        setColorsOpen(false);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [colorsOpen]);
 
   return (
     <div className="app-shell">
@@ -53,9 +76,32 @@ export function Layout({
               className="btn tv-link header-tv-link"
             />
           ) : null}
-          <Link to="/settings" className="settings-link" title="Color palettes">
-            Colors
-          </Link>
+          <div className="colors-popover-wrap" ref={colorsWrapRef}>
+            <button
+              type="button"
+              className="settings-link"
+              title="Color palettes"
+              aria-expanded={colorsOpen}
+              aria-controls={colorsPanelId}
+              aria-haspopup="dialog"
+              onClick={() => setColorsOpen((open) => !open)}
+            >
+              Colors
+            </button>
+            {colorsOpen ? (
+              <div
+                id={colorsPanelId}
+                className="colors-popover"
+                role="dialog"
+                aria-label="Color palettes"
+              >
+                <p className="colors-popover-lede">
+                  Pick a preset or tune chrome colors. Stays on this device.
+                </p>
+                <PalettePicker compact />
+              </div>
+            ) : null}
+          </div>
           <button
             type="button"
             className="mute-btn"

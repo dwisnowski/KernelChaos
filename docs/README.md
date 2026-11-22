@@ -35,7 +35,7 @@ Architecture decisions and project notes for KernelChaos.
 - [0021 – Picture Hunt find feedback + boxes](adr/0021-hunt-find-feedback-and-boxes.md) — Green/red flash + SFX; personal remaining rail; normalized metadata boxes on results review
 - [0022 – Host skip review voter](adr/0022-host-skip-review-voter.md) — Host Pass on pending review voters; empty ballot unblocks majority without inventing In/Out
 - [0023 – TV results board word explorer](adr/0023-tv-results-board-word-explorer.md) — Full `possibleWords`; TV keeps board; length bars open word list; click word to highlight path
-- [0024 – App color palette settings](adr/0024-app-color-palettes.md) — `/settings` with 5 presets + custom chrome tokens; localStorage; game pieces unchanged
+- [0024 – App color palette settings](adr/0024-app-color-palettes.md) — `/settings` with 5 presets + custom chrome tokens; localStorage; game pieces unchanged (header entry → [0045](adr/0045-colors-header-popover.md))
 - [0025 – Undefined Boggle words queue](adr/0025-undefined-boggle-words-queue.md) — D1 Free Dictionary misses; TV notice; ungated Settings Admin list; cleanup skill + make prompt
 - [0026 – Layout-first Hunt scenes + boxes](adr/0026-hunt-layout-first-boxes.md) — Sticker-board experiment for ground-truth boxes (superseded for shipped art by [0027](adr/0027-hunt-hidden-object-art.md))
 - [0027 – Hunt hidden-object art](adr/0027-hunt-hidden-object-art.md) — Restore dense seek-and-find illustrations; boxes only when visually authored; no fake placeholders
@@ -56,3 +56,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0042 – Hunt themed packs](adr/0042-hunt-themed-packs.md) — lobby picks pack; random scene per round from pack; 50 scenes partitioned into 6 themes
 - [0043 – Trivia](adr/0043-trivia.md) — `trivia` rooms; Single/Double/Final; buzzers + A–H; Daily Double show beat; family pack
 - [0044 – Trivia Chaos](adr/0044-trivia-chaos.md) — Chaos Dash earn loop; Light/Mayhem powers; lobby `off|light|mayhem`
+- [0045 – Colors header popover](adr/0045-colors-header-popover.md) — Layout Colors opens device-local popover; `/settings` stays full page + Admin

@@ -10,7 +10,7 @@ The KernelChaos shell used a single fixed `:root` palette in CSS (navy / gold / 
 
 ## Decision
 
-- **Route:** `/settings` (Colors) linked from the home hero and the shared Layout header (“Colors” next to mute), so every game shell can reach it.
+- **Route:** `/settings` (Colors) linked from the home hero for the full page + Admin. Layout header “Colors” opens an in-place popover instead of navigating ([ADR 0045](./0045-colors-header-popover.md)).
 - **Tokens:** Editable chrome roles — `--bg0` / `--bg1` / `--bg2`, `--glow0` / `--glow1`, `--bg-end`, `--ink`, `--muted`, `--accent`, `--accent-2`, `--danger`. `--card` / `--stroke` are derived from `--ink` via `color-mix` so light and dark shells stay coherent. Fonts and radius stay fixed.
 - **Presets (5):** Classic Chaos (default / current look), Sunset Punch, Candy Carnival, Citrus Splash, Neon Fairground. Selecting a preset leaves custom mode; editing any swatch switches to custom starting from the last applied colors.
 - **Persistence:** `localStorage` key `kernelchaos.palette` stores either `{ mode: "preset", id }` or `{ mode: "custom", colors }`. Applied on boot via `document.documentElement` style properties; `theme-color` meta tracks `--bg0`.
