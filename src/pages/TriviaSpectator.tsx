@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useParams } from "react-router-dom";
 import {
@@ -13,9 +13,11 @@ import {
 import { Layout } from "../components/Layout.tsx";
 import { TriviaBoard } from "../components/TriviaBoard.tsx";
 import { TriviaChoices } from "../components/TriviaChoices.tsx";
+import { TriviaClueReveal } from "../components/TriviaClueReveal.tsx";
 import { TriviaDailyDouble } from "../components/TriviaDailyDouble.tsx";
 import { TriviaScoreRail } from "../components/TriviaScoreRail.tsx";
 import { useTriviaRoom } from "../hooks/useTriviaRoom.ts";
+import { cancelTriviaSpeech, speakTriviaClue } from "../lib/triviaTts.ts";
 
 export function TriviaSpectator() {
   const { code = "" } = useParams();
@@ -25,6 +27,9 @@ export function TriviaSpectator() {
   const lastChaosWin = useRef(0);
   const lastDd = useRef(false);
   const lastOutcome = useRef<string | null>(null);
+  const lastClueStage = useRef<string | null>(null);
+  const lastSpokeKey = useRef<string | null>(null);
+  const [cellFlash, setCellFlash] = useState(false);
 
   const room = useTriviaRoom({ code: roomCode || null, role: "spectator" });
 
@@ -58,10 +63,58 @@ export function TriviaSpectator() {
 
   useEffect(() => {
     if (!room.state) return;
-    const dd = room.state.activeClue?.isDailyDouble && room.state.phase === "clue";
+    const stage = room.state.clueStage;
+    if (stage === "highlight" && lastClueStage.current !== "highlight") {
+      setCellFlash(true);
+      const t = window.setTimeout(() => setCellFlash(false), 220);
+      lastClueStage.current = stage;
+      return () => window.clearTimeout(t);
+    }
+    lastClueStage.current = stage;
+  }, [room.state]);
+
+  useEffect(() => {
+    if (!room.state) return;
+    const dd =
+      room.state.activeClue?.isDailyDouble &&
+      room.state.phase === "clue" &&
+      room.state.clueStage === "reveal";
     if (dd && !lastDd.current) playTriviaDailyDouble();
     lastDd.current = Boolean(dd);
   }, [room.state]);
+
+  useEffect(() => {
+    if (!room.state) return;
+    const s = room.state;
+    const clue = s.activeClue;
+    if (
+      s.clueStage === "reveal" &&
+      clue &&
+      !clue.isDailyDouble &&
+      clue.prompt
+    ) {
+      const key = `clue:${clue.categoryIndex}-${clue.tier}-${clue.prompt}`;
+      if (lastSpokeKey.current !== key) {
+        lastSpokeKey.current = key;
+        speakTriviaClue({ category: clue.categoryTitle, prompt: clue.prompt });
+      }
+    } else if (
+      s.phase === "answering" &&
+      clue?.isDailyDouble &&
+      clue.prompt
+    ) {
+      const key = `dd:${clue.categoryIndex}-${clue.tier}-${clue.prompt}`;
+      if (lastSpokeKey.current !== key) {
+        lastSpokeKey.current = key;
+        speakTriviaClue({ category: clue.categoryTitle, prompt: clue.prompt });
+      }
+    } else if (s.phase === "board" || s.phase === "lobby" || s.phase === "results") {
+      lastSpokeKey.current = null;
+      cancelTriviaSpeech();
+    }
+  }, [room.state]);
+
+  useEffect(() => () => cancelTriviaSpeech(), []);
 
   useEffect(() => {
     if (!room.state) return;
@@ -119,18 +172,53 @@ export function TriviaSpectator() {
             <div className="trivia-tv-play">
               <TriviaScoreRail state={state} variant="tv" />
 
-              {state.phase === "board" && state.board ? (
-                <>
-                  <p className="trivia-status">
-                    {(state.players.find((p) => p.id === state.controllerId)?.name ?? "Player") +
-                      "'s pick"}
-                  </p>
-                  <TriviaBoard board={state.board} variant="tv" />
-                </>
+              {(state.phase === "board" ||
+                (state.phase === "clue" &&
+                  (state.clueStage === "highlight" ||
+                    state.clueStage === "reveal"))) &&
+              state.board ? (
+                <div
+                  className={
+                    state.clueStage === "reveal"
+                      ? "trivia-board-wrap is-dimmed"
+                      : undefined
+                  }
+                >
+                  {state.phase === "board" ? (
+                    <p className="trivia-status">
+                      {(state.players.find((p) => p.id === state.controllerId)?.name ??
+                        "Player") + "'s pick"}
+                    </p>
+                  ) : null}
+                  <TriviaBoard
+                    board={state.board}
+                    variant="tv"
+                    pickedCategory={
+                      state.clueStage === "highlight" || state.clueStage === "reveal"
+                        ? state.activeClue?.categoryIndex
+                        : null
+                    }
+                    pickedTier={
+                      state.clueStage === "highlight" || state.clueStage === "reveal"
+                        ? state.activeClue?.tier
+                        : null
+                    }
+                    pickedFlash={cellFlash}
+                  />
+                </div>
               ) : null}
 
-              {state.phase === "clue" && state.activeClue?.isDailyDouble ? (
-                <TriviaDailyDouble stage="reveal" />
+              {state.phase === "clue" &&
+              state.clueStage === "reveal" &&
+              state.activeClue?.isDailyDouble ? (
+                <TriviaClueReveal
+                  active
+                  categoryIndex={state.activeClue.categoryIndex}
+                  tier={state.activeClue.tier}
+                  className="trivia-clue-expand-tv"
+                >
+                  <TriviaDailyDouble stage="reveal" />
+                </TriviaClueReveal>
               ) : null}
 
               {state.phase === "dailyWager" ? (
@@ -145,44 +233,59 @@ export function TriviaSpectator() {
               ) : null}
 
               {state.activeClue &&
-              (state.phase === "clue" ||
+              ((state.phase === "clue" &&
+                state.clueStage === "reveal" &&
+                !state.activeClue.isDailyDouble) ||
                 state.phase === "buzzOpen" ||
                 state.phase === "answering" ||
-                state.phase === "reveal") &&
-              !(state.phase === "clue" && state.activeClue.isDailyDouble) ? (
-                <div
-                  className={`trivia-clue-stage trivia-clue-tv${
-                    state.screenZapUntil && state.screenZapUntil > Date.now()
-                      ? " is-zapped"
-                      : ""
-                  }`}
-                >
-                  <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
-                  <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
-                  {state.phase === "buzzOpen" ? (
-                    <p className="trivia-buzz-pulse">BUZZ!</p>
-                  ) : null}
-                  {state.phase === "answering" ? (
-                    <p className="trivia-banner">
-                      {(state.players.find((p) => p.id === state.buzzedPlayerId)?.name ??
-                        "Player") + " locked in"}
-                    </p>
-                  ) : null}
-                  {(state.phase === "answering" || state.phase === "reveal") &&
-                  state.activeClue.choices ? (
-                    <TriviaChoices
-                      choices={state.activeClue.choices}
-                      disabled
-                      variant="tv"
-                      correctIndex={
-                        state.phase === "reveal"
-                          ? state.activeClue.correctChoiceIndex
-                          : null
-                      }
-                      selectedIndex={state.activeClue.selectedChoiceIndex}
-                    />
-                  ) : null}
-                </div>
+                state.phase === "reveal") ? (
+                state.phase === "clue" && state.clueStage === "reveal" ? (
+                  <TriviaClueReveal
+                    active
+                    categoryIndex={state.activeClue.categoryIndex}
+                    tier={state.activeClue.tier}
+                    className="trivia-clue-expand-tv"
+                  >
+                    <div className="trivia-clue-stage trivia-clue-tv">
+                      <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
+                      <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
+                    </div>
+                  </TriviaClueReveal>
+                ) : (
+                  <div
+                    className={`trivia-clue-stage trivia-clue-tv${
+                      state.screenZapUntil && state.screenZapUntil > Date.now()
+                        ? " is-zapped"
+                        : ""
+                    }`}
+                  >
+                    <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
+                    <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
+                    {state.phase === "buzzOpen" ? (
+                      <p className="trivia-buzz-pulse">BUZZ!</p>
+                    ) : null}
+                    {state.phase === "answering" ? (
+                      <p className="trivia-banner">
+                        {(state.players.find((p) => p.id === state.buzzedPlayerId)
+                          ?.name ?? "Player") + " locked in"}
+                      </p>
+                    ) : null}
+                    {(state.phase === "answering" || state.phase === "reveal") &&
+                    state.activeClue.choices ? (
+                      <TriviaChoices
+                        choices={state.activeClue.choices}
+                        disabled
+                        variant="tv"
+                        correctIndex={
+                          state.phase === "reveal"
+                            ? state.activeClue.correctChoiceIndex
+                            : null
+                        }
+                        selectedIndex={state.activeClue.selectedChoiceIndex}
+                      />
+                    ) : null}
+                  </div>
+                )
               ) : null}
 
               {state.phase === "between" ? (

@@ -14,6 +14,8 @@ export type TriviaPhase =
 
 export type TriviaRound = "single" | "double";
 
+export type TriviaClueStage = "highlight" | "reveal";
+
 export type TriviaPackId = "family";
 
 export type TriviaChaosMode = "off" | "light" | "mayhem";
@@ -45,6 +47,7 @@ export const TRIVIA_DOUBLE_VALUES = [400, 800, 1200, 1600, 2000] as const;
 export const TRIVIA_CATEGORIES = 6;
 export const TRIVIA_TIERS = 5;
 
+export const TRIVIA_CELL_HIGHLIGHT_MS = 1500;
 export const TRIVIA_CLUE_READ_MS = 2500;
 export const TRIVIA_ANSWER_MS = 12000;
 export const TRIVIA_REVEAL_MS = 3500;
@@ -215,6 +218,7 @@ export interface TriviaRoomState {
   round: TriviaRound | null;
   board: TriviaBoardPublic | null;
   controllerId: string | null;
+  clueStage: TriviaClueStage | null;
   activeClue: TriviaActiveCluePublic | null;
   buzzedPlayerId: string | null;
   buzzLockSeq: number;

@@ -17,6 +17,7 @@ import {
   TRIVIA_BLINDFOLD_MS,
   TRIVIA_BUZZ_JAM_MS,
   TRIVIA_CHAOS_DASH_LOCK_MS,
+  TRIVIA_CELL_HIGHLIGHT_MS,
   TRIVIA_CLUE_READ_MS,
   TRIVIA_DAILY_WAGER_MIN,
   TRIVIA_DD_REVEAL_MS,
@@ -32,6 +33,7 @@ import {
   isTriviaPackId,
   powersForMode,
   type TriviaChaosMode,
+  type TriviaClueStage,
   type TriviaLastOutcome,
   type TriviaPackId,
   type TriviaPhase,
@@ -68,6 +70,7 @@ export interface TriviaPersisted {
   activeValue: number | null;
   activePrompt: string | null;
   activeCategoryTitle: string | null;
+  clueStage: TriviaClueStage | null;
   isDailyDouble: boolean;
   shuffledChoices: string[] | null;
   correctChoiceIndex: number | null;
@@ -107,9 +110,21 @@ export interface TriviaPersisted {
   swapStakesActive: boolean;
   winners: string[];
   seats: TriviaSeat[];
+  alarmKind?:
+    | "highlightToReveal"
+    | "clueToBuzz"
+    | "answerTimeout"
+    | "revealDone"
+    | "betweenDone"
+    | "ddRevealDone"
+    | "finalCategoryDone"
+    | "finalWagerTimeout"
+    | "finalAnswerTimeout"
+    | null;
 }
 
 type AlarmKind =
+  | "highlightToReveal"
   | "clueToBuzz"
   | "answerTimeout"
   | "revealDone"
@@ -132,6 +147,7 @@ export class TriviaController {
   activeValue: number | null = null;
   activePrompt: string | null = null;
   activeCategoryTitle: string | null = null;
+  clueStage: TriviaClueStage | null = null;
   isDailyDouble = false;
   shuffledChoices: string[] | null = null;
   correctChoiceIndex: number | null = null;
@@ -208,6 +224,7 @@ export class TriviaController {
     this.activeValue = null;
     this.activePrompt = null;
     this.activeCategoryTitle = null;
+    this.clueStage = null;
     this.isDailyDouble = false;
     this.shuffledChoices = null;
     this.correctChoiceIndex = null;
@@ -324,20 +341,27 @@ export class TriviaController {
     this.chaosDash = null;
     this.chaosDashWinnerId = null;
 
+    this.phase = "clue";
+    this.clueStage = "highlight";
     if (this.isDailyDouble) {
-      this.phase = "clue";
       this.lastOutcome = "dailyDouble";
       const seat = this.seats.get(playerId);
       this.dailyWagerMaxVal = dailyWagerMax(seat?.score ?? 0, value);
-      this.endsAt = Date.now() + TRIVIA_DD_REVEAL_MS;
-      this.alarmKind = "ddRevealDone";
-      return { ok: true, alarmAt: this.endsAt };
     }
-
-    this.phase = "clue";
-    this.endsAt = Date.now() + TRIVIA_CLUE_READ_MS;
-    this.alarmKind = "clueToBuzz";
+    this.endsAt = Date.now() + TRIVIA_CELL_HIGHLIGHT_MS;
+    this.alarmKind = "highlightToReveal";
     return { ok: true, alarmAt: this.endsAt };
+  }
+
+  private finishHighlight(now: number): void {
+    this.clueStage = "reveal";
+    if (this.isDailyDouble) {
+      this.endsAt = now + TRIVIA_DD_REVEAL_MS;
+      this.alarmKind = "ddRevealDone";
+      return;
+    }
+    this.endsAt = now + TRIVIA_CLUE_READ_MS;
+    this.alarmKind = "clueToBuzz";
   }
 
   onAlarm(now: number): { alarmAt: number | null } {
@@ -345,11 +369,15 @@ export class TriviaController {
       return { alarmAt: this.endsAt };
     }
     switch (this.alarmKind) {
+      case "highlightToReveal":
+        this.finishHighlight(now);
+        break;
       case "clueToBuzz":
         this.openBuzz(now);
         break;
       case "ddRevealDone":
         this.phase = "dailyWager";
+        this.clueStage = null;
         this.endsAt = null;
         this.alarmKind = null;
         break;
@@ -379,6 +407,7 @@ export class TriviaController {
 
   private openBuzz(now: number): void {
     this.armBuzzJams(now);
+    this.clueStage = null;
     this.phase = "buzzOpen";
     this.fakeBuzzPlayerId = null;
     this.spotlightPlayerId = null;
@@ -512,6 +541,7 @@ export class TriviaController {
       }
 
       // reopen buzz
+      this.clueStage = null;
       this.phase = "buzzOpen";
       this.buzzedPlayerId = null;
       this.shuffledChoices = null;
@@ -909,14 +939,18 @@ export class TriviaController {
       round: this.round,
       board: this.liveBoard ? toPublicBoard(this.liveBoard) : null,
       controllerId: this.controllerId,
+      clueStage: this.clueStage,
       activeClue:
-        this.activePrompt != null && this.activeCategoryIndex != null && this.activeTier != null
+        this.activeCategoryIndex != null && this.activeTier != null
           ? {
               categoryIndex: this.activeCategoryIndex,
               tier: this.activeTier,
               value: this.activeValue ?? 0,
               categoryTitle: this.activeCategoryTitle ?? "",
-              prompt: this.activePrompt,
+              prompt:
+                this.clueStage === "highlight" || this.activePrompt == null
+                  ? ""
+                  : this.activePrompt,
               isDailyDouble: this.isDailyDouble,
               choices:
                 this.phase === "answering" || this.phase === "reveal"
@@ -1002,6 +1036,7 @@ export class TriviaController {
       activeValue: this.activeValue,
       activePrompt: this.activePrompt,
       activeCategoryTitle: this.activeCategoryTitle,
+      clueStage: this.clueStage,
       isDailyDouble: this.isDailyDouble,
       shuffledChoices: this.shuffledChoices,
       correctChoiceIndex: this.correctChoiceIndex,
@@ -1041,6 +1076,7 @@ export class TriviaController {
       swapStakesActive: this.swapStakesActive,
       winners: this.winners,
       seats: [...this.seats.values()],
+      alarmKind: this.alarmKind,
     };
   }
 
@@ -1057,6 +1093,7 @@ export class TriviaController {
     this.activeValue = data.activeValue ?? null;
     this.activePrompt = data.activePrompt ?? null;
     this.activeCategoryTitle = data.activeCategoryTitle ?? null;
+    this.clueStage = data.clueStage ?? null;
     this.isDailyDouble = Boolean(data.isDailyDouble);
     this.shuffledChoices = data.shuffledChoices ?? null;
     this.correctChoiceIndex = data.correctChoiceIndex ?? null;
@@ -1096,6 +1133,7 @@ export class TriviaController {
     this.swapStakesActive = Boolean(data.swapStakesActive);
     this.winners = data.winners ?? [];
     this.seats = new Map((data.seats ?? []).map((s) => [s.id, { ...s }]));
+    this.alarmKind = data.alarmKind ?? null;
   }
 }
 

@@ -16,11 +16,13 @@ import { TriviaBuzzer } from "../components/TriviaBuzzer.tsx";
 import { TriviaChaosDash } from "../components/TriviaChaosDash.tsx";
 import { TriviaChaosTray } from "../components/TriviaChaosTray.tsx";
 import { TriviaChoices } from "../components/TriviaChoices.tsx";
+import { TriviaClueReveal } from "../components/TriviaClueReveal.tsx";
 import { TriviaDailyDouble } from "../components/TriviaDailyDouble.tsx";
 import { TriviaLobby } from "../components/TriviaLobby.tsx";
 import { TriviaScoreRail } from "../components/TriviaScoreRail.tsx";
 import { TriviaWager } from "../components/TriviaWager.tsx";
 import { useTriviaRoom } from "../hooks/useTriviaRoom.ts";
+import { cancelTriviaSpeech, speakTriviaClue } from "../lib/triviaTts.ts";
 import { TRIVIA_DAILY_WAGER_MIN } from "../triviaTypes.ts";
 
 export function TriviaRoom() {
@@ -35,6 +37,9 @@ export function TriviaRoom() {
   const lastChaosWin = useRef(0);
   const lastDd = useRef(false);
   const lastOutcome = useRef<string | null>(null);
+  const lastClueStage = useRef<string | null>(null);
+  const lastSpokeKey = useRef<string | null>(null);
+  const [cellFlash, setCellFlash] = useState(false);
 
   const room = useTriviaRoom({
     code: roomCode || null,
@@ -76,7 +81,22 @@ export function TriviaRoom() {
 
   useEffect(() => {
     if (!room.state) return;
-    const dd = room.state.activeClue?.isDailyDouble && room.state.phase === "clue";
+    const stage = room.state.clueStage;
+    if (stage === "highlight" && lastClueStage.current !== "highlight") {
+      setCellFlash(true);
+      const t = window.setTimeout(() => setCellFlash(false), 220);
+      lastClueStage.current = stage;
+      return () => window.clearTimeout(t);
+    }
+    lastClueStage.current = stage;
+  }, [room.state]);
+
+  useEffect(() => {
+    if (!room.state) return;
+    const dd =
+      room.state.activeClue?.isDailyDouble &&
+      room.state.phase === "clue" &&
+      room.state.clueStage === "reveal";
     if (dd && !lastDd.current) {
       playTriviaDailyDouble();
     }
@@ -85,15 +105,48 @@ export function TriviaRoom() {
 
   useEffect(() => {
     if (!room.state) return;
+    const s = room.state;
+    const clue = s.activeClue;
+    if (
+      s.clueStage === "reveal" &&
+      clue &&
+      !clue.isDailyDouble &&
+      clue.prompt
+    ) {
+      const key = `clue:${clue.categoryIndex}-${clue.tier}-${clue.prompt}`;
+      if (lastSpokeKey.current !== key) {
+        lastSpokeKey.current = key;
+        speakTriviaClue({ category: clue.categoryTitle, prompt: clue.prompt });
+      }
+    } else if (
+      s.phase === "answering" &&
+      clue?.isDailyDouble &&
+      clue.prompt
+    ) {
+      const key = `dd:${clue.categoryIndex}-${clue.tier}-${clue.prompt}`;
+      if (lastSpokeKey.current !== key) {
+        lastSpokeKey.current = key;
+        speakTriviaClue({ category: clue.categoryTitle, prompt: clue.prompt });
+      }
+    } else if (s.phase === "board" || s.phase === "lobby" || s.phase === "results") {
+      lastSpokeKey.current = null;
+      cancelTriviaSpeech();
+    }
+  }, [room.state]);
+
+  useEffect(() => () => cancelTriviaSpeech(), []);
+
+  useEffect(() => {
+    if (!room.state) return;
     const o = room.state.lastOutcome;
     if (o && o !== lastOutcome.current) {
       lastOutcome.current = o;
       if (o === "correct") playTriviaCorrect();
       else if (o === "wrong" || o === "timeout") playTriviaWrong();
-      else if (o === "dailyDouble") playTriviaDailyDouble();
       else if (
         o !== "boardClear" &&
         o !== "chaosWin" &&
+        o !== "dailyDouble" &&
         typeof o === "string"
       ) {
         playTriviaChaosPower();
@@ -167,25 +220,55 @@ export function TriviaRoom() {
         <section className="trivia-play">
           <TriviaScoreRail state={state} meId={room.playerId} />
 
-          {state.phase === "board" && state.board ? (
-            <>
-              <p className="trivia-status">
-                {state.round === "double" ? "Double · " : ""}
-                {me?.id === state.controllerId
-                  ? "Your pick"
-                  : `Waiting on ${controllerName}…`}
-              </p>
+          {(state.phase === "board" ||
+            (state.phase === "clue" &&
+              (state.clueStage === "highlight" || state.clueStage === "reveal"))) &&
+          state.board ? (
+            <div
+              className={
+                state.clueStage === "reveal" ? "trivia-board-wrap is-dimmed" : undefined
+              }
+            >
+              {state.phase === "board" ? (
+                <p className="trivia-status">
+                  {state.round === "double" ? "Double · " : ""}
+                  {me?.id === state.controllerId
+                    ? "Your pick"
+                    : `Waiting on ${controllerName}…`}
+                </p>
+              ) : null}
               <TriviaBoard
                 board={state.board}
-                interactive={me?.id === state.controllerId}
+                interactive={
+                  state.phase === "board" && me?.id === state.controllerId
+                }
                 onPick={room.pickCell}
                 variant="phone"
+                pickedCategory={
+                  state.clueStage === "highlight" || state.clueStage === "reveal"
+                    ? state.activeClue?.categoryIndex
+                    : null
+                }
+                pickedTier={
+                  state.clueStage === "highlight" || state.clueStage === "reveal"
+                    ? state.activeClue?.tier
+                    : null
+                }
+                pickedFlash={cellFlash}
               />
-            </>
+            </div>
           ) : null}
 
-          {state.phase === "clue" && state.activeClue?.isDailyDouble ? (
-            <TriviaDailyDouble stage="reveal" />
+          {state.phase === "clue" &&
+          state.clueStage === "reveal" &&
+          state.activeClue?.isDailyDouble ? (
+            <TriviaClueReveal
+              active
+              categoryIndex={state.activeClue.categoryIndex}
+              tier={state.activeClue.tier}
+            >
+              <TriviaDailyDouble stage="reveal" />
+            </TriviaClueReveal>
           ) : null}
 
           {state.phase === "dailyWager" && state.activeClue ? (
@@ -215,47 +298,62 @@ export function TriviaRoom() {
           ) : null}
 
           {state.activeClue &&
-          ((state.phase === "clue" && !state.activeClue.isDailyDouble) ||
+          ((state.phase === "clue" &&
+            state.clueStage === "reveal" &&
+            !state.activeClue.isDailyDouble) ||
             state.phase === "buzzOpen" ||
             state.phase === "answering" ||
             state.phase === "reveal") ? (
-            <div className="trivia-clue-stage">
-              <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
-              <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
-              {state.phase === "buzzOpen" ? (
-                <TriviaBuzzer
-                  disabled={lockedOut || jammed}
-                  onBuzz={() => {
-                    unlockAudio();
-                    room.buzz();
-                  }}
-                />
-              ) : null}
-              {state.phase === "answering" && me?.id === state.buzzedPlayerId ? (
-                <TriviaChoices
-                  choices={state.activeClue?.choices ?? []}
-                  blindfold={blindfold}
-                  hintExcluded={state.hintExcluded}
-                  onChoose={room.answer}
-                />
-              ) : null}
-              {state.phase === "answering" && me?.id !== state.buzzedPlayerId ? (
-                <>
-                  <p className="trivia-status">{buzzedName} is answering…</p>
-                  {state.chaosDash ? (
-                    <TriviaChaosDash dash={state.chaosDash} onSolve={room.solveChaos} />
-                  ) : null}
-                </>
-              ) : null}
-              {state.phase === "reveal" && state.activeClue?.choices ? (
-                <TriviaChoices
-                  choices={state.activeClue.choices}
-                  disabled
-                  correctIndex={state.activeClue.correctChoiceIndex}
-                  selectedIndex={state.activeClue.selectedChoiceIndex}
-                />
-              ) : null}
-            </div>
+            state.phase === "clue" && state.clueStage === "reveal" ? (
+              <TriviaClueReveal
+                active
+                categoryIndex={state.activeClue.categoryIndex}
+                tier={state.activeClue.tier}
+              >
+                <div className="trivia-clue-stage">
+                  <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
+                  <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
+                </div>
+              </TriviaClueReveal>
+            ) : (
+              <div className="trivia-clue-stage">
+                <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
+                <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
+                {state.phase === "buzzOpen" ? (
+                  <TriviaBuzzer
+                    disabled={lockedOut || jammed}
+                    onBuzz={() => {
+                      unlockAudio();
+                      room.buzz();
+                    }}
+                  />
+                ) : null}
+                {state.phase === "answering" && me?.id === state.buzzedPlayerId ? (
+                  <TriviaChoices
+                    choices={state.activeClue?.choices ?? []}
+                    blindfold={blindfold}
+                    hintExcluded={state.hintExcluded}
+                    onChoose={room.answer}
+                  />
+                ) : null}
+                {state.phase === "answering" && me?.id !== state.buzzedPlayerId ? (
+                  <>
+                    <p className="trivia-status">{buzzedName} is answering…</p>
+                    {state.chaosDash ? (
+                      <TriviaChaosDash dash={state.chaosDash} onSolve={room.solveChaos} />
+                    ) : null}
+                  </>
+                ) : null}
+                {state.phase === "reveal" && state.activeClue?.choices ? (
+                  <TriviaChoices
+                    choices={state.activeClue.choices}
+                    disabled
+                    correctIndex={state.activeClue.correctChoiceIndex}
+                    selectedIndex={state.activeClue.selectedChoiceIndex}
+                  />
+                ) : null}
+              </div>
+            )
           ) : null}
 
           {state.phase === "between" ? (

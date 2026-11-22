@@ -4995,6 +4995,13 @@ input {
   width: 100%;
 }
 
+.trivia-board-wrap.is-dimmed {
+  opacity: 0.35;
+  filter: saturate(0.7);
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
 .trivia-board-cats,
 .trivia-board-row {
   display: grid;
@@ -5013,31 +5020,71 @@ input {
   display: grid;
   place-items: center;
   color: var(--accent);
+  background: color-mix(in oklab, var(--bg2) 72%, var(--glow0) 28%);
+  border-radius: 0.35rem;
+  border: 1px solid color-mix(in oklab, var(--stroke) 70%, var(--glow1) 30%);
+  padding: 0.2rem 0.15rem;
 }
 
 .trivia-cell {
   min-height: 3.25rem;
-  border: 1px solid var(--stroke);
+  border: 1px solid color-mix(in oklab, var(--stroke) 65%, var(--glow1) 35%);
   border-radius: 0.4rem;
-  background: color-mix(in oklab, var(--bg2) 80%, var(--accent) 8%);
+  background: color-mix(in oklab, var(--bg2) 78%, var(--glow0) 22%);
   color: var(--accent);
   font-family: var(--font-display);
   font-size: clamp(0.95rem, 3.5vw, 1.35rem);
   font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
+  box-shadow: 0 0 0 0 transparent;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
 }
 
 .trivia-cell:disabled {
   cursor: default;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .trivia-cell.is-cleared,
 .trivia-cell.is-empty {
   background: transparent;
   border-color: transparent;
+  box-shadow: none;
   min-height: 3.25rem;
+  color: color-mix(in oklab, var(--muted) 55%, transparent);
+}
+
+.trivia-cell.is-picked {
+  background: color-mix(in oklab, var(--accent) 82%, var(--glow0) 18%);
+  color: var(--bg0);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 55%, transparent),
+    0 0 18px color-mix(in oklab, var(--glow0) 70%, transparent),
+    0 0 36px color-mix(in oklab, var(--glow1) 45%, transparent);
+}
+
+.trivia-cell.is-flash {
+  animation: trivia-cell-flash 0.22s ease-out;
+}
+
+@keyframes trivia-cell-flash {
+  0% {
+    background: color-mix(in oklab, var(--accent) 45%, #fff 55%);
+    transform: scale(1.06);
+    box-shadow:
+      0 0 0 3px color-mix(in oklab, var(--accent) 80%, transparent),
+      0 0 28px var(--glow0);
+  }
+  100% {
+    background: color-mix(in oklab, var(--accent) 82%, var(--glow0) 18%);
+    transform: scale(1);
+  }
 }
 
 .trivia-board-tv .trivia-cell {
@@ -5048,6 +5095,65 @@ input {
 .trivia-board-tv .trivia-board-cat {
   font-size: clamp(0.7rem, 1.4vw, 1.1rem);
   min-height: 3rem;
+}
+
+.trivia-clue-expand {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: color-mix(in oklab, var(--card) 88%, var(--bg1) 12%);
+  border: 2px solid color-mix(in oklab, var(--accent) 55%, var(--glow1) 45%);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--glow0) 40%, transparent),
+    0 0 48px color-mix(in oklab, var(--glow0) 35%, transparent);
+  transform-origin: center center;
+  transform: translate(var(--trivia-flip-tx, 0), var(--trivia-flip-ty, 0))
+    scale(var(--trivia-flip-sx, 0.1), var(--trivia-flip-sy, 0.1));
+  opacity: 0.92;
+  overflow: auto;
+}
+
+.trivia-clue-expand.is-animating {
+  transition:
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s ease,
+    border-radius 0.45s ease;
+}
+
+.trivia-clue-expand.is-expanded,
+.trivia-clue-expand.is-settled {
+  transform: none;
+  opacity: 1;
+  border-radius: 0;
+}
+
+.trivia-clue-expand .trivia-clue-stage,
+.trivia-clue-expand .trivia-dd {
+  width: min(100%, 42rem);
+  text-align: center;
+}
+
+.trivia-clue-expand .trivia-clue-cat {
+  color: var(--accent-2);
+}
+
+.trivia-clue-expand .trivia-dd-title {
+  text-shadow: 0 0 24px color-mix(in oklab, var(--glow0) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trivia-cell.is-flash {
+    animation: none;
+  }
+
+  .trivia-clue-expand,
+  .trivia-clue-expand.is-animating {
+    transition: opacity 0.25s ease;
+    transform: none;
+  }
 }
 
 .trivia-buzzer-wrap {
