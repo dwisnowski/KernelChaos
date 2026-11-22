@@ -90,7 +90,7 @@ export function ScattergoriesRoom() {
     join,
     setPackTier,
     setPlayMode,
-    setPreferredScene,
+    setHuntPack,
     setRoundSeconds,
     start,
     playAgain,
@@ -272,9 +272,9 @@ export function ScattergoriesRoom() {
             unlockAudio();
             setPlayMode(mode);
           }}
-          onSetPreferredScene={(sceneId) => {
+          onSetHuntPack={(packId) => {
             unlockAudio();
-            setPreferredScene(sceneId);
+            setHuntPack(packId);
           }}
           onSetRoundSeconds={(s) => {
             unlockAudio();

@@ -53,3 +53,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0039 – Chaos Wheel](adr/0039-chaos-wheel.md) — `wheel` rooms; puzzle show; Canvas 2D + anime.js spin; host rounds 3/5/7; original family pack
 - [0040 – Chaos Wheel special wedges](adr/0040-chaos-wheel-special-wedges.md) — full special set (jackpot, steal, speed, insurance, …); `lastOutcome` banners + SFX
 - [0041 – Hunt scene prompt pipeline](adr/0041-hunt-scene-prompt-pipeline.md) — Magnific prompt library; image-only scenes; no answer keys; peer In/Out scoring
+- [0042 – Hunt themed packs](adr/0042-hunt-themed-packs.md) — lobby picks pack; random scene per round from pack; 50 scenes partitioned into 6 themes

@@ -138,15 +138,9 @@ export function isHuntSceneId(v: unknown): v is string {
   return typeof v === "string" && HUNT_SCENES.some((s) => s.id === v);
 }
 
-/** Pick a scene, preferring `preferredId` when still unused; else random unused (wrap when exhausted). */
-export function pickScene(usedIds: Set<string>, preferredId: string | null): HuntScene {
+/** Random unused scene from the full catalog (wrap when exhausted). Prefer pack pickers in packs.ts. */
+export function pickScene(usedIds: Set<string>): HuntScene {
   const all = HUNT_SCENES;
-  if (preferredId) {
-    const preferred = all.find((s) => s.id === preferredId);
-    if (preferred && !usedIds.has(preferred.id)) {
-      return { ...preferred };
-    }
-  }
   const available = all.filter((s) => !usedIds.has(s.id));
   const pool = available.length > 0 ? available : all;
   const bytes = crypto.getRandomValues(new Uint8Array(1));

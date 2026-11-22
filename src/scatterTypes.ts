@@ -104,9 +104,11 @@ export interface ScatterPlayerResult extends ScatterPlayerPublic {
   findLocations?: HuntFindLocation[];
 }
 
-export interface HuntScenePublic {
+export interface HuntPackPublic {
   id: string;
   title: string;
+  tagline: string;
+  sceneCount: number;
 }
 
 export interface ScatterRoomState {
@@ -119,11 +121,11 @@ export interface ScatterRoomState {
   letter: string | null;
   categories: string[] | null;
   listId: string | null;
-  preferredSceneId: string | null;
+  huntPackId: string;
   sceneId: string | null;
   sceneTitle: string | null;
   sceneImageUrl: string | null;
-  huntScenes: HuntScenePublic[];
+  huntPacks: HuntPackPublic[];
   huntLetterTotal: number;
   countdownEndsAt: number | null;
   endsAt: number | null;
@@ -147,7 +149,7 @@ export type ScatterClientMessage =
   | { type: "spectate" }
   | { type: "setPackTier"; packTier: PackTier }
   | { type: "setPlayMode"; playMode: ScatterPlayMode }
-  | { type: "setPreferredScene"; sceneId: string | null }
+  | { type: "setHuntPack"; packId: string }
   | { type: "setRoundSeconds"; roundSeconds: ScatterRoundSeconds }
   | { type: "start" }
   | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }

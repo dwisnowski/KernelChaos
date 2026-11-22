@@ -113,9 +113,11 @@ export interface ScatterPlayerResult extends ScatterPlayerPublic {
   findLocations?: HuntFindLocation[];
 }
 
-export interface HuntScenePublic {
+export interface HuntPackPublic {
   id: string;
   title: string;
+  tagline: string;
+  sceneCount: number;
 }
 
 export interface ScatterRoomState {
@@ -128,14 +130,14 @@ export interface ScatterRoomState {
   letter: string | null;
   categories: string[] | null;
   listId: string | null;
-  /** Lobby preference; null = random unused scene. */
-  preferredSceneId: string | null;
+  /** Lobby Hunt pack; scene is chosen randomly from the pack each round. */
+  huntPackId: string;
   /** Active hunt scene for the round (null in categories mode / before pick). */
   sceneId: string | null;
   sceneTitle: string | null;
   sceneImageUrl: string | null;
-  /** Catalog for lobby scene picker. */
-  huntScenes: HuntScenePublic[];
+  /** Catalog for lobby pack picker. */
+  huntPacks: HuntPackPublic[];
   /** Distinct letter-findable objectIds in the active hunt scene (0 when N/A). */
   huntLetterTotal: number;
   countdownEndsAt: number | null;
@@ -166,7 +168,7 @@ export type ScatterClientMessage =
   | { type: "spectate" }
   | { type: "setPackTier"; packTier: PackTier }
   | { type: "setPlayMode"; playMode: ScatterPlayMode }
-  | { type: "setPreferredScene"; sceneId: string | null }
+  | { type: "setHuntPack"; packId: string }
   | { type: "setRoundSeconds"; roundSeconds: ScatterRoundSeconds }
   | { type: "start" }
   | { type: "diePose"; qx: number; qy: number; qz: number; qw: number }

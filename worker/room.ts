@@ -29,7 +29,14 @@ import { computeBoardCoverage } from "./boggle/solver.ts";
 import { insertRoundStats, longestAcceptedWord } from "./boggle/stats.ts";
 import { deleteActiveRoom, upsertActiveRoom } from "./activeRooms.ts";
 import { isLetterDie, rollLetter } from "./scattergories/letter.ts";
-import { isHuntSceneId, pickScene, HUNT_MAX_ANSWERS, scenesCatalog } from "./scattergories/hunt/scenes.ts";
+import { HUNT_MAX_ANSWERS } from "./scattergories/hunt/scenes.ts";
+import {
+  DEFAULT_HUNT_PACK,
+  isHuntPackId,
+  packsCatalog,
+  pickSceneFromPack,
+  type HuntPackId,
+} from "./scattergories/hunt/packs.ts";
 import {
   huntFindKey,
   scoreHuntPeerFinds,
@@ -389,7 +396,7 @@ export class GameRoom extends DurableObject<Env> {
   private categories: string[] | null = null;
   private listId: string | null = null;
   private usedListIds: string[] = [];
-  private preferredSceneId: string | null = null;
+  private huntPackId: HuntPackId = DEFAULT_HUNT_PACK;
   private sceneId: string | null = null;
   private sceneTitle: string | null = null;
   private sceneImageUrl: string | null = null;
@@ -494,6 +501,8 @@ export class GameRoom extends DurableObject<Env> {
       categories?: string[] | null;
       listId?: string | null;
       usedListIds?: string[];
+      huntPackId?: string | null;
+      /** @deprecated Prefer huntPackId (ADR 0042). */
       preferredSceneId?: string | null;
       sceneId?: string | null;
       sceneTitle?: string | null;
@@ -599,10 +608,7 @@ export class GameRoom extends DurableObject<Env> {
       this.categories = stored.categories ?? null;
       this.listId = stored.listId ?? null;
       this.usedListIds = stored.usedListIds ?? [];
-      this.preferredSceneId =
-        stored.preferredSceneId && isHuntSceneId(stored.preferredSceneId)
-          ? stored.preferredSceneId
-          : null;
+      this.huntPackId = isHuntPackId(stored.huntPackId) ? stored.huntPackId : DEFAULT_HUNT_PACK;
       this.sceneId = stored.sceneId ?? null;
       this.sceneTitle = stored.sceneTitle ?? null;
       this.sceneImageUrl = stored.sceneImageUrl ?? null;
@@ -756,7 +762,7 @@ export class GameRoom extends DurableObject<Env> {
       categories: this.categories,
       listId: this.listId,
       usedListIds: this.usedListIds,
-      preferredSceneId: this.preferredSceneId,
+      huntPackId: this.huntPackId,
       sceneId: this.sceneId,
       sceneTitle: this.sceneTitle,
       sceneImageUrl: this.sceneImageUrl,
@@ -985,7 +991,7 @@ export class GameRoom extends DurableObject<Env> {
     this.categories = null;
     this.listId = null;
     this.usedListIds = [];
-    this.preferredSceneId = null;
+    this.huntPackId = DEFAULT_HUNT_PACK;
     this.sceneId = null;
     this.sceneTitle = null;
     this.sceneImageUrl = null;
@@ -1162,9 +1168,9 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "scattergories") break;
         await this.handleSetPlayMode(attachment?.playerId, msg.playMode);
         break;
-      case "setPreferredScene":
+      case "setHuntPack":
         if (this.gameType !== "scattergories") break;
-        await this.handleSetPreferredScene(attachment?.playerId, msg.sceneId);
+        await this.handleSetHuntPack(attachment?.playerId, msg.packId);
         break;
       case "setRoundSeconds":
         await this.handleSetRoundSeconds(attachment?.playerId, msg.roundSeconds);
@@ -1700,7 +1706,6 @@ export class GameRoom extends DurableObject<Env> {
     if (!isScatterPlayMode(playMode)) return;
     this.playMode = playMode;
     if (playMode === "categories") {
-      this.preferredSceneId = null;
       this.sceneId = null;
       this.sceneTitle = null;
       this.sceneImageUrl = null;
@@ -1709,15 +1714,15 @@ export class GameRoom extends DurableObject<Env> {
     this.broadcastState();
   }
 
-  private async handleSetPreferredScene(
+  private async handleSetHuntPack(
     playerId: string | undefined,
-    sceneId: string | null,
+    packId: string,
   ): Promise<void> {
     if (!playerId || !this.isHost(playerId)) return;
     if (this.phase !== "lobby" && this.phase !== "results") return;
     if (this.playMode !== "hunt") return;
-    if (sceneId != null && !isHuntSceneId(sceneId)) return;
-    this.preferredSceneId = sceneId;
+    if (!isHuntPackId(packId)) return;
+    this.huntPackId = packId;
     await this.persist();
     this.broadcastState();
   }
@@ -2000,7 +2005,7 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "rolling") return;
     this.letter = letter.toUpperCase();
     if (this.playMode === "hunt") {
-      const scene = pickScene(new Set(this.usedSceneIds), this.preferredSceneId);
+      const scene = pickSceneFromPack(this.huntPackId, new Set(this.usedSceneIds));
       this.sceneId = scene.id;
       this.sceneTitle = scene.title;
       this.sceneImageUrl = scene.imageUrl;
@@ -3261,7 +3266,12 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     const hideRoundSetup = this.phase === "lobby" || this.phase === "rolling";
-    const huntCatalog = scenesCatalog().map((s) => ({ id: s.id, title: s.title }));
+    const huntPacks = packsCatalog().map((p) => ({
+      id: p.id,
+      title: p.title,
+      tagline: p.tagline,
+      sceneCount: p.sceneIds.length,
+    }));
 
     return {
       game: "scattergories",
@@ -3273,11 +3283,11 @@ export class GameRoom extends DurableObject<Env> {
       letter: hideRoundSetup ? null : this.letter,
       categories: hideRoundSetup || this.playMode === "hunt" ? null : this.categories,
       listId: hideRoundSetup || this.playMode === "hunt" ? null : this.listId,
-      preferredSceneId: this.preferredSceneId,
+      huntPackId: this.huntPackId,
       sceneId: hideRoundSetup || this.playMode !== "hunt" ? null : this.sceneId,
       sceneTitle: hideRoundSetup || this.playMode !== "hunt" ? null : this.sceneTitle,
       sceneImageUrl: hideRoundSetup || this.playMode !== "hunt" ? null : this.sceneImageUrl,
-      huntScenes: huntCatalog,
+      huntPacks,
       huntLetterTotal:
         this.playMode === "hunt" && !hideRoundSetup ? this.huntLetterTotal() : 0,
       countdownEndsAt: this.countdownEndsAt,

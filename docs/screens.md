@@ -60,7 +60,7 @@ Mode: `playMode: "categories" | "hunt"` (lobby toggle; not a URL).
 
 | Phase | Categories | Hunt |
 | --- | --- | --- |
-| `lobby` | Pack / mode / timer | Scene picker when hunt |
+| `lobby` | Pack / mode / timer | Hunt pack picker when hunt (random scene from pack) |
 | `rolling` | Letter die | Same |
 | `countdown` | Letter shown | Letter + scene title |
 | `playing` | Category form | Scene click-to-pin + private finds |

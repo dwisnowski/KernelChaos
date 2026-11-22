@@ -12,6 +12,8 @@ Repo-owned prompts drive dense seek-and-find JPGs under `public/hunt/`. Scenes a
 
 Catalog: **50** scene foundations under `assets/hunt/prompts/scenes/` (pilots `space-port`, `beach-chaos`, `castle-transylvania`, plus 47 more). List with `npm run hunt:prompt -- --list`.
 
+Lobby groups scenes into **themed packs** (`worker/scattergories/hunt/packs.ts`, [ADR 0042](./adr/0042-hunt-themed-packs.md)): host picks a pack; each round randomly selects an unused scene from that pack.
+
 ## Tool chain (generate)
 
 1. `magnific_start` — confirm plan / credits.

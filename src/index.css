@@ -598,12 +598,21 @@ input {
 }
 
 .size-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   border-radius: 999px;
   border: 1px solid var(--stroke);
   background: transparent;
   color: var(--ink);
   padding: 0.55rem 0.95rem;
   cursor: pointer;
+}
+
+.size-pill-meta {
+  font-size: 0.78em;
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
 }
 
 .size-pill.is-active {

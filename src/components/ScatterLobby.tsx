@@ -19,7 +19,7 @@ interface Props {
   joinUrl: string;
   onSetPackTier: (tier: PackTier) => void;
   onSetPlayMode: (mode: ScatterPlayMode) => void;
-  onSetPreferredScene: (sceneId: string | null) => void;
+  onSetHuntPack: (packId: string) => void;
   onSetRoundSeconds: (seconds: ScatterRoundSeconds) => void;
   onStart: () => void;
 }
@@ -36,7 +36,7 @@ export function ScatterLobby({
   joinUrl,
   onSetPackTier,
   onSetPlayMode,
-  onSetPreferredScene,
+  onSetHuntPack,
   onSetRoundSeconds,
   onStart,
 }: Props) {
@@ -109,28 +109,25 @@ export function ScatterLobby({
           </div>
         ) : (
           <div className="board-size">
-            <h2>Picture</h2>
-            <div className="size-pills" role="group" aria-label="Picture scene">
-              <button
-                type="button"
-                className={`size-pill${state.preferredSceneId == null ? " is-active" : ""}`}
-                disabled={!isHost}
-                onClick={() => onSetPreferredScene(null)}
-              >
-                Random
-              </button>
-              {(state.huntScenes ?? []).map((scene) => (
+            <h2>Picture pack</h2>
+            <div className="size-pills" role="group" aria-label="Picture pack">
+              {(state.huntPacks ?? []).map((pack) => (
                 <button
-                  key={scene.id}
+                  key={pack.id}
                   type="button"
-                  className={`size-pill${state.preferredSceneId === scene.id ? " is-active" : ""}`}
+                  className={`size-pill${state.huntPackId === pack.id ? " is-active" : ""}`}
                   disabled={!isHost}
-                  onClick={() => onSetPreferredScene(scene.id)}
+                  title={pack.tagline}
+                  onClick={() => onSetHuntPack(pack.id)}
                 >
-                  {scene.title}
+                  {pack.title}
+                  <span className="size-pill-meta">{pack.sceneCount}</span>
                 </button>
               ))}
             </div>
+            {isHost ? (
+              <p className="muted">Each round picks a random picture from the pack.</p>
+            ) : null}
           </div>
         )}
 

@@ -185,8 +185,8 @@ export function useScattergoriesRoom({
     (playMode: ScatterPlayMode) => send({ type: "setPlayMode", playMode }),
     [send],
   );
-  const setPreferredScene = useCallback(
-    (sceneId: string | null) => send({ type: "setPreferredScene", sceneId }),
+  const setHuntPack = useCallback(
+    (packId: string) => send({ type: "setHuntPack", packId }),
     [send],
   );
   const setRoundSeconds = useCallback(
@@ -238,7 +238,7 @@ export function useScattergoriesRoom({
     spectate,
     setPackTier,
     setPlayMode,
-    setPreferredScene,
+    setHuntPack,
     setRoundSeconds,
     start,
     playAgain,
