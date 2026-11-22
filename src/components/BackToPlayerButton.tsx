@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 interface Props {
   roomCode: string;
   /** Game path slug — defaults to boggle for existing callers. */
-  game?: "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it" | "wheel";
+  game?: "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it" | "wheel" | "trivia";
   className?: string;
 }
 

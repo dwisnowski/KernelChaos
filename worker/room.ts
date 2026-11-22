@@ -172,15 +172,24 @@ import {
 } from "./wheel/protocol.ts";
 import { addConsonantWinnings, applyVowelPurchase, bankRoundIntoTotal, canBuyVowel } from "./wheel/scoring.ts";
 import { WHEEL_WEDGES, pickSpin } from "./wheel/wheel.ts";
+import { TriviaController, type TriviaPersisted } from "./trivia/triviaController.ts";
+import {
+  DEFAULT_TRIVIA_CHAOS_MODE,
+  DEFAULT_TRIVIA_PACK,
+  type TriviaClientMessage,
+  type TriviaPhase,
+  type TriviaRoomState,
+  type TriviaServerMessage,
+} from "./trivia/protocol.ts";
 
 /** Per-category: voterId → (targetPlayerId → in|out). */
 type ReviewBallotMaps = Array<Map<string, Record<string, ReviewVote>>>;
 /** Persistable form of ReviewBallotMaps. */
 type StoredReviewBallots = Array<Record<string, Record<string, ReviewVote>>>;
 
-export type GameType = "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it" | "wheel";
+export type GameType = "boggle" | "scattergories" | "mmmms" | "spotdiff" | "spot-it" | "wheel" | "trivia";
 
-type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase | SpotdiffPhase | SpotItPhase | WheelPhase;
+type AnyPhase = BogglePhase | ScatterPhase | MmmmsPhase | SpotdiffPhase | SpotItPhase | WheelPhase | TriviaPhase;
 
 /** Max wait for clients to finish explosion animation before advancing. */
 const MMMMS_RESOLVE_TIMEOUT_MS = 15_000;
@@ -268,14 +277,16 @@ type ClientMessage =
   | MmmmsClientMessage
   | SpotdiffClientMessage
   | SpotItClientMessage
-  | WheelClientMessage;
+  | WheelClientMessage
+  | TriviaClientMessage;
 type ServerMessage =
   | BoggleServerMessage
   | ScatterServerMessage
   | MmmmsServerMessage
   | SpotdiffServerMessage
   | SpotItServerMessage
-  | WheelServerMessage;
+  | WheelServerMessage
+  | TriviaServerMessage;
 
 function emptyAnswers(): string[] {
   return Array.from({ length: CATEGORIES_PER_LIST }, () => "");
@@ -361,7 +372,8 @@ function isGameType(v: unknown): v is GameType {
     v === "mmmms" ||
     v === "spotdiff" ||
     v === "spot-it" ||
-    v === "wheel"
+    v === "wheel" ||
+    v === "trivia"
   );
 }
 
@@ -473,6 +485,9 @@ export class GameRoom extends DurableObject<Env> {
   private wheelVowelFree = false;
   private wheelLastOutcome: WheelLastOutcome = null;
 
+  // Trivia
+  private trivia = new TriviaController();
+
   private loaded = false;
 
   private async ensureLoaded(): Promise<void> {
@@ -570,6 +585,7 @@ export class GameRoom extends DurableObject<Env> {
       wheelSpeedEndsAt?: number | null;
       wheelVowelFree?: boolean;
       wheelLastOutcome?: WheelLastOutcome;
+      trivia?: TriviaPersisted;
     }>("room");
     if (stored) {
       this.gameType = isGameType(stored.gameType) ? stored.gameType : "boggle";
@@ -706,6 +722,7 @@ export class GameRoom extends DurableObject<Env> {
         typeof stored.wheelSpeedEndsAt === "number" ? stored.wheelSpeedEndsAt : null;
       this.wheelVowelFree = Boolean(stored.wheelVowelFree);
       this.wheelLastOutcome = stored.wheelLastOutcome ?? null;
+      this.trivia.loadPersisted(stored.trivia);
       this.players = new Map(
         stored.players.map((p) => [
           p.id,
@@ -829,6 +846,7 @@ export class GameRoom extends DurableObject<Env> {
       wheelSpeedEndsAt: this.wheelSpeedEndsAt,
       wheelVowelFree: this.wheelVowelFree,
       wheelLastOutcome: this.wheelLastOutcome,
+      trivia: this.trivia.toPersisted(),
       players: [...this.players.values()].map((p) => ({
         id: p.id,
         name: p.name,
@@ -934,6 +952,9 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase === "between" && this.countdownEndsAt != null) {
       candidates.push(this.countdownEndsAt);
     }
+    if (this.gameType === "trivia" && this.trivia.endsAt != null) {
+      candidates.push(this.trivia.endsAt);
+    }
     if (candidates.length === 0) {
       await this.ctx.storage.deleteAlarm();
       return;
@@ -1025,6 +1046,7 @@ export class GameRoom extends DurableObject<Env> {
     this.spotItPack = DEFAULT_SPOT_IT_PACK;
     this.resetWheelFields();
     this.wheelRoundCount = DEFAULT_WHEEL_ROUNDS;
+    this.trivia = new TriviaController();
     this.loaded = true;
   }
 
@@ -1114,6 +1136,10 @@ export class GameRoom extends DurableObject<Env> {
           this.spotItPack = DEFAULT_SPOT_IT_PACK;
         } else if (this.gameType === "wheel") {
           this.wheelRoundCount = DEFAULT_WHEEL_ROUNDS;
+        } else if (this.gameType === "trivia") {
+          this.trivia = new TriviaController();
+          this.trivia.packId = DEFAULT_TRIVIA_PACK;
+          this.trivia.chaosMode = DEFAULT_TRIVIA_CHAOS_MODE;
         }
         await this.persist();
         return Response.json({ code: this.code, game: this.gameType, created: true });
@@ -1319,6 +1345,58 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "wheel") break;
         await this.handleWheelSolve(attachment?.playerId, msg.guess);
         break;
+      case "setTriviaPack":
+        if (this.gameType !== "trivia") break;
+        await this.handleSetTriviaPack(attachment?.playerId, msg.packId);
+        break;
+      case "setTriviaChaosMode":
+        if (this.gameType !== "trivia") break;
+        await this.handleSetTriviaChaosMode(attachment?.playerId, msg.mode);
+        break;
+      case "pickCell":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaPickCell(attachment?.playerId, msg.categoryIndex, msg.tier);
+        break;
+      case "buzz":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaBuzz(attachment?.playerId);
+        break;
+      case "answer":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaAnswer(attachment?.playerId, msg.choiceIndex);
+        break;
+      case "setDailyWager":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaDailyWager(attachment?.playerId, msg.amount);
+        break;
+      case "setFinalWager":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaFinalWager(attachment?.playerId, msg.amount);
+        break;
+      case "finalAnswer":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaFinalAnswer(attachment?.playerId, msg.choiceIndex);
+        break;
+      case "solveChaos":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaSolveChaos(attachment?.playerId, msg.choiceIndex);
+        break;
+      case "useChaos":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaUseChaos(attachment?.playerId, msg.power, msg.targetPlayerId);
+        break;
+      case "cheer":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaCheer(attachment?.playerId, msg.delta);
+        break;
+      case "phoneFriendVote":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaPhoneFriendVote(attachment?.playerId, msg.choiceIndex);
+        break;
+      case "challengeVote":
+        if (this.gameType !== "trivia") break;
+        await this.handleTriviaChallengeVote(attachment?.playerId, msg.tooEasy);
+        break;
       default:
         this.send(ws, { type: "error", message: "Unknown message" });
     }
@@ -1388,6 +1466,20 @@ export class GameRoom extends DurableObject<Env> {
         return;
       }
       await this.advanceWheelAfterBetween();
+      return;
+    }
+
+    if (this.gameType === "trivia" && this.trivia.endsAt != null) {
+      if (this.trivia.endsAt > now) {
+        await this.ctx.storage.setAlarm(this.trivia.endsAt);
+        return;
+      }
+      const { alarmAt } = this.trivia.onAlarm(now);
+      this.phase = this.trivia.phase;
+      this.endsAt = this.trivia.endsAt;
+      await this.persist();
+      this.broadcastState();
+      if (alarmAt != null) await this.ctx.storage.setAlarm(alarmAt);
       return;
     }
 
@@ -1665,6 +1757,16 @@ export class GameRoom extends DurableObject<Env> {
       } satisfies WheelServerMessage);
       return;
     }
+    if (this.gameType === "trivia") {
+      this.trivia.syncSeatsFrom(this.players.values());
+      this.send(ws, {
+        type: "welcome",
+        playerId,
+        role: "player",
+        state: this.triviaSnapshot(),
+      } satisfies TriviaServerMessage);
+      return;
+    }
     this.send(ws, {
       type: "welcome",
       playerId,
@@ -1748,7 +1850,7 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "lobby" && this.phase !== "results") return;
     if (this.gameType === "mmmms") {
       if (this.players.size !== 2) return;
-    } else if (this.gameType === "wheel") {
+    } else if (this.gameType === "wheel" || this.gameType === "trivia") {
       if (this.players.size < 2) return;
     } else if (this.players.size < 1) {
       return;
@@ -1853,6 +1955,36 @@ export class GameRoom extends DurableObject<Env> {
       this.endsAt = null;
       this.beginWheelRound(0);
       this.phase = "playing";
+      await this.ctx.storage.deleteAlarm();
+      await this.persist();
+      this.broadcastState();
+      return;
+    }
+
+    if (this.gameType === "trivia") {
+      this.board = null;
+      this.missedWords = null;
+      this.possibleWords = null;
+      this.possibleWordCount = null;
+      this.possibleByLength = null;
+      this.letter = null;
+      this.categories = null;
+      this.listId = null;
+      this.sceneId = null;
+      this.sceneTitle = null;
+      this.sceneImageUrl = null;
+      this.rollerId = null;
+      this.rollerName = null;
+      this.spotPuzzle = null;
+      this.countdownEndsAt = null;
+      this.endsAt = null;
+      this.trivia.syncSeatsFrom(this.players.values());
+      const started = this.trivia.start([...this.players.keys()]);
+      if (!started.ok) {
+        this.round -= 1;
+        return;
+      }
+      this.phase = this.trivia.phase;
       await this.ctx.storage.deleteAlarm();
       await this.persist();
       this.broadcastState();
@@ -2070,6 +2202,10 @@ export class GameRoom extends DurableObject<Env> {
     this.spotHintForPlayerId = null;
     this.resetSpotItFields();
     this.resetWheelFields();
+    if (this.gameType === "trivia") {
+      this.trivia.syncSeatsFrom(this.players.values());
+      this.trivia.resetLobbyKeepSeats();
+    }
     for (const p of this.players.values()) {
       p.words = new Map();
       p.roundAwards = [];
@@ -3514,6 +3650,140 @@ export class GameRoom extends DurableObject<Env> {
     };
   }
 
+  private async handleSetTriviaPack(playerId: string | undefined, packId: string): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!this.trivia.setPack(packId)) return;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleSetTriviaChaosMode(playerId: string | undefined, mode: string): Promise<void> {
+    if (!playerId || !this.isHost(playerId)) return;
+    if (this.phase !== "lobby" && this.phase !== "results") return;
+    if (!this.trivia.setChaosMode(mode)) return;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async applyTriviaAlarm(alarmAt: number | null | undefined): Promise<void> {
+    this.phase = this.trivia.phase;
+    this.endsAt = this.trivia.endsAt;
+    await this.persist();
+    this.broadcastState();
+    if (alarmAt != null) {
+      await this.ctx.storage.setAlarm(alarmAt);
+    } else if (this.trivia.endsAt == null) {
+      await this.ctx.storage.deleteAlarm();
+    }
+  }
+
+  private async handleTriviaPickCell(
+    playerId: string | undefined,
+    categoryIndex: number,
+    tier: number,
+  ): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    const result = this.trivia.pickCell(playerId, categoryIndex, tier);
+    if (!result.ok) return;
+    await this.applyTriviaAlarm(result.alarmAt);
+  }
+
+  private async handleTriviaBuzz(playerId: string | undefined): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    const result = this.trivia.buzz(playerId);
+    if (!result.ok) return;
+    await this.applyTriviaAlarm(result.alarmAt);
+  }
+
+  private async handleTriviaAnswer(playerId: string | undefined, choiceIndex: number): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    const result = this.trivia.answer(playerId, choiceIndex);
+    if (!result.ok) return;
+    await this.applyTriviaAlarm(result.alarmAt);
+  }
+
+  private async handleTriviaDailyWager(playerId: string | undefined, amount: number): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    const result = this.trivia.setDailyWager(playerId, amount);
+    if (!result.ok) return;
+    await this.applyTriviaAlarm(result.alarmAt);
+  }
+
+  private async handleTriviaFinalWager(playerId: string | undefined, amount: number): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    const result = this.trivia.setFinalWager(playerId, amount);
+    if (!result.ok) return;
+    await this.applyTriviaAlarm(result.alarmAt);
+  }
+
+  private async handleTriviaFinalAnswer(
+    playerId: string | undefined,
+    choiceIndex: number,
+  ): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    const result = this.trivia.finalAnswer(playerId, choiceIndex);
+    if (!result.ok) return;
+    await this.applyTriviaAlarm(result.alarmAt);
+  }
+
+  private async handleTriviaSolveChaos(
+    playerId: string | undefined,
+    choiceIndex: number,
+  ): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    this.trivia.solveChaos(playerId, choiceIndex);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleTriviaUseChaos(
+    playerId: string | undefined,
+    power: string,
+    targetPlayerId?: string,
+  ): Promise<void> {
+    if (!playerId) return;
+    this.trivia.syncSeatsFrom(this.players.values());
+    const result = this.trivia.useChaos(playerId, power, targetPlayerId);
+    if (!result.ok) return;
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleTriviaCheer(playerId: string | undefined, delta: 1 | -1): Promise<void> {
+    if (!playerId) return;
+    this.trivia.cheer(playerId, delta);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleTriviaPhoneFriendVote(
+    playerId: string | undefined,
+    choiceIndex: number,
+  ): Promise<void> {
+    if (!playerId) return;
+    this.trivia.phoneFriendVote(playerId, choiceIndex);
+    await this.persist();
+    this.broadcastState();
+  }
+
+  private async handleTriviaChallengeVote(
+    playerId: string | undefined,
+    tooEasy: boolean,
+  ): Promise<void> {
+    if (!playerId) return;
+    this.trivia.challengeVote(playerId, tooEasy);
+    await this.persist();
+    this.broadcastState();
+  }
+
   private async handleSetWheelRounds(
     playerId: string | undefined,
     roundCount: WheelRoundCount,
@@ -4062,13 +4332,20 @@ export class GameRoom extends DurableObject<Env> {
     | MmmmsRoomState
     | SpotdiffRoomState
     | SpotItRoomState
-    | WheelRoomState {
+    | WheelRoomState
+    | TriviaRoomState {
     if (this.gameType === "scattergories") return this.scatterSnapshot();
     if (this.gameType === "mmmms") return this.mmmmsSnapshot();
     if (this.gameType === "spotdiff") return this.spotdiffSnapshot(null);
     if (this.gameType === "spot-it") return this.spotItSnapshot();
     if (this.gameType === "wheel") return this.wheelSnapshot();
+    if (this.gameType === "trivia") return this.triviaSnapshot();
     return this.boggleSnapshot();
+  }
+
+  private triviaSnapshot(): TriviaRoomState {
+    this.trivia.syncSeatsFrom(this.players.values());
+    return this.trivia.snapshot(this.code);
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {
@@ -4160,6 +4437,20 @@ export class GameRoom extends DurableObject<Env> {
     if (this.gameType === "wheel") {
       const state = this.wheelSnapshot();
       const payload = JSON.stringify({ type: "state", state } satisfies WheelServerMessage);
+      for (const socket of this.ctx.getWebSockets()) {
+        if (except && socket === except) continue;
+        try {
+          socket.send(payload);
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
+
+    if (this.gameType === "trivia") {
+      const state = this.triviaSnapshot();
+      const payload = JSON.stringify({ type: "state", state } satisfies TriviaServerMessage);
       for (const socket of this.ctx.getWebSockets()) {
         if (except && socket === except) continue;
         try {

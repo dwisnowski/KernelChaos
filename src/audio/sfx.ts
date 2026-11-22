@@ -436,6 +436,71 @@ export function playWheelSolve(): void {
   tone(1046, t + 0.28, 0.22, "triangle", 0.1);
 }
 
+/** Trivia: first-buzz lock sting (phone + TV). */
+export function playTriviaBuzzLock(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(180, t, 0.06, "square", 0.09);
+  tone(420, t + 0.05, 0.08, "sawtooth", 0.08);
+  tone(880, t + 0.12, 0.16, "triangle", 0.1);
+}
+
+/** Trivia: Daily Double title card. */
+export function playTriviaDailyDouble(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(220, t, 0.12, "sawtooth", 0.08);
+  tone(330, t + 0.12, 0.14, "square", 0.09);
+  tone(440, t + 0.26, 0.12, "triangle", 0.08);
+  tone(660, t + 0.4, 0.28, "sine", 0.11);
+}
+
+/** Trivia: correct / wrong. */
+export function playTriviaCorrect(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(523, t, 0.08, "sine", 0.08);
+  tone(659, t + 0.08, 0.1, "triangle", 0.09);
+  tone(784, t + 0.18, 0.16, "sine", 0.09);
+}
+
+export function playTriviaWrong(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(300, t, 0.12, "sawtooth", 0.07);
+  tone(200, t + 0.1, 0.18, "square", 0.06);
+}
+
+export function playTriviaFinal(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(392, t, 0.12, "triangle", 0.08);
+  tone(494, t + 0.12, 0.12, "sine", 0.08);
+  tone(587, t + 0.24, 0.2, "triangle", 0.1);
+}
+
+export function playTriviaChaosWin(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(740, t, 0.07, "square", 0.07);
+  tone(880, t + 0.07, 0.1, "triangle", 0.08);
+  tone(1174, t + 0.16, 0.14, "sine", 0.09);
+}
+
+export function playTriviaChaosPower(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(260, t, 0.08, "square", 0.06);
+  tone(390, t + 0.08, 0.12, "sawtooth", 0.07);
+}
+
 /** Chaos Wheel: special-wedge settle cue by outcome key. */
 export function playWheelSpecial(kind: string | null | undefined): void {
   if (!kind) return;

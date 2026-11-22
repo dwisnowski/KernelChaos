@@ -4,7 +4,7 @@ Shared names for KernelChaos pages and in-room phases. Use these in chat so huma
 
 React Router (`BrowserRouter` in `src/main.tsx`, routes in `src/App.tsx`) already owns URL navigation. In-room **phases** are server state (`state.phase` over WebSocket), not URL segments — one room URL hosts every phase for that seat.
 
-Games: `boggle` | `scattergories` | `mmmms` | `spotdiff` | `spot-it` | `wheel`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
+Games: `boggle` | `scattergories` | `mmmms` | `spotdiff` | `spot-it` | `wheel` | `trivia`. Picture Hunt is Scattergories with `playMode: "hunt"` (same URLs).
 
 ## URL routes
 
@@ -36,6 +36,10 @@ Games: `boggle` | `scattergories` | `mmmms` | `spotdiff` | `spot-it` | `wheel`. 
 | `/wheel/join?code=` | `WheelEntry` | same | QR / deep-link join |
 | `/wheel/room/:code` | `WheelRoom` | `src/pages/WheelRoom.tsx` | Player |
 | `/wheel/room/:code/tv` | `WheelSpectator` | `src/pages/WheelSpectator.tsx` | TV |
+| `/trivia` | `TriviaEntry` | `src/pages/TriviaEntry.tsx` | Create / join / spectate |
+| `/trivia/join?code=` | `TriviaEntry` | same | QR / deep-link join |
+| `/trivia/room/:code` | `TriviaRoom` | `src/pages/TriviaRoom.tsx` | Player |
+| `/trivia/room/:code/tv` | `TriviaSpectator` | `src/pages/TriviaSpectator.tsx` | TV |
 
 Pattern shorthand: `/{game}`, `/{game}/join?code=`, `/{game}/room/:code`, `/{game}/room/:code/tv`.
 
@@ -112,6 +116,12 @@ Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses
 | `between` | Countdown + who scored (3s shared/tower; 7s learning teach + kana reading chips) | Same |
 | `results` | Winner + scores | Same |
 
+### Trivia
+
+`TriviaPhase` in `src/triviaTypes.ts`: `lobby` → `board` → `clue` → (`dailyWager` |) `buzzOpen` → `answering` → `reveal` → … → `between` → Double board … → `finalCategory` → `finalWager` → `finalAnswer` → `results`.
+
+Lobby: pack (`family`) + Chaos `off | light | mayhem` (default light). Start needs ≥2 players. Phones: board pick / large buzzer / A–H / wagers / Chaos Dash. TV: board + clue stage + score-rail glow on buzz lock + Daily Double reveal.
+
 ### Chaos Wheel
 
 `WheelPhase` in `src/wheelTypes.ts`: `lobby` → `playing` → `between` → `playing` … → `results`
@@ -151,6 +161,9 @@ Prefer route + phase (and mode when needed):
 | wheel entry | `/wheel` |
 | wheel room playing | `/wheel/room/:code` + `phase=playing` |
 | wheel TV between | `/wheel/room/:code/tv` + `phase=between` |
+| trivia entry | `/trivia` |
+| trivia room board | `/trivia/room/:code` + `phase=board` |
+| trivia TV buzz | `/trivia/room/:code/tv` + `phase=buzzOpen` \| `answering` |
 
 ## Related
 

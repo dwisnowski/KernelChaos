@@ -75,7 +75,8 @@ export default {
         raw === "mmmms" ||
         raw === "spotdiff" ||
         raw === "spot-it" ||
-        raw === "wheel"
+        raw === "wheel" ||
+        raw === "trivia"
           ? raw
           : "boggle";
       try {
@@ -97,7 +98,8 @@ export default {
           body.game === "mmmms" ||
           body.game === "spotdiff" ||
           body.game === "spot-it" ||
-          body.game === "wheel"
+          body.game === "wheel" ||
+          body.game === "trivia"
         ) {
           game = body.game;
         }

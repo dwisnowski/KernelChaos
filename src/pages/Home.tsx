@@ -89,6 +89,15 @@ function WheelIcon() {
   );
 }
 
+function TriviaIcon() {
+  return (
+    <svg className="game-card-icon" viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="6" y="8" width="36" height="32" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M14 16h8M14 24h8M14 32h6M28 16h6M28 24h6M28 32h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function Home() {
   return (
     <Layout>
@@ -146,6 +155,15 @@ export function Home() {
             <h2>Chaos Wheel</h2>
             <p>
               Spin for cash, call letters, buy vowels, and solve the puzzle on the living-room TV.
+            </p>
+            <span className="btn primary">Play</span>
+          </Link>
+          <Link className="game-card" to="/trivia" onClick={() => unlockAudio()}>
+            <TriviaIcon />
+            <h2>Trivia</h2>
+            <p>
+              Category boards on the TV, phone buzzers, A–H answers, Daily Doubles, Final, and Chaos
+              Dash powers.
             </p>
             <span className="btn primary">Play</span>
           </Link>

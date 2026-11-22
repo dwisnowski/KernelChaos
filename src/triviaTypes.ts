@@ -1,0 +1,283 @@
+/** Client mirror of worker/trivia/protocol.ts (keep in sync). */
+export type TriviaPhase =
+  | "lobby"
+  | "board"
+  | "clue"
+  | "dailyWager"
+  | "buzzOpen"
+  | "answering"
+  | "reveal"
+  | "between"
+  | "finalCategory"
+  | "finalWager"
+  | "finalAnswer"
+  | "results";
+
+export type TriviaRound = "single" | "double";
+
+export type TriviaPackId = "family";
+
+export type TriviaChaosMode = "off" | "light" | "mayhem";
+
+export type TriviaChaosPower =
+  | "fakeBuzz"
+  | "buzzJam"
+  | "blindfold"
+  | "cheerBoo"
+  | "partyTax"
+  | "screenZap"
+  | "trapAnswer"
+  | "stealBuzz"
+  | "potSiphon"
+  | "swapStakes"
+  | "challenge"
+  | "hotSeat"
+  | "alliance"
+  | "spotlightSteal"
+  | "hintTax"
+  | "phoneFriend";
+
+export const TRIVIA_PACK_IDS: TriviaPackId[] = ["family"];
+export const DEFAULT_TRIVIA_PACK: TriviaPackId = "family";
+export const DEFAULT_TRIVIA_CHAOS_MODE: TriviaChaosMode = "light";
+
+export const TRIVIA_SINGLE_VALUES = [200, 400, 600, 800, 1000] as const;
+export const TRIVIA_DOUBLE_VALUES = [400, 800, 1200, 1600, 2000] as const;
+export const TRIVIA_CATEGORIES = 6;
+export const TRIVIA_TIERS = 5;
+
+export const TRIVIA_CLUE_READ_MS = 2500;
+export const TRIVIA_ANSWER_MS = 12000;
+export const TRIVIA_REVEAL_MS = 3500;
+export const TRIVIA_BETWEEN_MS = 4000;
+export const TRIVIA_DD_REVEAL_MS = 2200;
+export const TRIVIA_FINAL_CATEGORY_MS = 4000;
+export const TRIVIA_FINAL_WAGER_MS = 20000;
+export const TRIVIA_FINAL_ANSWER_MS = 15000;
+export const TRIVIA_DAILY_WAGER_MIN = 5;
+export const TRIVIA_BUZZ_JAM_MS = 1000;
+export const TRIVIA_BLINDFOLD_MS = 3000;
+export const TRIVIA_SCREEN_ZAP_MS = 1000;
+export const TRIVIA_CHAOS_DASH_LOCK_MS = 500;
+export const TRIVIA_PARTY_TAX = 50;
+export const TRIVIA_HINT_TAX = 50;
+export const TRIVIA_CHEER_BONUS = 25;
+
+export const LIGHT_CHAOS_POWERS: TriviaChaosPower[] = [
+  "fakeBuzz",
+  "buzzJam",
+  "blindfold",
+  "cheerBoo",
+  "partyTax",
+];
+
+export const MAYHEM_CHAOS_POWERS: TriviaChaosPower[] = [
+  ...LIGHT_CHAOS_POWERS,
+  "screenZap",
+  "trapAnswer",
+  "stealBuzz",
+  "potSiphon",
+  "swapStakes",
+  "challenge",
+  "hotSeat",
+  "alliance",
+  "spotlightSteal",
+  "hintTax",
+  "phoneFriend",
+];
+
+export function chaosChargeCap(mode: TriviaChaosMode): number {
+  if (mode === "mayhem") return 2;
+  if (mode === "light") return 1;
+  return 0;
+}
+
+export function powersForMode(mode: TriviaChaosMode): TriviaChaosPower[] {
+  if (mode === "mayhem") return MAYHEM_CHAOS_POWERS;
+  if (mode === "light") return LIGHT_CHAOS_POWERS;
+  return [];
+}
+
+export function isTriviaPackId(v: unknown): v is TriviaPackId {
+  return v === "family";
+}
+
+export function isTriviaChaosMode(v: unknown): v is TriviaChaosMode {
+  return v === "off" || v === "light" || v === "mayhem";
+}
+
+export function isTriviaChaosPower(v: unknown): v is TriviaChaosPower {
+  return (
+    typeof v === "string" &&
+    (MAYHEM_CHAOS_POWERS as string[]).includes(v)
+  );
+}
+
+export function valueForTier(round: TriviaRound, tier: number): number {
+  const table = round === "single" ? TRIVIA_SINGLE_VALUES : TRIVIA_DOUBLE_VALUES;
+  return table[Math.max(0, Math.min(TRIVIA_TIERS - 1, tier))] ?? table[0];
+}
+
+export interface TriviaClueDef {
+  id: string;
+  prompt: string;
+  /** Length 8; correct answer at correctIndex before shuffle. */
+  choices: string[];
+  correctIndex: number;
+}
+
+export interface TriviaCategoryDef {
+  title: string;
+  clues: TriviaClueDef[]; // length 5, tiers 0..4
+}
+
+export interface TriviaFinalDef {
+  category: string;
+  prompt: string;
+  choices: string[];
+  correctIndex: number;
+}
+
+export interface TriviaPack {
+  id: TriviaPackId;
+  title: string;
+  tagline: string;
+  single: TriviaCategoryDef[];
+  double: TriviaCategoryDef[];
+  final: TriviaFinalDef;
+}
+
+export interface TriviaBoardCellPublic {
+  categoryIndex: number;
+  tier: number;
+  value: number;
+  cleared: boolean;
+}
+
+export interface TriviaBoardPublic {
+  round: TriviaRound;
+  categories: string[];
+  cells: TriviaBoardCellPublic[]; // 30
+}
+
+export interface TriviaActiveCluePublic {
+  categoryIndex: number;
+  tier: number;
+  value: number;
+  categoryTitle: string;
+  prompt: string;
+  isDailyDouble: boolean;
+  choices: string[] | null;
+  /** Set during reveal / final results. */
+  correctChoiceIndex: number | null;
+  selectedChoiceIndex: number | null;
+}
+
+export interface TriviaPlayerPublic {
+  id: string;
+  name: string;
+  isHost: boolean;
+  score: number;
+  chaosCharges: number;
+  finalWager: number | null;
+  finalAnswered: boolean;
+}
+
+export interface TriviaPlayerResult {
+  id: string;
+  name: string;
+  score: number;
+}
+
+export interface TriviaChaosDashPublic {
+  kind: string;
+  prompt: string;
+  choices: string[];
+  winnerId: string | null;
+  winnerName: string | null;
+}
+
+export type TriviaLastOutcome =
+  | "correct"
+  | "wrong"
+  | "timeout"
+  | "dailyDouble"
+  | "boardClear"
+  | "chaosWin"
+  | TriviaChaosPower
+  | null;
+
+export interface TriviaRoomState {
+  game: "trivia";
+  code: string;
+  phase: TriviaPhase;
+  packId: TriviaPackId;
+  chaosMode: TriviaChaosMode;
+  round: TriviaRound | null;
+  board: TriviaBoardPublic | null;
+  controllerId: string | null;
+  activeClue: TriviaActiveCluePublic | null;
+  buzzedPlayerId: string | null;
+  buzzLockSeq: number;
+  lockedOutIds: string[];
+  players: TriviaPlayerPublic[];
+  endsAt: number | null;
+  dailyWager: number | null;
+  dailyWagerMax: number | null;
+  finalCategory: string | null;
+  finalPrompt: string | null;
+  finalChoices: string[] | null;
+  finalCorrectIndex: number | null;
+  pot: number;
+  chaosDash: TriviaChaosDashPublic | null;
+  chaosWinSeq: number;
+  lastOutcome: TriviaLastOutcome;
+  lastOutcomePlayerId: string | null;
+  lastOutcomePlayerName: string | null;
+  /** Transient FX flags for clients. */
+  blindfoldUntil: number | null;
+  screenZapUntil: number | null;
+  fakeBuzzPlayerId: string | null;
+  spotlightPlayerId: string | null;
+  buzzJamUntil: Record<string, number>;
+  cheerScore: number;
+  hintExcluded: number[];
+  phoneFriendVotes: Record<string, number>;
+  trapChoiceIndex: number | null;
+  allianceIds: string[] | null;
+  hotSeatPlayerId: string | null;
+  challengeOpen: boolean;
+  challengeVotes: Record<string, boolean>;
+  lastScoreDelta: number | null;
+  results: TriviaPlayerResult[];
+  winners: string[];
+}
+
+export type TriviaClientMessage =
+  | { type: "join"; name: string; resumeId?: string }
+  | { type: "spectate" }
+  | { type: "setTriviaPack"; packId: TriviaPackId }
+  | { type: "setTriviaChaosMode"; mode: TriviaChaosMode }
+  | { type: "start" }
+  | { type: "pickCell"; categoryIndex: number; tier: number }
+  | { type: "buzz" }
+  | { type: "answer"; choiceIndex: number }
+  | { type: "setDailyWager"; amount: number }
+  | { type: "setFinalWager"; amount: number }
+  | { type: "finalAnswer"; choiceIndex: number }
+  | { type: "solveChaos"; choiceIndex: number }
+  | { type: "useChaos"; power: TriviaChaosPower; targetPlayerId?: string }
+  | { type: "cheer"; delta: 1 | -1 }
+  | { type: "phoneFriendVote"; choiceIndex: number }
+  | { type: "challengeVote"; tooEasy: boolean }
+  | { type: "playAgain" };
+
+export type TriviaServerMessage =
+  | {
+      type: "welcome";
+      playerId: string;
+      state: TriviaRoomState;
+      role?: "player" | "spectator";
+    }
+  | { type: "state"; state: TriviaRoomState }
+  | { type: "error"; message: string };

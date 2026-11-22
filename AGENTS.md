@@ -4,7 +4,7 @@ Short orientation for AI coding agents. Humans should start with [`readme.md`](.
 
 ## What this is
 
-Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters), Scattergories (category forms + TV review), M&Ms Smash (two-player orb duel), Spot the Difference (procedural SVG pairs), Spot It (order-7 symbol race), and Chaos Wheel (puzzle show + spin), all with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
+Vite + React + TypeScript family-games SPA on Cloudflare Workers at `kernelchaos.wildideazone.com`. Games: multiplayer Boggle (drag letters), Scattergories (category forms + TV review), M&Ms Smash (two-player orb duel), Spot the Difference (procedural SVG pairs), Spot It (order-7 symbol race), Chaos Wheel (puzzle show + spin), and Trivia (board + buzzers + A–H + Chaos Dash), all with Durable Object rooms, QR / 4-character join, and phone+TV layouts.
 
 ## Read before changing architecture
 
@@ -24,13 +24,14 @@ URL routes and in-room phases (lobby, playing, review, …) are catalogued in [`
 | --- | --- |
 | `src/` | React SPA (home, Boggle + Scattergories entry/room/TV, audio) |
 | `worker/index.ts` | Worker fetch; room create; WS proxy |
-| `worker/room.ts` | Polymorphic `GameRoom` Durable Object (`boggle` \| `scattergories` \| `mmmms` \| `spotdiff` \| `spot-it` \| `wheel`) |
+| `worker/room.ts` | Polymorphic `GameRoom` Durable Object (`boggle` \| `scattergories` \| `mmmms` \| `spotdiff` \| `spot-it` \| `wheel` \| `trivia`) |
 | `worker/boggle/` | Dice, path, scoring, dictionary |
 | `worker/scattergories/` | Letter die, packs, normalize/scoring, protocol |
 | `worker/mmmms/` | Orb colors, deal/resolve attack, protocol |
 | `worker/spotdiff/` | Procedural scenes, generate, hit-test, protocol |
 | `worker/spot-it/` | Order-7 deck, packs (image + kana), layout, deal, protocol; Learning mode quiz in `room.ts` |
 | `worker/wheel/` | Chaos Wheel wedges, puzzles, scoring, protocol |
+| `worker/trivia/` | Trivia boards, family pack, Chaos Dash, scoring, protocol |
 | `assets/spot-it/` | Symbol masters (+ gitignored Magnific sheets); game PNGs stay in `public/spot-it/` |
 | `docs/screens.md` | Screen / route / phase reference for chat |
 | `docs/adr/` | Architecture Decision Records |

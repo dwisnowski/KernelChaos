@@ -16,6 +16,9 @@ import { SpotdiffSpectator } from "./pages/SpotdiffSpectator.tsx";
 import { SpotItEntry } from "./pages/SpotItEntry.tsx";
 import { SpotItRoom } from "./pages/SpotItRoom.tsx";
 import { SpotItSpectator } from "./pages/SpotItSpectator.tsx";
+import { TriviaEntry } from "./pages/TriviaEntry.tsx";
+import { TriviaRoom } from "./pages/TriviaRoom.tsx";
+import { TriviaSpectator } from "./pages/TriviaSpectator.tsx";
 import { WheelEntry } from "./pages/WheelEntry.tsx";
 import { WheelRoom } from "./pages/WheelRoom.tsx";
 import { WheelSpectator } from "./pages/WheelSpectator.tsx";
@@ -49,6 +52,10 @@ export function App() {
       <Route path="/wheel/join" element={<WheelEntry />} />
       <Route path="/wheel/room/:code" element={<WheelRoom />} />
       <Route path="/wheel/room/:code/tv" element={<WheelSpectator />} />
+      <Route path="/trivia" element={<TriviaEntry />} />
+      <Route path="/trivia/join" element={<TriviaEntry />} />
+      <Route path="/trivia/room/:code" element={<TriviaRoom />} />
+      <Route path="/trivia/room/:code/tv" element={<TriviaSpectator />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

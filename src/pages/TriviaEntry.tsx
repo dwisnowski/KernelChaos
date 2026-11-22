@@ -1,0 +1,146 @@
+import { useState, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ActiveRooms } from "../components/ActiveRooms.tsx";
+import { Layout } from "../components/Layout.tsx";
+import { unlockAudio } from "../audio/sfx.ts";
+
+export function TriviaEntry() {
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const [name, setName] = useState(() => localStorage.getItem("kernelchaos.name") ?? "");
+  const [code, setCode] = useState(() => (params.get("code") ?? "").toUpperCase());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function postNewRoom(): Promise<string | null> {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ game: "trivia" }),
+      });
+      const data = (await res.json()) as { code?: string; error?: string };
+      if (!res.ok || !data.code) {
+        setError(data.error ?? "Could not create room");
+        setBusy(false);
+        return null;
+      }
+      return data.code;
+    } catch {
+      setError("Network error");
+      setBusy(false);
+      return null;
+    }
+  }
+
+  async function createRoom(e: FormEvent) {
+    e.preventDefault();
+    unlockAudio();
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError("Enter your name");
+      return;
+    }
+    localStorage.setItem("kernelchaos.name", trimmed);
+    const roomCode = await postNewRoom();
+    if (!roomCode) return;
+    navigate(`/trivia/room/${roomCode}`, { state: { name: trimmed, host: true } });
+  }
+
+  async function createRoomForTv() {
+    unlockAudio();
+    const roomCode = await postNewRoom();
+    if (!roomCode) return;
+    navigate(`/trivia/room/${roomCode}/tv`);
+  }
+
+  function joinWithCode(room: string) {
+    unlockAudio();
+    const trimmed = name.trim();
+    const normalized = room.trim().toUpperCase();
+    if (!trimmed) {
+      setError("Enter your name");
+      return;
+    }
+    if (!/^[A-Z1-9]{4}$/.test(normalized)) {
+      setError("Room code is 4 characters (A–Z, 1–9)");
+      return;
+    }
+    localStorage.setItem("kernelchaos.name", trimmed);
+    navigate(`/trivia/room/${normalized}`, { state: { name: trimmed } });
+  }
+
+  function joinRoom(e: FormEvent) {
+    e.preventDefault();
+    joinWithCode(code);
+  }
+
+  function spectateRoom() {
+    unlockAudio();
+    const room = code.trim().toUpperCase();
+    if (!/^[A-Z1-9]{4}$/.test(room)) {
+      setError("Room code is 4 characters (A–Z, 1–9)");
+      return;
+    }
+    setError(null);
+    navigate(`/trivia/room/${room}/tv`);
+  }
+
+  return (
+    <Layout title="KernelChaos · Trivia">
+      <section className="entry">
+        <Link className="back-link" to="/">
+          ← All games
+        </Link>
+        <h1>Trivia</h1>
+        <p className="lede">
+          Category boards on the TV, buzzers on phones, A–H answers, Daily Doubles, and Final —
+          with optional Chaos Dash powers.
+        </p>
+
+        <form className="entry-card" onSubmit={createRoom}>
+          <label>
+            Your name
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={24}
+              autoComplete="nickname"
+              placeholder="Alex"
+            />
+          </label>
+          <button className="btn primary" type="submit" disabled={busy}>
+            Create room
+          </button>
+          <button className="btn" type="button" disabled={busy} onClick={createRoomForTv}>
+            Create for TV
+          </button>
+        </form>
+
+        <form className="entry-card" onSubmit={joinRoom}>
+          <label>
+            Room code
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              maxLength={4}
+              placeholder="AB12"
+              autoCapitalize="characters"
+            />
+          </label>
+          <button className="btn primary" type="submit">
+            Join
+          </button>
+          <button className="btn" type="button" onClick={spectateRoom}>
+            Spectate on TV
+          </button>
+        </form>
+
+        {error ? <p className="error">{error}</p> : null}
+        <ActiveRooms game="trivia" onSelect={joinWithCode} />
+      </section>
+    </Layout>
+  );
+}
