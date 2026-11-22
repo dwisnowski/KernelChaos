@@ -16,7 +16,49 @@ export type TriviaRound = "single" | "double";
 
 export type TriviaClueStage = "highlight" | "reveal";
 
-export type TriviaPackId = "family";
+export type TriviaAudience = "kids" | "family" | "adult" | "spicy";
+
+export type TriviaPackId =
+  | "kids-thanksgiving"
+  | "kids-christmas"
+  | "kids-animals"
+  | "kids-bluey"
+  | "kids-dinosaurs"
+  | "kids-superheroes"
+  | "kids-space"
+  | "kids-fairy-tales"
+  | "kids-school"
+  | "kids-under-the-sea"
+  | "family-classics"
+  | "family-movies"
+  | "family-holidays"
+  | "family-animals-plus"
+  | "family-80s-90s"
+  | "family-food"
+  | "family-sports"
+  | "family-world"
+  | "family-songs"
+  | "family-science"
+  | "adult-movies"
+  | "adult-music"
+  | "adult-sports"
+  | "adult-history"
+  | "adult-food-drink"
+  | "adult-tech"
+  | "adult-2000s"
+  | "adult-brands"
+  | "adult-books"
+  | "adult-cities"
+  | "spicy-dating"
+  | "spicy-crude"
+  | "spicy-after-dark-tv"
+  | "spicy-bars"
+  | "spicy-tabloid"
+  | "spicy-college"
+  | "spicy-reality"
+  | "spicy-dirty-mind"
+  | "spicy-scandal"
+  | "spicy-late-night";
 
 export type TriviaChaosMode = "off" | "light" | "mayhem";
 
@@ -38,9 +80,103 @@ export type TriviaChaosPower =
   | "hintTax"
   | "phoneFriend";
 
-export const TRIVIA_PACK_IDS: TriviaPackId[] = ["family"];
-export const DEFAULT_TRIVIA_PACK: TriviaPackId = "family";
+export const TRIVIA_AUDIENCES: TriviaAudience[] = ["kids", "family", "adult", "spicy"];
+
+export const TRIVIA_AUDIENCE_LABELS: Record<TriviaAudience, string> = {
+  kids: "Kids",
+  family: "Family",
+  adult: "Adult",
+  spicy: "Spicy",
+};
+
+export const TRIVIA_PACK_IDS: TriviaPackId[] = [
+  "kids-thanksgiving",
+  "kids-christmas",
+  "kids-animals",
+  "kids-bluey",
+  "kids-dinosaurs",
+  "kids-superheroes",
+  "kids-space",
+  "kids-fairy-tales",
+  "kids-school",
+  "kids-under-the-sea",
+  "family-classics",
+  "family-movies",
+  "family-holidays",
+  "family-animals-plus",
+  "family-80s-90s",
+  "family-food",
+  "family-sports",
+  "family-world",
+  "family-songs",
+  "family-science",
+  "adult-movies",
+  "adult-music",
+  "adult-sports",
+  "adult-history",
+  "adult-food-drink",
+  "adult-tech",
+  "adult-2000s",
+  "adult-brands",
+  "adult-books",
+  "adult-cities",
+  "spicy-dating",
+  "spicy-crude",
+  "spicy-after-dark-tv",
+  "spicy-bars",
+  "spicy-tabloid",
+  "spicy-college",
+  "spicy-reality",
+  "spicy-dirty-mind",
+  "spicy-scandal",
+  "spicy-late-night",
+];
+
+export const DEFAULT_TRIVIA_PACK: TriviaPackId = "family-classics";
 export const DEFAULT_TRIVIA_CHAOS_MODE: TriviaChaosMode = "light";
+
+export const TRIVIA_PACK_AUDIENCE: Record<TriviaPackId, TriviaAudience> = {
+  "kids-thanksgiving": "kids",
+  "kids-christmas": "kids",
+  "kids-animals": "kids",
+  "kids-bluey": "kids",
+  "kids-dinosaurs": "kids",
+  "kids-superheroes": "kids",
+  "kids-space": "kids",
+  "kids-fairy-tales": "kids",
+  "kids-school": "kids",
+  "kids-under-the-sea": "kids",
+  "family-classics": "family",
+  "family-movies": "family",
+  "family-holidays": "family",
+  "family-animals-plus": "family",
+  "family-80s-90s": "family",
+  "family-food": "family",
+  "family-sports": "family",
+  "family-world": "family",
+  "family-songs": "family",
+  "family-science": "family",
+  "adult-movies": "adult",
+  "adult-music": "adult",
+  "adult-sports": "adult",
+  "adult-history": "adult",
+  "adult-food-drink": "adult",
+  "adult-tech": "adult",
+  "adult-2000s": "adult",
+  "adult-brands": "adult",
+  "adult-books": "adult",
+  "adult-cities": "adult",
+  "spicy-dating": "spicy",
+  "spicy-crude": "spicy",
+  "spicy-after-dark-tv": "spicy",
+  "spicy-bars": "spicy",
+  "spicy-tabloid": "spicy",
+  "spicy-college": "spicy",
+  "spicy-reality": "spicy",
+  "spicy-dirty-mind": "spicy",
+  "spicy-scandal": "spicy",
+  "spicy-late-night": "spicy",
+};
 
 export const TRIVIA_SINGLE_VALUES = [200, 400, 600, 800, 1000] as const;
 export const TRIVIA_DOUBLE_VALUES = [400, 800, 1200, 1600, 2000] as const;
@@ -101,7 +237,26 @@ export function powersForMode(mode: TriviaChaosMode): TriviaChaosPower[] {
 }
 
 export function isTriviaPackId(v: unknown): v is TriviaPackId {
-  return v === "family";
+  return typeof v === "string" && (TRIVIA_PACK_IDS as string[]).includes(v);
+}
+
+export function isTriviaAudience(v: unknown): v is TriviaAudience {
+  return v === "kids" || v === "family" || v === "adult" || v === "spicy";
+}
+
+/** Legacy rooms stored `family`; map to classics. */
+export function normalizeTriviaPackId(v: unknown): TriviaPackId {
+  if (v === "family") return "family-classics";
+  if (isTriviaPackId(v)) return v;
+  return DEFAULT_TRIVIA_PACK;
+}
+
+export function packsForAudience(audience: TriviaAudience): TriviaPackId[] {
+  return TRIVIA_PACK_IDS.filter((id) => TRIVIA_PACK_AUDIENCE[id] === audience);
+}
+
+export function audienceForPack(packId: TriviaPackId): TriviaAudience {
+  return TRIVIA_PACK_AUDIENCE[packId];
 }
 
 export function isTriviaChaosMode(v: unknown): v is TriviaChaosMode {
@@ -142,6 +297,7 @@ export interface TriviaFinalDef {
 
 export interface TriviaPack {
   id: TriviaPackId;
+  audience: TriviaAudience;
   title: string;
   tagline: string;
   single: TriviaCategoryDef[];

@@ -2,16 +2,16 @@ import { QRCodeSVG } from "qrcode.react";
 import { OpenTvButton } from "./OpenTvButton.tsx";
 import {
   DEFAULT_TRIVIA_CHAOS_MODE,
-  TRIVIA_PACK_IDS,
+  TRIVIA_AUDIENCE_LABELS,
+  TRIVIA_AUDIENCES,
+  TRIVIA_PACK_LABELS,
+  audienceForPack,
+  packsForAudience,
   type TriviaChaosMode,
   type TriviaPackId,
   type TriviaPlayerPublic,
   type TriviaRoomState,
 } from "../triviaTypes.ts";
-
-const PACK_LABELS: Record<TriviaPackId, string> = {
-  family: "Family",
-};
 
 const CHAOS_MODE_LABELS: Record<TriviaChaosMode, string> = {
   off: "Off",
@@ -41,6 +41,8 @@ export function TriviaLobby({
   const isHost = me?.isHost ?? false;
   const canStart = state.players.length >= 2;
   const chaosMode = state.chaosMode ?? DEFAULT_TRIVIA_CHAOS_MODE;
+  const audience = audienceForPack(state.packId);
+  const packIds = packsForAudience(audience);
 
   return (
     <section className="lobby">
@@ -71,9 +73,29 @@ export function TriviaLobby({
         </div>
 
         <div className="board-size">
+          <h2>Audience</h2>
+          <div className="size-pills" role="group" aria-label="Audience">
+            {TRIVIA_AUDIENCES.map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`size-pill${audience === id ? " is-active" : ""}`}
+                disabled={!isHost}
+                onClick={() => {
+                  const first = packsForAudience(id)[0];
+                  if (first) onSetPack(first);
+                }}
+              >
+                {TRIVIA_AUDIENCE_LABELS[id]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="board-size">
           <h2>Pack</h2>
           <div className="size-pills" role="group" aria-label="Question pack">
-            {TRIVIA_PACK_IDS.map((id) => (
+            {packIds.map((id) => (
               <button
                 key={id}
                 type="button"
@@ -81,7 +103,7 @@ export function TriviaLobby({
                 disabled={!isHost}
                 onClick={() => onSetPack(id)}
               >
-                {PACK_LABELS[id]}
+                {TRIVIA_PACK_LABELS[id]}
               </button>
             ))}
           </div>

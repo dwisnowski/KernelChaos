@@ -31,6 +31,7 @@ import {
   isTriviaChaosMode,
   isTriviaChaosPower,
   isTriviaPackId,
+  normalizeTriviaPackId,
   powersForMode,
   type TriviaChaosMode,
   type TriviaClueStage,
@@ -1082,7 +1083,7 @@ export class TriviaController {
 
   loadPersisted(data: TriviaPersisted | null | undefined): void {
     if (!data) return;
-    this.packId = isTriviaPackId(data.packId) ? data.packId : DEFAULT_TRIVIA_PACK;
+    this.packId = normalizeTriviaPackId(data.packId);
     this.chaosMode = isTriviaChaosMode(data.chaosMode) ? data.chaosMode : DEFAULT_TRIVIA_CHAOS_MODE;
     this.phase = data.phase ?? "lobby";
     this.round = data.round ?? null;

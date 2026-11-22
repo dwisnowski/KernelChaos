@@ -13,7 +13,7 @@ Jeopardy! branding and official clues are copyrighted. KernelChaos already avoid
 ## Decision
 
 - **Shell:** Game type `trivia` (display **Trivia**) — `/trivia` entry, `/trivia/room/:code`, `/trivia/room/:code/tv`; QR / 4-char codes; Web Audio; no accounts; server-authoritative board, buzz, scores.
-- **Lobby:** Pack picker (`family` first); start requires ≥2 seats. Chaos mode pills arrive in [ADR 0044](./0044-trivia-chaos.md).
+- **Lobby:** Pack picker (originally `family`; audience + themed packs in [ADR 0046](./0046-trivia-audience-packs.md)); start requires ≥2 seats. Chaos mode pills arrive in [ADR 0044](./0044-trivia-chaos.md).
 - **Phases:** `lobby` → `board` → `clue` → (`dailyWager` |) `buzzOpen` → `answering` → `reveal` → … → `between` (Double) → … → `finalCategory` → `finalWager` → `finalAnswer` → `results`.
 - **Boards:** 6×5 Single (`200–1000`) then Double (`400–2000`). Correct player picks next; wrong subtracts value and locks that player out of the clue; buzz reopens. One hidden Daily Double per board; selector-only wager then A–H.
 - **Buzz:** First valid buzz stamps `buzzedPlayerId` and bumps `buzzLockSeq` for phone flash + SFX + TV score-rail glow.

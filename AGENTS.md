@@ -31,7 +31,7 @@ URL routes and in-room phases (lobby, playing, review, …) are catalogued in [`
 | `worker/spotdiff/` | Procedural scenes, generate, hit-test, protocol |
 | `worker/spot-it/` | Order-7 deck, packs (image + kana), layout, deal, protocol; Learning mode quiz in `room.ts` |
 | `worker/wheel/` | Chaos Wheel wedges, puzzles, scoring, protocol |
-| `worker/trivia/` | Trivia boards, family pack, Chaos Dash, scoring, protocol |
+| `worker/trivia/` | Trivia boards, audience packs (kids/family/adult/spicy), Chaos Dash, scoring, protocol |
 | `assets/spot-it/` | Symbol masters (+ gitignored Magnific sheets); game PNGs stay in `public/spot-it/` |
 | `docs/screens.md` | Screen / route / phase reference for chat |
 | `docs/adr/` | Architecture Decision Records |

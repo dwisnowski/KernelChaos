@@ -57,3 +57,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0043 – Trivia](adr/0043-trivia.md) — `trivia` rooms; Single/Double/Final; buzzers + A–H; Daily Double show beat; family pack
 - [0044 – Trivia Chaos](adr/0044-trivia-chaos.md) — Chaos Dash earn loop; Light/Mayhem powers; lobby `off|light|mayhem`
 - [0045 – Colors header popover](adr/0045-colors-header-popover.md) — Layout Colors opens device-local popover; `/settings` stays full page + Admin
+- [0046 – Trivia audience packs](adr/0046-trivia-audience-packs.md) — Kids/Family/Adult/Spicy collections; 10 themed packs each; Bluey fan trivia; legacy `family` → `family-classics`
