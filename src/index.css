@@ -5084,7 +5084,6 @@ input {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0.75rem 1rem;
   }
-}
 
   .letter-pad-consonant {
     grid-template-columns: repeat(7, minmax(0, 1fr));
