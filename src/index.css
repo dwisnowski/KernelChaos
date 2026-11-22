@@ -878,7 +878,7 @@ input {
   .app-shell:has(.spot-it-play) .wiz-footer,
   .app-shell:has(.spot-play) .wiz-footer,
   .app-shell:has(.mmmms-play) .wiz-footer,
-  .app-shell:has(.wheel-play),
+  .app-shell:has(.wheel-play) .wiz-footer,
   .app-shell:has(.trivia-play) .wiz-footer {
     display: none;
   }
@@ -887,7 +887,7 @@ input {
   .app-shell:has(.spot-it-play) .app-header,
   .app-shell:has(.spot-play) .app-header,
   .app-shell:has(.mmmms-play) .app-header,
-  .app-shell:has(.wheel-play),
+  .app-shell:has(.wheel-play) .app-header,
   .app-shell:has(.trivia-play) .app-header {
     gap: 0.35rem;
   }
@@ -896,7 +896,7 @@ input {
   .app-shell:has(.spot-it-play) .brand-title,
   .app-shell:has(.spot-play) .brand-title,
   .app-shell:has(.mmmms-play) .brand-title,
-  .app-shell:has(.wheel-play),
+  .app-shell:has(.wheel-play) .brand-title,
   .app-shell:has(.trivia-play) .brand-title {
     font-size: 0.95rem;
   }
@@ -913,11 +913,11 @@ input {
   .app-shell:has(.mmmms-play) .header-actions .header-tv-link,
   .app-shell:has(.mmmms-play) .header-actions .mute-btn,
   .app-shell:has(.mmmms-play) .header-actions .settings-link,
-  .app-shell:has(.wheel-play),
+  .app-shell:has(.wheel-play) .header-actions .header-tv-link,
   .app-shell:has(.trivia-play) .header-actions .header-tv-link,
-  .app-shell:has(.wheel-play),
+  .app-shell:has(.wheel-play) .header-actions .mute-btn,
   .app-shell:has(.trivia-play) .header-actions .mute-btn,
-  .app-shell:has(.wheel-play),
+  .app-shell:has(.wheel-play) .header-actions .settings-link,
   .app-shell:has(.trivia-play) .header-actions .settings-link {
     min-height: 2rem;
     padding: 0.3rem 0.55rem;
@@ -4651,6 +4651,12 @@ input {
   animation: wheel-tile-pop 0.35s ease-out;
 }
 
+.puzzle-board-large .puzzle-category {
+  font-size: clamp(1.15rem, 2.4vw, 1.65rem);
+  letter-spacing: 0.14em;
+  margin-bottom: 0.85rem;
+}
+
 .puzzle-board-large .puzzle-tile {
   width: 2.4rem;
   height: 3rem;
@@ -4735,12 +4741,31 @@ input {
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-size: 0.95rem;
   letter-spacing: 0.03em;
-  color: #92400e;
+  color: var(--danger);
 }
 
 .wheel-jackpot strong {
   font-variant-numeric: tabular-nums;
-  color: #b45309;
+  color: var(--danger);
+}
+
+.wheel-jackpot-tv {
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.wheel-jackpot-tv strong {
+  font-size: 1.15em;
+}
+
+.wheel-tv-wheel-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .wheel-score-rail {
@@ -4825,6 +4850,68 @@ input {
   padding-bottom: 1.5rem;
 }
 
+.wheel-tv-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0.25rem;
+}
+
+.wheel-tv-title-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem 1.25rem;
+  min-width: 0;
+}
+
+.wheel-tv-title-main h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.wheel-tv-rounds {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 1.8vw, 1.25rem);
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.wheel-tv-code {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.8vw, 2rem);
+  letter-spacing: 0.12em;
+}
+
+.wheel-tv-join {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.wheel-tv-qr {
+  margin: 0;
+}
+
+.wheel-tv-qr svg {
+  width: 5.5rem;
+  height: 5.5rem;
+  display: block;
+}
+
+.wheel-tv-join-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
 .wheel-play-header {
   display: flex;
   flex-direction: column;
@@ -4836,6 +4923,7 @@ input {
   margin: 0;
   font-weight: 700;
   letter-spacing: 0.04em;
+  text-align: center;
 }
 
 .wheel-stage {
@@ -4855,6 +4943,37 @@ input {
 .wheel-outcome {
   color: var(--accent, #1a6bff);
   font-size: 1rem;
+}
+
+.wheel-outcome-block {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+  text-align: center;
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
+.wheel-outcome-block .wheel-outcome {
+  margin-bottom: 0;
+}
+
+.wheel-outcome-who {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.wheel-outcome-blurb {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+  font-weight: 500;
+  line-height: 1.35;
+  max-width: 36ch;
 }
 
 .wheel-controls {
@@ -4935,10 +5054,20 @@ input {
 }
 
 .wheel-tv-side {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.wheel-tv-meta,
+.wheel-tv-players {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  align-items: stretch;
+  gap: 0.45rem;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
 }
 
 .tv-lobby.wheel-tv {
@@ -4950,6 +5079,12 @@ input {
   .wheel-tv-stage {
     grid-template-columns: 1fr;
   }
+
+  .wheel-tv-side {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.75rem 1rem;
+  }
+}
 
   .letter-pad-consonant {
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -5018,6 +5153,31 @@ input {
 
 .trivia-score-seat.is-controller {
   border-color: var(--accent);
+  /* Minimal outward glow */
+  box-shadow: 0 0 5px 0 color-mix(in oklab, var(--accent) 35%, transparent);
+  /* Inward glow ~25% from each edge */
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--accent) 48%, transparent),
+      transparent 25%
+    ),
+    linear-gradient(
+      to top,
+      color-mix(in oklab, var(--accent) 48%, transparent),
+      transparent 25%
+    ),
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--accent) 48%, transparent),
+      transparent 25%
+    ),
+    linear-gradient(
+      to left,
+      color-mix(in oklab, var(--accent) 48%, transparent),
+      transparent 25%
+    ),
+    var(--card);
 }
 
 .trivia-score-seat.is-buzzed {
@@ -5077,6 +5237,7 @@ input {
 .trivia-board-cat {
   font-family: var(--font-display);
   font-size: clamp(0.55rem, 2.2vw, 0.85rem);
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   text-align: center;
@@ -5084,11 +5245,12 @@ input {
   min-height: 2.4rem;
   display: grid;
   place-items: center;
-  color: var(--accent);
-  background: color-mix(in oklab, var(--bg2) 72%, var(--glow0) 28%);
-  border-radius: 0.35rem;
-  border: 1px solid color-mix(in oklab, var(--stroke) 70%, var(--glow1) 30%);
+  color: var(--ink);
+  background: color-mix(in oklab, var(--glow1) 58%, var(--bg0) 42%);
+  border-radius: 0.2rem;
+  border: 1px solid color-mix(in oklab, var(--glow1) 75%, transparent);
   padding: 0.2rem 0.15rem;
+  box-shadow: none;
 }
 
 .trivia-cell {
@@ -5409,13 +5571,111 @@ input {
   gap: 1rem;
 }
 
+.trivia-tv-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0.25rem;
+}
+
+.trivia-tv-title-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem 1.25rem;
+  min-width: 0;
+}
+
+.trivia-tv-title-main h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.trivia-tv-pack {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 1.8vw, 1.25rem);
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.trivia-tv-code {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.8vw, 2rem);
+  letter-spacing: 0.12em;
+}
+
+.trivia-tv-join {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.trivia-tv-qr {
+  margin: 0;
+}
+
+.trivia-tv-qr svg {
+  width: 5.5rem;
+  height: 5.5rem;
+  display: block;
+}
+
+.trivia-tv-join-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.trivia-status-phone {
+  margin: 0.65rem 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 4.5vw, 1.65rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--danger);
+}
+
+.trivia-status-tv {
+  margin: 0.75rem 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--danger);
+}
+
 .trivia-score-rail-tv {
   justify-content: center;
 }
 
 .trivia-score-rail-tv .trivia-score-seat {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 7.5rem;
+  height: 7.5rem;
+  aspect-ratio: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.35rem;
   font-size: 1.15rem;
-  padding: 0.55rem 0.9rem;
+  padding: 0.55rem 0.65rem;
+  overflow: hidden;
+}
+
+.trivia-score-rail-tv .trivia-score-name,
+.trivia-score-rail-tv .trivia-score-pts {
+  display: block;
 }
 
 .trivia-banner {

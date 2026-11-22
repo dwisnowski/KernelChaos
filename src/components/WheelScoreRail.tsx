@@ -5,12 +5,20 @@ interface Props {
   currentPlayerId: string | null;
   myId?: string | null;
   jackpot?: number;
+  /** When false, omit the jackpot line (TV shows it above the wheel). */
+  showJackpot?: boolean;
 }
 
-export function WheelScoreRail({ players, currentPlayerId, myId, jackpot }: Props) {
+export function WheelScoreRail({
+  players,
+  currentPlayerId,
+  myId,
+  jackpot,
+  showJackpot = true,
+}: Props) {
   return (
     <div className="wheel-score-wrap">
-      {typeof jackpot === "number" ? (
+      {showJackpot && typeof jackpot === "number" ? (
         <p className="wheel-jackpot" aria-label={`Jackpot ${jackpot}`}>
           Jackpot <strong>{jackpot}</strong>
         </p>

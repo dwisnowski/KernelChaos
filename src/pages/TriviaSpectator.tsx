@@ -18,6 +18,7 @@ import { TriviaDailyDouble } from "../components/TriviaDailyDouble.tsx";
 import { TriviaScoreRail } from "../components/TriviaScoreRail.tsx";
 import { useTriviaRoom } from "../hooks/useTriviaRoom.ts";
 import { cancelTriviaSpeech, speakTriviaClue } from "../lib/triviaTts.ts";
+import { TRIVIA_PACK_LABELS } from "../triviaTypes.ts";
 
 export function TriviaSpectator() {
   const { code = "" } = useParams();
@@ -145,7 +146,9 @@ export function TriviaSpectator() {
                 <p className="room-code" aria-label={`Room code ${state.code}`}>
                   {state.code}
                 </p>
-                <p className="spectator-tag">TV spectator · Trivia</p>
+                <p className="spectator-tag">
+                  TV spectator · Trivia · {TRIVIA_PACK_LABELS[state.packId]} pack
+                </p>
                 <div className="qr-wrap">
                   <QRCodeSVG
                     value={joinUrl}
@@ -170,7 +173,30 @@ export function TriviaSpectator() {
             </div>
           ) : (
             <div className="trivia-tv-play">
-              <TriviaScoreRail state={state} variant="tv" />
+              <header className="trivia-tv-title">
+                <div className="trivia-tv-title-main">
+                  <h1>Trivia</h1>
+                  <p className="trivia-tv-pack">
+                    {TRIVIA_PACK_LABELS[state.packId]} pack
+                  </p>
+                  <p className="room-code trivia-tv-code" aria-label={`Room code ${state.code}`}>
+                    {state.code}
+                  </p>
+                </div>
+                <div className="trivia-tv-join">
+                  <div className="qr-wrap trivia-tv-qr">
+                    <QRCodeSVG
+                      value={joinUrl}
+                      size={96}
+                      level="M"
+                      includeMargin
+                      bgColor="#f2f5fa"
+                      fgColor="#0e1f35"
+                    />
+                  </div>
+                  <p className="muted trivia-tv-join-hint">Scan to join</p>
+                </div>
+              </header>
 
               {(state.phase === "board" ||
                 (state.phase === "clue" &&
@@ -184,12 +210,6 @@ export function TriviaSpectator() {
                       : undefined
                   }
                 >
-                  {state.phase === "board" ? (
-                    <p className="trivia-status">
-                      {(state.players.find((p) => p.id === state.controllerId)?.name ??
-                        "Player") + "'s pick"}
-                    </p>
-                  ) : null}
                   <TriviaBoard
                     board={state.board}
                     variant="tv"
@@ -205,8 +225,16 @@ export function TriviaSpectator() {
                     }
                     pickedFlash={cellFlash}
                   />
+                  {state.phase === "board" ? (
+                    <p className="trivia-status trivia-status-tv">
+                      {(state.players.find((p) => p.id === state.controllerId)?.name ??
+                        "Player") + "'s pick"}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
+
+              <TriviaScoreRail state={state} variant="tv" />
 
               {state.phase === "clue" &&
               state.clueStage === "reveal" &&

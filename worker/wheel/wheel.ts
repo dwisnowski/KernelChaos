@@ -1,7 +1,7 @@
 import type { WheelLastSpin, WheelWedge } from "./protocol.ts";
 import { WHEEL_SPIN_MS } from "./protocol.ts";
 
-/** ~30 slices: cash mix + full special set (one LOSE TURN, two FREE SPIN). */
+/** ~34 slices: cash mix + specials (one BANKRUPT, two FREE SPIN, two 1000). */
 export const WHEEL_WEDGES: WheelWedge[] = [
   { kind: "cash", value: 500, label: "500" },
   { kind: "cash", value: 600, label: "600" },
@@ -30,7 +30,7 @@ export const WHEEL_WEDGES: WheelWedge[] = [
   { kind: "cash", value: 600, label: "600" },
   { kind: "passWheel", label: "PASS" },
   { kind: "chaosTax", label: "CHAOS TAX" },
-  { kind: "bankruptLite", label: "½ BANKRUPT" },
+  { kind: "cash", value: 1000, label: "1000" },
   { kind: "mirror", label: "MIRROR" },
   { kind: "speed", label: "SPEED" },
   { kind: "insurance", label: "INSURE" },

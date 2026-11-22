@@ -64,11 +64,19 @@ function drawWheel(
     ctx.save();
     ctx.rotate(start + slice / 2);
     ctx.fillStyle = wedge.kind === "bankrupt" ? "#fbbf24" : "#fff";
-    ctx.font = `700 ${Math.max(10, size * 0.035)}px "Space Grotesk", system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    const label = wedge.label.length > 8 ? `${wedge.label.slice(0, 7)}…` : wedge.label;
-    ctx.fillText(label, r * 0.62, 0);
+    const labelX = r * 0.62;
+    const words = wedge.label.trim().split(/\s+/).filter(Boolean);
+    const lines = words.length > 1 ? words : [wedge.label];
+    const longest = lines.reduce((n, s) => Math.max(n, s.length), 1);
+    const fontPx = Math.max(8, size * (longest > 7 ? 0.026 : 0.035));
+    ctx.font = `700 ${fontPx}px "Space Grotesk", system-ui, sans-serif`;
+    const lineGap = fontPx * 1.05;
+    const y0 = lines.length === 1 ? 0 : -((lines.length - 1) * lineGap) / 2;
+    for (let li = 0; li < lines.length; li++) {
+      ctx.fillText(lines[li]!, labelX, y0 + li * lineGap);
+    }
     ctx.restore();
   }
 

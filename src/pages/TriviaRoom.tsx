@@ -229,14 +229,6 @@ export function TriviaRoom() {
                 state.clueStage === "reveal" ? "trivia-board-wrap is-dimmed" : undefined
               }
             >
-              {state.phase === "board" ? (
-                <p className="trivia-status">
-                  {state.round === "double" ? "Double · " : ""}
-                  {me?.id === state.controllerId
-                    ? "Your pick"
-                    : `Waiting on ${controllerName}…`}
-                </p>
-              ) : null}
               <TriviaBoard
                 board={state.board}
                 interactive={
@@ -256,6 +248,14 @@ export function TriviaRoom() {
                 }
                 pickedFlash={cellFlash}
               />
+              {state.phase === "board" ? (
+                <p className="trivia-status trivia-status-phone">
+                  {state.round === "double" ? "Double · " : ""}
+                  {me?.id === state.controllerId
+                    ? "Your pick"
+                    : `Waiting on ${controllerName}…`}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

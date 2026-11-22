@@ -484,6 +484,7 @@ export class GameRoom extends DurableObject<Env> {
   private wheelSpeedEndsAt: number | null = null;
   private wheelVowelFree = false;
   private wheelLastOutcome: WheelLastOutcome = null;
+  private wheelLastOutcomePlayerName: string | null = null;
 
   // Trivia
   private trivia = new TriviaController();
@@ -585,6 +586,7 @@ export class GameRoom extends DurableObject<Env> {
       wheelSpeedEndsAt?: number | null;
       wheelVowelFree?: boolean;
       wheelLastOutcome?: WheelLastOutcome;
+      wheelLastOutcomePlayerName?: string | null;
       trivia?: TriviaPersisted;
     }>("room");
     if (stored) {
@@ -722,6 +724,7 @@ export class GameRoom extends DurableObject<Env> {
         typeof stored.wheelSpeedEndsAt === "number" ? stored.wheelSpeedEndsAt : null;
       this.wheelVowelFree = Boolean(stored.wheelVowelFree);
       this.wheelLastOutcome = stored.wheelLastOutcome ?? null;
+      this.wheelLastOutcomePlayerName = stored.wheelLastOutcomePlayerName ?? null;
       this.trivia.loadPersisted(stored.trivia);
       this.players = new Map(
         stored.players.map((p) => [
@@ -846,6 +849,7 @@ export class GameRoom extends DurableObject<Env> {
       wheelSpeedEndsAt: this.wheelSpeedEndsAt,
       wheelVowelFree: this.wheelVowelFree,
       wheelLastOutcome: this.wheelLastOutcome,
+      wheelLastOutcomePlayerName: this.wheelLastOutcomePlayerName,
       trivia: this.trivia.toPersisted(),
       players: [...this.players.values()].map((p) => ({
         id: p.id,
@@ -1069,6 +1073,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelSpeedEndsAt = null;
     this.wheelVowelFree = false;
     this.wheelLastOutcome = null;
+    this.wheelLastOutcomePlayerName = null;
   }
 
   /** Clear per-game Spot It state (keeps mode / target / pack). */
@@ -1512,6 +1517,7 @@ export class GameRoom extends DurableObject<Env> {
       const player = this.wheelCurrentPlayerId
         ? this.players.get(this.wheelCurrentPlayerId)
         : undefined;
+      this.wheelLastOutcomePlayerName = player?.name ?? null;
       this.consumeFreeSpinOrAdvance(player);
       await this.persist();
       this.broadcastState();
@@ -3810,6 +3816,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelSpeedEndsAt = null;
     this.wheelVowelFree = false;
     this.wheelLastOutcome = null;
+    this.wheelLastOutcomePlayerName = null;
     for (const p of this.players.values()) {
       p.wheelRoundBank = 0;
     }
@@ -3851,16 +3858,15 @@ export class GameRoom extends DurableObject<Env> {
     this.advanceWheelSeat();
   }
 
-  private applyBankrupt(player: PlayerRecord): void {
-    const before = player.wheelRoundBank;
+  /** Returns true when insurance absorbed the bankrupt (bank unchanged). */
+  private applyBankrupt(player: PlayerRecord): boolean {
     if (player.wheelInsurance) {
       player.wheelInsurance = false;
-      player.wheelRoundBank = Math.floor(before / 2);
-      this.wheelJackpot += before - player.wheelRoundBank;
-      return;
+      return true;
     }
-    this.wheelJackpot += before;
+    this.wheelJackpot += player.wheelRoundBank;
     player.wheelRoundBank = 0;
+    return false;
   }
 
   private richestRival(exceptId: string): PlayerRecord | null {
@@ -3953,12 +3959,15 @@ export class GameRoom extends DurableObject<Env> {
 
     this.wheelJackpot += WHEEL_JACKPOT_TICK;
     this.wheelLastOutcome = wedge.kind;
+    this.wheelLastOutcomePlayerName = player?.name ?? null;
     this.wheelVowelFree = false;
     this.wheelSpeedEndsAt = null;
 
     switch (wedge.kind) {
       case "bankrupt": {
-        if (player) this.applyBankrupt(player);
+        if (player && this.applyBankrupt(player)) {
+          this.wheelLastOutcome = "insurance";
+        }
         this.advanceWheelSeat();
         break;
       }
@@ -4319,6 +4328,7 @@ export class GameRoom extends DurableObject<Env> {
       speedEndsAt: this.phase === "playing" ? this.wheelSpeedEndsAt : null,
       jackpot: this.wheelJackpot,
       lastOutcome: this.wheelLastOutcome,
+      lastOutcomePlayerName: this.wheelLastOutcomePlayerName,
       lastSolverId: this.wheelLastSolverId,
       lastSolverName: this.wheelLastSolverName,
       results,

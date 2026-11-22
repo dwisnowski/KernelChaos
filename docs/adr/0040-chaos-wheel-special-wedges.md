@@ -16,17 +16,16 @@ Rebuild the wheel to ~30 mixed cash slices plus one of each special (two Free Sp
 | --- | --- |
 | `payEach` | Pay $50×rivals from round bank or lose turn; else transfer and call consonant at $0 |
 | `double` / `flatBonus` / `half` | Bank math → `action` |
-| `jackpot` | Claim pot; pot grows +50 on every successful spin settle (before claim). Full Bankrupt (and insured half-loss) dumps the lost round bank into the pot. Wheel has one `BANKRUPT` and a cash `1000` in place of a second. |
+| `jackpot` | Claim pot; pot grows +50 on every successful spin settle (before claim). Full Bankrupt dumps the lost round bank into the pot. Wheel has one `BANKRUPT`; former `½ BANKRUPT` is a second cash `1000`. |
 | `swapBanks` / `steal` | Versus others (solo no-op) → `action` |
 | `freeLetter` / `mystery` / `wildVowel` | Reveal or free vowel path |
 | `passWheel` | Advance seat; Free Spin does not cancel |
 | `chaosTax` | Each pays min(100, bank) into jackpot → spinner `action` |
-| `bankruptLite` | Half bank then advance (Free Spin may save) |
 | `mirror` | Pending cash = last cash value (or 500) → consonant |
 | `speed` | Consonant at 500 with 8s alarm → lose turn on timeout |
-| `insurance` | Softens next full Bankrupt to half-bank |
+| `insurance` | Next full Bankrupt does not change your round bank (token consumed; turn still advances). Banner uses `insurance` outcome. |
 
-Public state exposes `jackpot`, `speedEndsAt`, `lastOutcome`; players show `insurance`. Client colors, outcome banners, and `playWheelSpecial` map settle cues; TV mirrors jackpot + banners.
+Public state exposes `jackpot`, `speedEndsAt`, `lastOutcome`; players show `insurance`. Client colors, outcome banners, and `playWheelSpecial` map settle cues; TV mirrors jackpot + banners and shows `WHEEL_OUTCOME_BLURBS` under the outcome title so the audience knows what the landed tile does.
 
 ## Consequences
 

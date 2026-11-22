@@ -95,6 +95,7 @@ export interface WheelRoomState {
   speedEndsAt: number | null;
   jackpot: number;
   lastOutcome: WheelLastOutcome;
+  lastOutcomePlayerName: string | null;
   lastSolverId: string | null;
   lastSolverName: string | null;
   results: WheelPlayerResult[];
@@ -119,27 +120,27 @@ export const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
 export const WHEEL_OUTCOME_LABELS: Record<Exclude<WheelLastOutcome, null>, string> = {
   cash: "Cash!",
-  bankrupt: "Bankrupt!",
-  loseTurn: "Lose a turn!",
-  freeSpin: "Free Spin!",
+  bankrupt: "Went bankrupt!",
+  loseTurn: "Lost a turn!",
+  freeSpin: "Earned a Free Spin!",
   payEach: "Paid each rival $50",
-  payEachFail: "Couldn't pay — lose turn!",
-  double: "Doubled!",
-  flatBonus: "+500!",
-  jackpot: "Jackpot!",
-  half: "Half bank",
-  swapBanks: "Banks swapped!",
-  steal: "Stolen!",
-  freeLetter: "Free letter!",
-  wildVowel: "Free vowel!",
-  mystery: "Mystery letter!",
-  passWheel: "Pass the wheel",
-  chaosTax: "Chaos tax!",
+  payEachFail: "Couldn't pay — lost the turn!",
+  double: "Doubled the bank!",
+  flatBonus: "Picked up +500!",
+  jackpot: "Claimed the jackpot!",
+  half: "Halved the bank!",
+  swapBanks: "Swapped banks!",
+  steal: "Stole from a rival!",
+  freeLetter: "Got a free letter!",
+  wildVowel: "Got a free vowel!",
+  mystery: "Hit a mystery letter!",
+  passWheel: "Passed the wheel!",
+  chaosTax: "Triggered chaos tax!",
   bankruptLite: "Half bankrupt!",
-  mirror: "Mirror cash!",
-  speed: "Speed call!",
-  insurance: "Insured!",
-  speedTimeout: "Too slow!",
+  mirror: "Mirrored the last cash!",
+  speed: "Hit speed call!",
+  insurance: "Got insurance!",
+  speedTimeout: "Ran out of time!",
 };
 
 export function isWheelRoundCount(n: unknown): n is WheelRoundCount {
