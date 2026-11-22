@@ -435,3 +435,55 @@ export function playWheelSolve(): void {
   tone(784, t + 0.18, 0.1, "sine", 0.09);
   tone(1046, t + 0.28, 0.22, "triangle", 0.1);
 }
+
+/** Chaos Wheel: special-wedge settle cue by outcome key. */
+export function playWheelSpecial(kind: string | null | undefined): void {
+  if (!kind) return;
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  switch (kind) {
+    case "bankrupt":
+    case "bankruptLite":
+      playWheelBankrupt();
+      return;
+    case "loseTurn":
+    case "payEachFail":
+    case "speedTimeout":
+    case "passWheel":
+      playWheelLoseTurn();
+      return;
+    case "jackpot":
+    case "double":
+      tone(523, t, 0.08, "sine", 0.08);
+      tone(784, t + 0.08, 0.1, "triangle", 0.09);
+      tone(1046, t + 0.18, 0.18, "sine", 0.1);
+      return;
+    case "steal":
+    case "chaosTax":
+      tone(220, t, 0.1, "square", 0.05);
+      tone(330, t + 0.1, 0.14, "triangle", 0.06);
+      return;
+    case "payEach":
+    case "flatBonus":
+    case "insurance":
+    case "freeSpin":
+      tone(587, t, 0.08, "triangle", 0.07);
+      tone(740, t + 0.08, 0.12, "sine", 0.08);
+      return;
+    case "freeLetter":
+    case "mystery":
+    case "wildVowel":
+      playWheelLetterCorrect();
+      return;
+    case "half":
+    case "swapBanks":
+    case "mirror":
+    case "speed":
+      tone(494, t, 0.09, "sine", 0.07);
+      tone(370, t + 0.1, 0.12, "triangle", 0.06);
+      return;
+    default:
+      return;
+  }
+}

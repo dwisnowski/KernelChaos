@@ -1,32 +1,42 @@
 import type { WheelLastSpin, WheelWedge } from "./protocol.ts";
 import { WHEEL_SPIN_MS } from "./protocol.ts";
 
-/** Classic-feeling family wheel: cash plus Bankrupt, Lose a Turn, Free Spin. */
+/** ~30 slices: cash mix + full special set (one LOSE TURN, two FREE SPIN). */
 export const WHEEL_WEDGES: WheelWedge[] = [
   { kind: "cash", value: 500, label: "500" },
   { kind: "cash", value: 600, label: "600" },
+  { kind: "payEach", label: "PAY $50" },
   { kind: "cash", value: 700, label: "700" },
   { kind: "bankrupt", label: "BANKRUPT" },
   { kind: "cash", value: 800, label: "800" },
+  { kind: "double", label: "DOUBLE" },
   { kind: "cash", value: 900, label: "900" },
-  { kind: "cash", value: 500, label: "500" },
-  { kind: "loseTurn", label: "LOSE TURN" },
-  { kind: "cash", value: 650, label: "650" },
-  { kind: "cash", value: 700, label: "700" },
-  { kind: "cash", value: 800, label: "800" },
-  { kind: "freeSpin", label: "FREE SPIN" },
+  { kind: "flatBonus", value: 500, label: "+500" },
   { kind: "cash", value: 550, label: "550" },
-  { kind: "cash", value: 2500, label: "2500" },
-  { kind: "bankrupt", label: "BANKRUPT" },
-  { kind: "cash", value: 300, label: "300" },
-  { kind: "cash", value: 400, label: "400" },
-  { kind: "cash", value: 500, label: "500" },
-  { kind: "loseTurn", label: "LOSE TURN" },
-  { kind: "cash", value: 600, label: "600" },
-  { kind: "cash", value: 700, label: "700" },
-  { kind: "cash", value: 900, label: "900" },
+  { kind: "jackpot", label: "JACKPOT" },
   { kind: "cash", value: 650, label: "650" },
+  { kind: "half", label: "HALF" },
+  { kind: "freeSpin", label: "FREE SPIN" },
+  { kind: "cash", value: 700, label: "700" },
+  { kind: "swapBanks", label: "SWAP" },
   { kind: "cash", value: 800, label: "800" },
+  { kind: "steal", label: "STEAL" },
+  { kind: "cash", value: 2500, label: "2500" },
+  { kind: "freeLetter", label: "FREE LTR" },
+  { kind: "cash", value: 400, label: "400" },
+  { kind: "wildVowel", label: "FREE VOWEL" },
+  { kind: "loseTurn", label: "LOSE TURN" },
+  { kind: "mystery", label: "MYSTERY" },
+  { kind: "cash", value: 600, label: "600" },
+  { kind: "passWheel", label: "PASS" },
+  { kind: "chaosTax", label: "CHAOS TAX" },
+  { kind: "bankruptLite", label: "½ BANKRUPT" },
+  { kind: "mirror", label: "MIRROR" },
+  { kind: "speed", label: "SPEED" },
+  { kind: "insurance", label: "INSURE" },
+  { kind: "freeSpin", label: "FREE SPIN" },
+  { kind: "cash", value: 300, label: "300" },
+  { kind: "bankrupt", label: "BANKRUPT" },
 ];
 
 const TAU = Math.PI * 2;
@@ -34,12 +44,7 @@ const TAU = Math.PI * 2;
 /** Pointer sits at the top (-π/2). Returns angle so wedge center lands under the pointer. */
 export function angleForWedge(wedgeIndex: number, wedgeCount: number, extraTurns = 4): number {
   const slice = TAU / wedgeCount;
-  // Wedge i occupies [i*slice, (i+1)*slice) in wheel-local space starting at +x.
-  // Canvas draw typically starts at -π/2 for first wedge; match that: wedge 0 centered at -π/2 + slice/2.
   const centerLocal = -Math.PI / 2 + wedgeIndex * slice + slice / 2;
-  // We rotate the wheel by `angle`; pointer is fixed at top (-π/2).
-  // After rotation, local angle `centerLocal` maps to `centerLocal + angle` (mod TAU).
-  // Want centerLocal + angle ≡ -π/2 (mod TAU) → angle ≡ -π/2 - centerLocal.
   let target = -Math.PI / 2 - centerLocal;
   target = ((target % TAU) + TAU) % TAU;
   return target + extraTurns * TAU;

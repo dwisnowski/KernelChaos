@@ -1,11 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
-  playWheelBankrupt,
   playWheelLand,
   playWheelLetterCorrect,
-  playWheelLoseTurn,
   playWheelSolve,
+  playWheelSpecial,
   playWheelSpinTick,
   playWheelVowel,
   playWinner,
@@ -16,13 +15,14 @@ import { Layout } from "../components/Layout.tsx";
 import { PuzzleBoard } from "../components/PuzzleBoard.tsx";
 import { WheelScoreRail } from "../components/WheelScoreRail.tsx";
 import { useWheelRoom } from "../hooks/useWheelRoom.ts";
+import { WHEEL_OUTCOME_LABELS } from "../wheelTypes.ts";
 
 export function WheelSpectator() {
   const { code = "" } = useParams();
   const roomCode = code.toUpperCase();
   const phaseRef = useRef<string | null>(null);
   const turnRef = useRef<string | null>(null);
-  const spinnerIdRef = useRef<string | null>(null);
+  const outcomeRef = useRef<string | null>(null);
   const tickTimer = useRef<number | null>(null);
 
   const { state, spectate, connected } = useWheelRoom({
@@ -43,7 +43,6 @@ export function WheelSpectator() {
 
     if (state.turnPhase === "spinning" && prevTurn !== "spinning") {
       unlockAudio();
-      spinnerIdRef.current = state.currentPlayerId;
       if (tickTimer.current) window.clearInterval(tickTimer.current);
       tickTimer.current = window.setInterval(() => playWheelSpinTick(), 90);
     }
@@ -53,15 +52,13 @@ export function WheelSpectator() {
         tickTimer.current = null;
       }
       playWheelLand();
-      const wedge = state.lastSpin ? state.wedges[state.lastSpin.wedgeIndex] : null;
-      if (wedge?.kind === "bankrupt") playWheelBankrupt();
-      if (
-        wedge?.kind === "loseTurn" &&
-        spinnerIdRef.current &&
-        state.currentPlayerId !== spinnerIdRef.current
-      ) {
-        playWheelLoseTurn();
+      if (state.lastOutcome) playWheelSpecial(state.lastOutcome);
+      outcomeRef.current = state.lastOutcome;
+    } else if (state.lastOutcome && state.lastOutcome !== outcomeRef.current) {
+      if (state.lastOutcome === "speedTimeout" || state.lastOutcome === "payEachFail") {
+        playWheelSpecial(state.lastOutcome);
       }
+      outcomeRef.current = state.lastOutcome;
     }
     if (state.turnPhase === "vowel" && prevTurn !== "vowel") {
       unlockAudio();
@@ -128,12 +125,21 @@ export function WheelSpectator() {
                           : " at the wheel"}
                 </p>
               ) : null}
+              {state.phase === "playing" && state.lastOutcome ? (
+                <p className="wheel-banner wheel-outcome">
+                  {WHEEL_OUTCOME_LABELS[state.lastOutcome]}
+                </p>
+              ) : null}
               {state.phase === "between" ? (
                 <p className="wheel-banner">
                   {state.lastSolverName ? `${state.lastSolverName} solved it!` : "Solved!"}
                 </p>
               ) : null}
-              <WheelScoreRail players={state.players} currentPlayerId={state.currentPlayerId} />
+              <WheelScoreRail
+                players={state.players}
+                currentPlayerId={state.currentPlayerId}
+                jackpot={state.jackpot}
+              />
             </div>
           </div>
         </section>

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  playWheelBankrupt,
   playWheelLand,
   playWheelLetterCorrect,
-  playWheelLoseTurn,
   playWheelSolve,
+  playWheelSpecial,
   playWheelSpinTick,
   playWheelVowel,
   playWinner,
@@ -18,7 +17,7 @@ import { PuzzleBoard } from "../components/PuzzleBoard.tsx";
 import { WheelLobby } from "../components/WheelLobby.tsx";
 import { WheelScoreRail } from "../components/WheelScoreRail.tsx";
 import { useWheelRoom } from "../hooks/useWheelRoom.ts";
-import { WHEEL_VOWEL_COST } from "../wheelTypes.ts";
+import { WHEEL_OUTCOME_LABELS, WHEEL_VOWEL_COST } from "../wheelTypes.ts";
 
 export function WheelRoom() {
   const { code = "" } = useParams();
@@ -28,9 +27,10 @@ export function WheelRoom() {
   const navName = (location.state as { name?: string } | null)?.name;
   const [error, setError] = useState<string | null>(null);
   const [solveText, setSolveText] = useState("");
+  const [speedLeft, setSpeedLeft] = useState<number | null>(null);
   const phaseRef = useRef<string | null>(null);
   const turnRef = useRef<string | null>(null);
-  const spinnerIdRef = useRef<string | null>(null);
+  const outcomeRef = useRef<string | null>(null);
   const tickTimer = useRef<number | null>(null);
 
   const {
@@ -66,7 +66,6 @@ export function WheelRoom() {
 
     if (state.turnPhase === "spinning" && prevTurn !== "spinning") {
       unlockAudio();
-      spinnerIdRef.current = state.currentPlayerId;
       if (tickTimer.current) window.clearInterval(tickTimer.current);
       tickTimer.current = window.setInterval(() => playWheelSpinTick(), 90);
     }
@@ -76,15 +75,13 @@ export function WheelRoom() {
         tickTimer.current = null;
       }
       playWheelLand();
-      const wedge = state.lastSpin ? state.wedges[state.lastSpin.wedgeIndex] : null;
-      if (wedge?.kind === "bankrupt") playWheelBankrupt();
-      if (
-        wedge?.kind === "loseTurn" &&
-        spinnerIdRef.current &&
-        state.currentPlayerId !== spinnerIdRef.current
-      ) {
-        playWheelLoseTurn();
+      if (state.lastOutcome) playWheelSpecial(state.lastOutcome);
+      outcomeRef.current = state.lastOutcome;
+    } else if (state.lastOutcome && state.lastOutcome !== outcomeRef.current) {
+      if (state.lastOutcome === "speedTimeout" || state.lastOutcome === "payEachFail") {
+        playWheelSpecial(state.lastOutcome);
       }
+      outcomeRef.current = state.lastOutcome;
     }
     if (state.turnPhase === "vowel" && prevTurn !== "vowel") {
       unlockAudio();
@@ -103,6 +100,20 @@ export function WheelRoom() {
       if (tickTimer.current) window.clearInterval(tickTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!state?.speedEndsAt || state.turnPhase !== "consonant") {
+      setSpeedLeft(null);
+      return;
+    }
+    function tick() {
+      const left = Math.max(0, (state!.speedEndsAt ?? 0) - Date.now());
+      setSpeedLeft(left);
+    }
+    tick();
+    const id = window.setInterval(tick, 100);
+    return () => window.clearInterval(id);
+  }, [state?.speedEndsAt, state?.turnPhase]);
 
   const joinUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -171,6 +182,7 @@ export function WheelRoom() {
               players={state.players}
               currentPlayerId={state.currentPlayerId}
               myId={playerId}
+              jackpot={state.jackpot}
             />
           </header>
 
@@ -183,6 +195,12 @@ export function WheelRoom() {
           <div className="wheel-stage">
             <ChaosWheel wedges={state.wedges} lastSpin={state.lastSpin} size={280} />
           </div>
+
+          {state.phase === "playing" && state.lastOutcome ? (
+            <p className="wheel-banner wheel-outcome">
+              {WHEEL_OUTCOME_LABELS[state.lastOutcome]}
+            </p>
+          ) : null}
 
           {state.phase === "between" ? (
             <p className="wheel-banner">
@@ -231,6 +249,9 @@ export function WheelRoom() {
                   <p className="wheel-banner">
                     Call a consonant
                     {state.pendingCash != null ? ` · ${state.pendingCash} each` : ""}
+                    {speedLeft != null
+                      ? ` · ${(speedLeft / 1000).toFixed(1)}s`
+                      : ""}
                   </p>
                   <LetterPad
                     mode="consonant"

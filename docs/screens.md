@@ -116,7 +116,7 @@ Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses
 
 `WheelPhase` in `src/wheelTypes.ts`: `lobby` → `playing` → `between` → `playing` … → `results`
 
-Inside `playing`, `turnPhase`: `spin` | `spinning` | `consonant` | `action` | `vowel` | `solve`. Lobby: host picks rounds `3 | 5 | 7` (default 3); start needs ≥2 players.
+Inside `playing`, `turnPhase`: `spin` | `spinning` | `consonant` | `action` | `vowel` | `solve`. Lobby: host picks rounds `3 | 5 | 7` (default 3); start needs ≥2 players. Special wedges (ADR 0040) set `lastOutcome` + optional `jackpot` / `speedEndsAt`; phone + TV show outcome banners and jackpot on the score rail. Speed Call shows a countdown on the letter pad while `speedEndsAt` is set.
 
 | Phase | Player | TV |
 | --- | --- | --- |

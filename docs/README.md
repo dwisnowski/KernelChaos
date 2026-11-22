@@ -51,3 +51,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0037 – Spot It kana Learning mode](adr/0037-spot-it-kana-learning.md) — `learning` + `quiz`; Restaurant Kana pack; Unicode glyphs (not Magnific)
 - [0038 – Spot It Shopping Kana pack](adr/0038-spot-it-kana-shopping-pack.md) — lobby pack `kana-shopping`; tourist retail vocab
 - [0039 – Chaos Wheel](adr/0039-chaos-wheel.md) — `wheel` rooms; puzzle show; Canvas 2D + anime.js spin; host rounds 3/5/7; original family pack
+- [0040 – Chaos Wheel special wedges](adr/0040-chaos-wheel-special-wedges.md) — full special set (jackpot, steal, speed, insurance, …); `lastOutcome` banners + SFX

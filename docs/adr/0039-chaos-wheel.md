@@ -25,4 +25,5 @@ Hasbro / “Wheel of Fortune” branding and official puzzles are copyrighted. W
 - `GameType` / active-room unions include `"wheel"`.
 - Domain lives under `worker/wheel/`; `GameRoom` only dispatches.
 - Adds `animejs` dependency for wheel choreography (WIZ-aligned; not used for Morse/glyph scenes).
+- Special-wedge set and jackpot/speed/insurance are recorded in [ADR 0040](./0040-chaos-wheel-special-wedges.md).
 - Cross-links: extends [0009](./0009-scattergories-and-game-shell.md), [0003](./0003-tv-spectator-screen.md), [0007](./0007-spectator-room-entry.md); spin sync pattern related to [0011](./0011-scattergories-letter-die-roll.md) / [0014](./0014-mmmms.md).

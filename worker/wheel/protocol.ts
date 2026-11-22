@@ -10,11 +10,37 @@ export type WheelTurnPhase =
 
 export type WheelRoundCount = 3 | 5 | 7;
 
-export type WheelWedgeKind = "cash" | "bankrupt" | "loseTurn" | "freeSpin";
+export type WheelWedgeKind =
+  | "cash"
+  | "bankrupt"
+  | "loseTurn"
+  | "freeSpin"
+  | "payEach"
+  | "double"
+  | "flatBonus"
+  | "jackpot"
+  | "half"
+  | "swapBanks"
+  | "steal"
+  | "freeLetter"
+  | "wildVowel"
+  | "mystery"
+  | "passWheel"
+  | "chaosTax"
+  | "bankruptLite"
+  | "mirror"
+  | "speed"
+  | "insurance";
+
+export type WheelLastOutcome =
+  | WheelWedgeKind
+  | "payEachFail"
+  | "speedTimeout"
+  | null;
 
 export interface WheelWedge {
   kind: WheelWedgeKind;
-  /** Present when kind === "cash". */
+  /** Present for cash / flatBonus. */
   value?: number;
   label: string;
 }
@@ -41,6 +67,7 @@ export interface WheelPlayerPublic {
   roundBank: number;
   totalScore: number;
   freeSpins: number;
+  insurance: boolean;
 }
 
 export interface WheelPlayerResult {
@@ -65,6 +92,9 @@ export interface WheelRoomState {
   /** Cash value from the landed wedge; set during consonant phase. */
   pendingCash: number | null;
   betweenEndsAt: number | null;
+  speedEndsAt: number | null;
+  jackpot: number;
+  lastOutcome: WheelLastOutcome;
   lastSolverId: string | null;
   lastSolverName: string | null;
   results: WheelPlayerResult[];
@@ -76,8 +106,41 @@ export const DEFAULT_WHEEL_ROUNDS: WheelRoundCount = 3;
 export const WHEEL_VOWEL_COST = 250;
 export const WHEEL_SPIN_MS = 4500;
 export const WHEEL_BETWEEN_MS = 4000;
+export const WHEEL_PAY_EACH = 50;
+export const WHEEL_STEAL = 250;
+export const WHEEL_CHAOS_TAX = 100;
+export const WHEEL_JACKPOT_TICK = 50;
+export const WHEEL_SPEED_MS = 8000;
+export const WHEEL_MYSTERY_UNIT = 100;
+export const WHEEL_SPEED_CASH = 500;
+export const WHEEL_MIRROR_DEFAULT = 500;
 
 export const VOWELS = new Set(["A", "E", "I", "O", "U"]);
+
+export const WHEEL_OUTCOME_LABELS: Record<Exclude<WheelLastOutcome, null>, string> = {
+  cash: "Cash!",
+  bankrupt: "Bankrupt!",
+  loseTurn: "Lose a turn!",
+  freeSpin: "Free Spin!",
+  payEach: "Paid each rival $50",
+  payEachFail: "Couldn't pay — lose turn!",
+  double: "Doubled!",
+  flatBonus: "+500!",
+  jackpot: "Jackpot!",
+  half: "Half bank",
+  swapBanks: "Banks swapped!",
+  steal: "Stolen!",
+  freeLetter: "Free letter!",
+  wildVowel: "Free vowel!",
+  mystery: "Mystery letter!",
+  passWheel: "Pass the wheel",
+  chaosTax: "Chaos tax!",
+  bankruptLite: "Half bankrupt!",
+  mirror: "Mirror cash!",
+  speed: "Speed call!",
+  insurance: "Insured!",
+  speedTimeout: "Too slow!",
+};
 
 export function isWheelRoundCount(n: unknown): n is WheelRoundCount {
   return n === 3 || n === 5 || n === 7;

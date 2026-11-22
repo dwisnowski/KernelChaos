@@ -4391,6 +4391,27 @@ input {
   background: color-mix(in srgb, var(--accent, #1a6bff) 18%, var(--bg1, #fff));
 }
 
+.wheel-score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.wheel-jackpot {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  color: #92400e;
+}
+
+.wheel-jackpot strong {
+  font-variant-numeric: tabular-nums;
+  color: #b45309;
+}
+
 .wheel-score-rail {
   list-style: none;
   margin: 0;
@@ -4432,6 +4453,18 @@ input {
   font-size: 0.75rem;
   color: #b45309;
   background: #ffe7a0;
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+}
+
+.wheel-insurance {
+  margin-left: 0.35rem;
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #065f46;
+  background: #a7f3d0;
   border-radius: 999px;
   padding: 0.05rem 0.35rem;
 }
@@ -4486,6 +4519,11 @@ input {
   font-weight: 700;
   font-size: 1.05rem;
   margin: 0.25rem 0;
+}
+
+.wheel-outcome {
+  color: var(--accent, #1a6bff);
+  font-size: 1rem;
 }
 
 .wheel-controls {

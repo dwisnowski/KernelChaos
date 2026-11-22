@@ -10,6 +10,22 @@ const SPECIAL: Record<string, string> = {
   bankrupt: "#1a1a1a",
   loseTurn: "#4b5563",
   freeSpin: "#e6a100",
+  payEach: "#0d9488",
+  double: "#db2777",
+  flatBonus: "#16a34a",
+  jackpot: "#ca8a04",
+  half: "#64748b",
+  swapBanks: "#7c3aed",
+  steal: "#dc2626",
+  freeLetter: "#2563eb",
+  wildVowel: "#c026d3",
+  mystery: "#9333ea",
+  passWheel: "#57534e",
+  chaosTax: "#b45309",
+  bankruptLite: "#334155",
+  mirror: "#0891b2",
+  speed: "#ea580c",
+  insurance: "#059669",
 };
 
 function drawWheel(

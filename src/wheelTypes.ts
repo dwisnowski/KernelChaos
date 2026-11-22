@@ -10,7 +10,33 @@ export type WheelTurnPhase =
 
 export type WheelRoundCount = 3 | 5 | 7;
 
-export type WheelWedgeKind = "cash" | "bankrupt" | "loseTurn" | "freeSpin";
+export type WheelWedgeKind =
+  | "cash"
+  | "bankrupt"
+  | "loseTurn"
+  | "freeSpin"
+  | "payEach"
+  | "double"
+  | "flatBonus"
+  | "jackpot"
+  | "half"
+  | "swapBanks"
+  | "steal"
+  | "freeLetter"
+  | "wildVowel"
+  | "mystery"
+  | "passWheel"
+  | "chaosTax"
+  | "bankruptLite"
+  | "mirror"
+  | "speed"
+  | "insurance";
+
+export type WheelLastOutcome =
+  | WheelWedgeKind
+  | "payEachFail"
+  | "speedTimeout"
+  | null;
 
 export interface WheelWedge {
   kind: WheelWedgeKind;
@@ -38,6 +64,7 @@ export interface WheelPlayerPublic {
   roundBank: number;
   totalScore: number;
   freeSpins: number;
+  insurance: boolean;
 }
 
 export interface WheelPlayerResult {
@@ -61,6 +88,9 @@ export interface WheelRoomState {
   lastSpin: WheelLastSpin | null;
   pendingCash: number | null;
   betweenEndsAt: number | null;
+  speedEndsAt: number | null;
+  jackpot: number;
+  lastOutcome: WheelLastOutcome;
   lastSolverId: string | null;
   lastSolverName: string | null;
   results: WheelPlayerResult[];
@@ -71,6 +101,31 @@ export const WHEEL_ROUND_OPTIONS: WheelRoundCount[] = [3, 5, 7];
 export const WHEEL_VOWEL_COST = 250;
 
 export const VOWELS = new Set(["A", "E", "I", "O", "U"]);
+
+export const WHEEL_OUTCOME_LABELS: Record<Exclude<WheelLastOutcome, null>, string> = {
+  cash: "Cash!",
+  bankrupt: "Bankrupt!",
+  loseTurn: "Lose a turn!",
+  freeSpin: "Free Spin!",
+  payEach: "Paid each rival $50",
+  payEachFail: "Couldn't pay — lose turn!",
+  double: "Doubled!",
+  flatBonus: "+500!",
+  jackpot: "Jackpot!",
+  half: "Half bank",
+  swapBanks: "Banks swapped!",
+  steal: "Stolen!",
+  freeLetter: "Free letter!",
+  wildVowel: "Free vowel!",
+  mystery: "Mystery letter!",
+  passWheel: "Pass the wheel",
+  chaosTax: "Chaos tax!",
+  bankruptLite: "Half bankrupt!",
+  mirror: "Mirror cash!",
+  speed: "Speed call!",
+  insurance: "Insured!",
+  speedTimeout: "Too slow!",
+};
 
 export function isVowel(letter: string): boolean {
   return VOWELS.has(letter.toUpperCase());
