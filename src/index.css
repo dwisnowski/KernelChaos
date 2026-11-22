@@ -4353,9 +4353,15 @@ input {
 .letter-pad {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.35rem;
-  max-width: 22rem;
-  margin: 0.5rem auto;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: none;
+  margin: 0.35rem 0 0;
+  box-sizing: border-box;
+}
+
+.letter-pad-vowel {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .letter-key {
@@ -4363,12 +4369,15 @@ input {
   border: 1px solid color-mix(in srgb, var(--ink, #0e1f35) 18%, transparent);
   background: var(--bg1, #fff);
   color: var(--ink, #0e1f35);
-  border-radius: 0.45rem;
+  border-radius: 0.55rem;
   font-family: "Space Grotesk", system-ui, sans-serif;
   font-weight: 700;
-  font-size: 1rem;
-  padding: 0.55rem 0;
+  font-size: 1.2rem;
+  min-height: 3.1rem;
+  padding: 0.7rem 0;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .letter-key:disabled,
@@ -4379,6 +4388,7 @@ input {
 
 .letter-key:not(:disabled):active {
   transform: translateY(1px);
+  background: color-mix(in srgb, var(--accent, #1a6bff) 18%, var(--bg1, #fff));
 }
 
 .wheel-score-rail {
@@ -4482,7 +4492,13 @@ input {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.wheel-controls .wheel-banner {
+  text-align: center;
 }
 
 .wheel-action-row {
@@ -4500,6 +4516,7 @@ input {
 
 .wheel-solve-form {
   width: min(100%, 22rem);
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -4565,8 +4582,24 @@ input {
     grid-template-columns: 1fr;
   }
 
-  .letter-pad {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+  .letter-pad-consonant {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .letter-key {
+    min-height: 3.35rem;
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .letter-pad-consonant {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .letter-key {
+    min-height: 3.5rem;
   }
 }
 

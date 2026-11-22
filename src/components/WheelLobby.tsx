@@ -55,7 +55,7 @@ export function WheelLobby({ state, me, joinUrl, onSetRounds, onStart }: Props) 
               <button
                 key={n}
                 type="button"
-                className={`size-pill${state.roundCount === n ? " active" : ""}`}
+                className={`size-pill${state.roundCount === n ? " is-active" : ""}`}
                 disabled={!isHost}
                 onClick={() => onSetRounds(n)}
               >

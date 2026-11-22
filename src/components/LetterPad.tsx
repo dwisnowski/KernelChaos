@@ -12,7 +12,11 @@ interface Props {
 export function LetterPad({ mode, usedLetters, disabled, onPick }: Props) {
   const used = new Set(usedLetters.map((l) => l.toUpperCase()));
   return (
-    <div className="letter-pad" role="group" aria-label={mode === "vowel" ? "Vowels" : "Consonants"}>
+    <div
+      className={`letter-pad letter-pad-${mode}`}
+      role="group"
+      aria-label={mode === "vowel" ? "Vowels" : "Consonants"}
+    >
       {LETTERS.filter((L) => (mode === "vowel" ? isVowel(L) : isConsonant(L))).map((L) => {
         const taken = used.has(L);
         return (
