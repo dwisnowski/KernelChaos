@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   playWheelBankrupt,
   playWheelLand,
-  playWheelLetter,
+  playWheelLetterCorrect,
+  playWheelLoseTurn,
   playWheelSolve,
   playWheelSpinTick,
   playWheelVowel,
@@ -29,6 +30,7 @@ export function WheelRoom() {
   const [solveText, setSolveText] = useState("");
   const phaseRef = useRef<string | null>(null);
   const turnRef = useRef<string | null>(null);
+  const spinnerIdRef = useRef<string | null>(null);
   const tickTimer = useRef<number | null>(null);
 
   const {
@@ -64,6 +66,7 @@ export function WheelRoom() {
 
     if (state.turnPhase === "spinning" && prevTurn !== "spinning") {
       unlockAudio();
+      spinnerIdRef.current = state.currentPlayerId;
       if (tickTimer.current) window.clearInterval(tickTimer.current);
       tickTimer.current = window.setInterval(() => playWheelSpinTick(), 90);
     }
@@ -75,6 +78,17 @@ export function WheelRoom() {
       playWheelLand();
       const wedge = state.lastSpin ? state.wedges[state.lastSpin.wedgeIndex] : null;
       if (wedge?.kind === "bankrupt") playWheelBankrupt();
+      if (
+        wedge?.kind === "loseTurn" &&
+        spinnerIdRef.current &&
+        state.currentPlayerId !== spinnerIdRef.current
+      ) {
+        playWheelLoseTurn();
+      }
+    }
+    if (state.turnPhase === "vowel" && prevTurn !== "vowel") {
+      unlockAudio();
+      playWheelVowel();
     }
     if (state.phase === "between" && prevPhase !== "between") {
       playWheelSolve();
@@ -99,13 +113,11 @@ export function WheelRoom() {
 
   function onGuess(letter: string) {
     unlockAudio();
-    playWheelLetter();
     guessLetter(letter);
   }
 
   function onBuyVowel() {
     unlockAudio();
-    playWheelVowel();
     buyVowel();
   }
 
@@ -162,7 +174,11 @@ export function WheelRoom() {
             />
           </header>
 
-          <PuzzleBoard puzzle={state.puzzle} />
+          <PuzzleBoard
+            puzzle={state.puzzle}
+            instant={state.phase === "between"}
+            onLetterPlace={() => playWheelLetterCorrect()}
+          />
 
           <div className="wheel-stage">
             <ChaosWheel wedges={state.wedges} lastSpin={state.lastSpin} size={280} />

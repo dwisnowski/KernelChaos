@@ -3,8 +3,11 @@ import { useParams } from "react-router-dom";
 import {
   playWheelBankrupt,
   playWheelLand,
+  playWheelLetterCorrect,
+  playWheelLoseTurn,
   playWheelSolve,
   playWheelSpinTick,
+  playWheelVowel,
   playWinner,
   unlockAudio,
 } from "../audio/sfx.ts";
@@ -19,6 +22,7 @@ export function WheelSpectator() {
   const roomCode = code.toUpperCase();
   const phaseRef = useRef<string | null>(null);
   const turnRef = useRef<string | null>(null);
+  const spinnerIdRef = useRef<string | null>(null);
   const tickTimer = useRef<number | null>(null);
 
   const { state, spectate, connected } = useWheelRoom({
@@ -39,6 +43,7 @@ export function WheelSpectator() {
 
     if (state.turnPhase === "spinning" && prevTurn !== "spinning") {
       unlockAudio();
+      spinnerIdRef.current = state.currentPlayerId;
       if (tickTimer.current) window.clearInterval(tickTimer.current);
       tickTimer.current = window.setInterval(() => playWheelSpinTick(), 90);
     }
@@ -50,6 +55,17 @@ export function WheelSpectator() {
       playWheelLand();
       const wedge = state.lastSpin ? state.wedges[state.lastSpin.wedgeIndex] : null;
       if (wedge?.kind === "bankrupt") playWheelBankrupt();
+      if (
+        wedge?.kind === "loseTurn" &&
+        spinnerIdRef.current &&
+        state.currentPlayerId !== spinnerIdRef.current
+      ) {
+        playWheelLoseTurn();
+      }
+    }
+    if (state.turnPhase === "vowel" && prevTurn !== "vowel") {
+      unlockAudio();
+      playWheelVowel();
     }
     if (state.phase === "between" && prevPhase !== "between") playWheelSolve();
     if (state.phase === "results" && prevPhase !== "results") playWinner();
@@ -86,7 +102,12 @@ export function WheelSpectator() {
 
       {state && (state.phase === "playing" || state.phase === "between") ? (
         <section className="wheel-tv-play">
-          <PuzzleBoard puzzle={state.puzzle} large />
+          <PuzzleBoard
+            puzzle={state.puzzle}
+            large
+            instant={state.phase === "between"}
+            onLetterPlace={() => playWheelLetterCorrect()}
+          />
           <div className="wheel-tv-stage">
             <ChaosWheel wedges={state.wedges} lastSpin={state.lastSpin} size={420} />
             <div className="wheel-tv-side">

@@ -381,11 +381,18 @@ export function playWheelLand(): void {
   tone(523, t + 0.07, 0.14, "sine", 0.08);
 }
 
-/** Chaos Wheel: letter revealed. */
+/** Chaos Wheel: letter revealed (legacy alias). */
 export function playWheelLetter(): void {
+  playWheelLetterCorrect();
+}
+
+/** Chaos Wheel: one staggered tile placement on a correct guess. */
+export function playWheelLetterCorrect(): void {
   const c = getCtx();
   if (!c) return;
-  tone(660, c.currentTime, 0.09, "triangle", 0.06);
+  const t = c.currentTime;
+  tone(784, t, 0.07, "triangle", 0.08);
+  tone(988, t + 0.05, 0.12, "sine", 0.09);
 }
 
 /** Chaos Wheel: vowel purchase. */
@@ -393,8 +400,9 @@ export function playWheelVowel(): void {
   const c = getCtx();
   if (!c) return;
   const t = c.currentTime;
-  tone(523, t, 0.07, "sine", 0.05);
-  tone(659, t + 0.06, 0.1, "sine", 0.06);
+  tone(440, t, 0.1, "triangle", 0.07);
+  tone(554, t + 0.09, 0.12, "sine", 0.08);
+  tone(659, t + 0.2, 0.16, "sine", 0.09);
 }
 
 /** Chaos Wheel: bankrupt sting. */
@@ -402,8 +410,19 @@ export function playWheelBankrupt(): void {
   const c = getCtx();
   if (!c) return;
   const t = c.currentTime;
-  tone(220, t, 0.16, "sawtooth", 0.05);
-  tone(110, t + 0.12, 0.28, "square", 0.04);
+  tone(180, t, 0.18, "sawtooth", 0.07);
+  tone(120, t + 0.1, 0.22, "square", 0.06);
+  tone(70, t + 0.28, 0.35, "triangle", 0.08);
+}
+
+/** Chaos Wheel: lose a turn (seat advances). */
+export function playWheelLoseTurn(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(392, t, 0.12, "triangle", 0.06);
+  tone(311, t + 0.1, 0.14, "sine", 0.07);
+  tone(247, t + 0.24, 0.2, "triangle", 0.06);
 }
 
 /** Chaos Wheel: puzzle solved. */
