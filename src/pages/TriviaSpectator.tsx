@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { useParams } from "react-router-dom";
 import {
   playTriviaBuzzLock,
@@ -18,13 +19,14 @@ import { useTriviaRoom } from "../hooks/useTriviaRoom.ts";
 
 export function TriviaSpectator() {
   const { code = "" } = useParams();
+  const roomCode = code.toUpperCase();
   const joined = useRef(false);
   const lastBuzzSeq = useRef(0);
   const lastChaosWin = useRef(0);
   const lastDd = useRef(false);
   const lastOutcome = useRef<string | null>(null);
 
-  const room = useTriviaRoom({ code: code || null, role: "spectator" });
+  const room = useTriviaRoom({ code: roomCode || null, role: "spectator" });
 
   useEffect(() => {
     if (!room.connected || joined.current) return;
@@ -32,6 +34,11 @@ export function TriviaSpectator() {
     unlockAudio();
     room.spectate();
   }, [room.connected, room.spectate]);
+
+  const joinUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/trivia/join?code=${roomCode}`
+      : `/trivia/join?code=${roomCode}`;
 
   useEffect(() => {
     if (!room.state) return;
@@ -72,7 +79,7 @@ export function TriviaSpectator() {
   return (
     <Layout
       title="KernelChaos · TV"
-      playerRoom={code ? { code: code.toUpperCase(), game: "trivia" } : undefined}
+      playerRoom={roomCode ? { code: roomCode, game: "trivia" } : undefined}
     >
       {!state ? (
         <p className="muted">Connecting to Trivia…</p>
@@ -80,12 +87,32 @@ export function TriviaSpectator() {
         <section className="spectator-screen trivia-tv">
           {state.phase === "lobby" ? (
             <div className="spectator-lobby">
-              <p className="spectator-tag">Trivia</p>
-              <p className="room-code">{state.code}</p>
-              <ul>
+              <div className="spectator-lobby-main">
+                <p className="lobby-label">Room code</p>
+                <p className="room-code" aria-label={`Room code ${state.code}`}>
+                  {state.code}
+                </p>
+                <p className="spectator-tag">TV spectator · Trivia</p>
+                <div className="qr-wrap">
+                  <QRCodeSVG
+                    value={joinUrl}
+                    size={240}
+                    level="M"
+                    includeMargin
+                    bgColor="#f2f5fa"
+                    fgColor="#0e1f35"
+                  />
+                </div>
+                <p className="muted qr-hint">Players scan to join on their phones</p>
+              </div>
+              <ul className="spectator-roster" aria-label="Players">
                 {state.players.map((p) => (
-                  <li key={p.id}>{p.name}</li>
+                  <li key={p.id}>
+                    <span>{p.name}</span>
+                    {p.isHost ? <em>host</em> : null}
+                  </li>
                 ))}
+                {state.players.length === 0 ? <li className="muted">Waiting for players…</li> : null}
               </ul>
             </div>
           ) : (

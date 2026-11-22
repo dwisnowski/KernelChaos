@@ -1,0 +1,69 @@
+---
+description: Shared KernelChaos lobby + entry shell — every game uses the same join/QR/host-options layout
+globs: src/components/*Lobby*.tsx,src/pages/*Entry.tsx,src/pages/*Spectator.tsx
+alwaysApply: false
+---
+
+# Game lobby shell
+
+All KernelChaos games share one lobby scheme. Copy an existing lobby (Boggle `Lobby.tsx`, Scatter, M&Ms) — do not invent a new layout.
+
+## Player lobby (`*Lobby.tsx`)
+
+Structure (exact class names):
+
+```tsx
+<section className="lobby">
+  <div className="lobby-join">
+    <p className="lobby-label">Room code</p>
+    <p className="room-code" aria-label={`Room code ${state.code}`}>{state.code}</p>
+    <div className="qr-wrap">
+      <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin bgColor="#f2f5fa" fgColor="#0e1f35" />
+    </div>
+    <p className="muted qr-hint">Scan to join · {joinUrl.replace(/^https?:\/\//, "")}</p>
+    <OpenTvButton roomCode={state.code} game="…" />
+  </div>
+  <div className="lobby-side">
+    <div className="player-list">…</div>
+    {/* game options as .board-size (or .round-time) blocks */}
+    {/* host start / non-host waiting */}
+  </div>
+</section>
+```
+
+Rules:
+
+- **Left/top:** code + QR + Open TV only — no settings there.
+- **Right/side:** `player-list`, then host options in `.board-size` / `.round-time` cards with `.size-pills` / `.size-pill` (+ `.is-active`).
+- Pill labels are human title case (`Family`, `Light`), never raw ids (`family`, `light`).
+- Host start control: `className="btn primary start-btn"`. If a seat minimum applies, `disabled={!canStart}` and button text like `Need 2 players` / `Start game` (Mmmms pattern).
+- Non-host: `<p className="waiting">Waiting for the host to start…</p>` — not `.muted`.
+- Non-host option hint: `<p className="muted">Only the host can change …</p>` under the option block.
+- Optional mode blurb: `<p className="muted lobby-hint">…</p>`.
+- Do not wrap the lobby in a game play class (`.trivia-play`, `.wheel-play`, …) — lobby uses shared `.lobby` chrome only.
+
+## Entry page (`*Entry.tsx`)
+
+Join-first card layout (Spot It / Wheel / Trivia):
+
+1. Back link, `h1`, `lede`
+2. Shared name field: `<label className="field"><span>Your name</span><input … /></label>`
+3. **Join a room** `entry-card`: `ActiveRooms`, code field, Join, Spectate on TV + `entry-tv-hint`
+4. **Create** `entry-card`: short copy, Create room, Create for TV + `entry-tv-hint`
+5. Error at the bottom
+
+Do not use create-first stacked forms with bare `<label>` (no `.field`) — that is the old pattern.
+
+## TV lobby (`*Spectator.tsx` while `phase === "lobby"`)
+
+Prefer the Boggle/Mmmms pattern:
+
+- `.spectator-lobby` → `.spectator-lobby-main` (label, huge `.room-code`, `.spectator-tag`, `.qr-wrap`, qr-hint) + `.spectator-roster`
+- Always show a join QR so phones can scan from the TV
+
+## Checklist for a new game
+
+1. Lobby markup matches the structure above (diff against `Lobby.tsx` / `MmmmsLobby.tsx`).
+2. Entry matches Spot It / Wheel join-first cards.
+3. TV lobby includes QR + roster.
+4. `OpenTvButton` / `ActiveRooms` / Layout `playerRoom` unions include the new `game` slug.

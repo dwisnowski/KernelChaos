@@ -25,6 +25,7 @@ import { TRIVIA_DAILY_WAGER_MIN } from "../triviaTypes.ts";
 
 export function TriviaRoom() {
   const { code = "" } = useParams();
+  const roomCode = code.toUpperCase();
   const location = useLocation();
   const navName = (location.state as { name?: string } | null)?.name;
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function TriviaRoom() {
   const lastOutcome = useRef<string | null>(null);
 
   const room = useTriviaRoom({
-    code: code || null,
+    code: roomCode || null,
     onError: setError,
   });
 
@@ -103,8 +104,8 @@ export function TriviaRoom() {
 
   const joinUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/trivia/join?code=${code}`
-      : `/trivia/join?code=${code}`;
+      ? `${window.location.origin}/trivia/join?code=${roomCode}`
+      : `/trivia/join?code=${roomCode}`;
 
   if (!room.state) {
     return (

@@ -10,7 +10,13 @@ import {
 } from "../triviaTypes.ts";
 
 const PACK_LABELS: Record<TriviaPackId, string> = {
-  family: "Family Edition",
+  family: "Family",
+};
+
+const CHAOS_MODE_LABELS: Record<TriviaChaosMode, string> = {
+  off: "Off",
+  light: "Light",
+  mayhem: "Mayhem",
 };
 
 const CHAOS_MODES: TriviaChaosMode[] = ["off", "light", "mayhem"];
@@ -34,6 +40,7 @@ export function TriviaLobby({
 }: Props) {
   const isHost = me?.isHost ?? false;
   const canStart = state.players.length >= 2;
+  const chaosMode = state.chaosMode ?? DEFAULT_TRIVIA_CHAOS_MODE;
 
   return (
     <section className="lobby">
@@ -61,7 +68,6 @@ export function TriviaLobby({
             ))}
             {state.players.length === 0 ? <li className="muted">Waiting for players…</li> : null}
           </ul>
-          {!canStart ? <p className="muted">Need at least 2 players to start.</p> : null}
         </div>
 
         <div className="board-size">
@@ -88,23 +94,31 @@ export function TriviaLobby({
               <button
                 key={mode}
                 type="button"
-                className={`size-pill${(state.chaosMode ?? DEFAULT_TRIVIA_CHAOS_MODE) === mode ? " is-active" : ""}`}
+                className={`size-pill${chaosMode === mode ? " is-active" : ""}`}
                 disabled={!isHost}
                 onClick={() => onSetChaosMode(mode)}
               >
-                {mode}
+                {CHAOS_MODE_LABELS[mode]}
               </button>
             ))}
           </div>
-          <p className="muted">Dash mini-games award chaos powers while someone answers.</p>
+          <p className="muted lobby-hint">
+            Dash mini-games award chaos powers while someone answers.
+          </p>
+          {!isHost ? <p className="muted">Only the host can change pack and Chaos.</p> : null}
         </div>
 
         {isHost ? (
-          <button className="btn primary" type="button" disabled={!canStart} onClick={onStart}>
-            Start show
+          <button
+            type="button"
+            className="btn primary start-btn"
+            onClick={onStart}
+            disabled={!canStart}
+          >
+            {canStart ? "Start game" : "Need 2 players"}
           </button>
         ) : (
-          <p className="muted">Waiting for host to start…</p>
+          <p className="waiting">Waiting for the host to start…</p>
         )}
       </div>
     </section>

@@ -100,46 +100,64 @@ export function TriviaEntry() {
           with optional Chaos Dash powers.
         </p>
 
-        <form className="entry-card" onSubmit={createRoom}>
-          <label>
-            Your name
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={24}
-              autoComplete="nickname"
-              placeholder="Alex"
-            />
-          </label>
-          <button className="btn primary" type="submit" disabled={busy}>
-            Create room
-          </button>
-          <button className="btn" type="button" disabled={busy} onClick={createRoomForTv}>
-            Create for TV
-          </button>
-        </form>
+        <label className="field">
+          <span>Your name</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={20}
+            autoComplete="nickname"
+            placeholder="Alex"
+          />
+        </label>
 
         <form className="entry-card" onSubmit={joinRoom}>
-          <label>
-            Room code
+          <h2>Join a room</h2>
+          <ActiveRooms
+            game="trivia"
+            onSelect={(roomCode) => {
+              setCode(roomCode);
+              joinWithCode(roomCode);
+            }}
+          />
+          <label className="field">
+            <span>Room code</span>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               maxLength={4}
-              placeholder="AB12"
               autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="A7K3"
             />
           </label>
           <button className="btn primary" type="submit">
-            Join
+            Join room
           </button>
-          <button className="btn" type="button" onClick={spectateRoom}>
-            Spectate on TV
+          <div className="entry-tv-actions">
+            <button className="btn" type="button" onClick={spectateRoom}>
+              Spectate on TV
+            </button>
+            <p className="entry-tv-hint">Watch the board and clues on the living-room display.</p>
+          </div>
+        </form>
+
+        <form className="entry-card" onSubmit={(e) => void createRoom(e)}>
+          <h2>Start a show</h2>
+          <p>Share the code or QR. Host picks pack and Chaos in the lobby (needs 2+ players).</p>
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? "Creating…" : "Create room"}
           </button>
+          <div className="entry-tv-actions">
+            <button className="btn" type="button" disabled={busy} onClick={() => void createRoomForTv()}>
+              {busy ? "Creating…" : "Create for TV"}
+            </button>
+            <p className="entry-tv-hint">Big screen shows the lobby QR; phones join to play.</p>
+          </div>
         </form>
 
         {error ? <p className="error">{error}</p> : null}
-        <ActiveRooms game="trivia" onSelect={joinWithCode} />
       </section>
     </Layout>
   );
