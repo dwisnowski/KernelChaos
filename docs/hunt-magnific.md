@@ -10,7 +10,7 @@ Repo-owned prompts drive dense seek-and-find JPGs under `public/hunt/`. Scenes a
 | `assets/hunt/prompts/scenes/<id>.md` | Scene foundation + lore-local object weave + avoids |
 | `npm run hunt:prompt -- <id>` | Prints composed Magnific prompt to stdout |
 
-Pilot ids: `space-port`, `beach-chaos`, `castle-transylvania`.
+Catalog: **50** scene foundations under `assets/hunt/prompts/scenes/` (pilots `space-port`, `beach-chaos`, `castle-transylvania`, plus 47 more). List with `npm run hunt:prompt -- --list`.
 
 ## Tool chain (generate)
 

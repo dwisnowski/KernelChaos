@@ -13,7 +13,7 @@ Shipped Hunt JPGs felt generic, and mega synonym catalogs (≥250 objects, lette
 - **Prompt library** under `assets/hunt/prompts/`: shared `style.md` (dense seek-and-find ink + light watercolor) plus per-scene foundations in `scenes/<id>.md`. Compose with `npm run hunt:prompt -- <id>` (`compose.mjs`). Style is shared; **object weaves are scene-local** — no cross-scene/pack object checklist.
 - **Image-only runtime scenes:** `worker/scattergories/hunt/data/<id>.json` holds `id`, `title`, `imageUrl` only. No `objects[]`, no synonym key, no coverage floors. Images live at `public/hunt/<id>.jpg`.
 - **Scoring** remains peer In/Out + uniqueness ([ADR 0028](./0028-hunt-click-annotate-review.md)); soft letter/cap checks only. Retire catalog matching / `hunt:coverage` as a ship gate for new art.
-- **Generation:** Magnific text-to-image from the composed prompt; optional Creative densify later. Pilot scenes: `space-port`, `beach-chaos`, `castle-transylvania`. Scale toward ~50 foundations after style approval.
+- **Generation:** Magnific text-to-image from the composed prompt; optional Creative densify later. Pilot scenes: `space-port`, `beach-chaos`, `castle-transylvania`. Full catalog target: **~50** foundations (shipped).
 
 ## Consequences
 
