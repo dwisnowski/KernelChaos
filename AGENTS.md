@@ -55,4 +55,4 @@ make run       # manual smoke of the touched flow
 
 There is **no** unit/e2e suite. After code changes, describe the manual smoke you expect.
 
-Do **not** `make deploy` unless the user explicitly asks — except when the `ship-plan-adr` skill applies after a plan execution that wrote an ADR.
+Do **not** `make deploy` unless the user explicitly asks — except when the `ship-plan-adr` skill applies after a successful plan execution (commit, push, and deploy automatically; ADR optional).

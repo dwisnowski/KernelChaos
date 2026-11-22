@@ -1,26 +1,24 @@
 ---
 name: ship-plan-adr
 description: >-
-  After a successful Cursor plan execution that creates or updates an ADR under
-  docs/adr/, automatically commit, push, and deploy. Use when finishing
-  implement-the-plan work that wrote docs/adr/NNNN-*.md, when plan todos are all
-  complete and an ADR was part of the delivery, or when the user asks to
-  ship/commit/push/deploy after an ADR-backed plan.
+  After a successful Cursor plan execution, automatically commit, push, and
+  deploy. Use when finishing implement-the-plan work (todos complete), when an
+  ADR under docs/adr/ was part of the delivery, or when the user asks to
+  ship/commit/push/deploy after a plan.
 ---
 
-# Ship plan + ADR
+# Ship plan (commit + push + deploy)
 
 ## When this applies
 
 Run this workflow **automatically** at the end of a turn when **all** are true:
 
 1. A Cursor **plan was executed** successfully (implementation finished; plan todos completed or clearly done).
-2. An **ADR was created or updated** under `docs/adr/` (and usually `docs/README.md` index) as part of that work.
-3. There are **local changes** left to ship (uncommitted and/or unpushed), or deploy is still needed after push.
+2. There are **local changes** left to ship (uncommitted and/or unpushed), or deploy is still needed after push.
 
-Do **not** run for: plan-only / research turns, failed or abandoned implementations, ADR-only doc edits with no plan execution, or when the user explicitly says not to commit/push/deploy.
+Do **not** run for: plan-only / research turns, failed or abandoned implementations, or when the user explicitly says not to commit/push/deploy.
 
-This skill **is** explicit authorization to commit, push, and deploy for the matching change set — do not wait for a separate “please commit” message.
+This skill **is** explicit authorization to commit, push, and deploy for the matching change set — do not wait for a separate “please commit” message. Prefer shipping even when the plan did **not** write an ADR (user preference: always ship after a plan).
 
 ## Workflow
 
@@ -28,7 +26,7 @@ Copy and track:
 
 ```
 Ship progress:
-- [ ] 1. Verify gate (plan done + ADR in diff)
+- [ ] 1. Verify gate (plan done)
 - [ ] 2. Commit
 - [ ] 3. Push
 - [ ] 4. Deploy
@@ -38,7 +36,7 @@ Ship progress:
 ### 1. Verify gate
 
 - Confirm the session executed a plan (not merely drafted one).
-- Confirm `docs/adr/` has a new or modified `NNNN-*.md` in the working tree or the commit about to be made.
+- If an ADR was part of the delivery, include `docs/adr/NNNN-*.md` and usually `docs/README.md` in the commit.
 - If the gate fails, stop and do not commit.
 
 ### 2. Commit
@@ -77,6 +75,6 @@ In the final reply, briefly include:
 
 ## Out of scope
 
-- Creating the ADR itself — that remains the plans-as-ADRs rule.
+- Creating the ADR itself — that remains the plans-as-ADRs rule when the plan records an architecture decision.
 - Opening a PR unless the user asked for one.
-- Deploying unrelated dirty files from other work; if the tree mixes unrelated changes, commit only the plan/ADR change set or ask once which paths to include.
+- Deploying unrelated dirty files from other work; if the tree mixes unrelated changes, commit only the plan change set or ask once which paths to include.
