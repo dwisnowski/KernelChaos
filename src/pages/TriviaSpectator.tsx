@@ -31,8 +31,14 @@ export function TriviaSpectator() {
   const lastClueStage = useRef<string | null>(null);
   const lastSpokeKey = useRef<string | null>(null);
   const [cellFlash, setCellFlash] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const room = useTriviaRoom({ code: roomCode || null, role: "spectator" });
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!room.connected || joined.current) return;
@@ -282,14 +288,15 @@ export function TriviaSpectator() {
                 ) : (
                   <div
                     className={`trivia-clue-stage trivia-clue-tv${
-                      state.screenZapUntil && state.screenZapUntil > Date.now()
+                      state.screenZapUntil && state.screenZapUntil > now
                         ? " is-zapped"
                         : ""
                     }`}
                   >
                     <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
                     <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
-                    {state.phase === "buzzOpen" ? (
+                    {state.phase === "buzzOpen" &&
+                    (state.buzzOpenAt == null || now >= state.buzzOpenAt) ? (
                       <p className="trivia-buzz-pulse">BUZZ!</p>
                     ) : null}
                     {state.phase === "answering" ? (

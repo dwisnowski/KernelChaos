@@ -239,6 +239,8 @@ export const TRIVIA_FINAL_WAGER_MS = 20000;
 export const TRIVIA_FINAL_ANSWER_MS = 15000;
 export const TRIVIA_DAILY_WAGER_MIN = 5;
 export const TRIVIA_BUZZ_JAM_MS = 1000;
+/** Grace after wrong-answer reopen so all phones arm on the same wall clock. */
+export const TRIVIA_BUZZ_SYNC_MS = 500;
 export const TRIVIA_BLINDFOLD_MS = 3000;
 export const TRIVIA_SCREEN_ZAP_MS = 1000;
 export const TRIVIA_CHAOS_DASH_LOCK_MS = 500;
@@ -422,6 +424,8 @@ export interface TriviaRoomState {
   activeClue: TriviaActiveCluePublic | null;
   buzzedPlayerId: string | null;
   buzzLockSeq: number;
+  /** Wall-clock ms when buzz becomes accepted; clients arm the button at this time. */
+  buzzOpenAt: number | null;
   lockedOutIds: string[];
   players: TriviaPlayerPublic[];
   endsAt: number | null;

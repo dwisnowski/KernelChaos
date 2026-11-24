@@ -59,3 +59,4 @@ Architecture decisions and project notes for KernelChaos.
 - [0045 – Colors header popover](adr/0045-colors-header-popover.md) — Layout Colors opens device-local popover; `/settings` stays full page + Admin
 - [0046 – Trivia audience packs](adr/0046-trivia-audience-packs.md) — Kids/Family/Adult/Spicy collections; 10 themed packs each; Bluey fan trivia; legacy `family` → `family-classics`
 - [0047 – Chaos Wheel guess timer](adr/0047-chaos-wheel-guess-timer.md) — drop Mirror / Lose Turn / Speed; 10s per consonant/vowel/solve
+- [0048 – Trivia buzz sync](adr/0048-trivia-buzz-sync.md) — `buzzOpenAt` wall-clock arm; equal opportunity buzz across phones

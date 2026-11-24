@@ -16,6 +16,7 @@ import {
   TRIVIA_BETWEEN_MS,
   TRIVIA_BLINDFOLD_MS,
   TRIVIA_BUZZ_JAM_MS,
+  TRIVIA_BUZZ_SYNC_MS,
   TRIVIA_CHAOS_DASH_LOCK_MS,
   TRIVIA_CELL_HIGHLIGHT_MS,
   TRIVIA_CLUE_READ_MS,
@@ -78,6 +79,7 @@ export interface TriviaPersisted {
   selectedChoiceIndex: number | null;
   buzzedPlayerId: string | null;
   buzzLockSeq: number;
+  buzzOpenAt: number | null;
   lockedOutIds: string[];
   endsAt: number | null;
   dailyWager: number | null;
@@ -155,6 +157,7 @@ export class TriviaController {
   selectedChoiceIndex: number | null = null;
   buzzedPlayerId: string | null = null;
   buzzLockSeq = 0;
+  buzzOpenAt: number | null = null;
   lockedOutIds: string[] = [];
   endsAt: number | null = null;
   dailyWager: number | null = null;
@@ -231,6 +234,7 @@ export class TriviaController {
     this.correctChoiceIndex = null;
     this.selectedChoiceIndex = null;
     this.buzzedPlayerId = null;
+    this.buzzOpenAt = null;
     this.lockedOutIds = [];
     this.dailyWager = null;
     this.dailyWagerMaxVal = null;
@@ -363,6 +367,7 @@ export class TriviaController {
     }
     this.endsAt = now + TRIVIA_CLUE_READ_MS;
     this.alarmKind = "clueToBuzz";
+    this.buzzOpenAt = this.endsAt;
   }
 
   onAlarm(now: number): { alarmAt: number | null } {
@@ -412,6 +417,8 @@ export class TriviaController {
     this.phase = "buzzOpen";
     this.fakeBuzzPlayerId = null;
     this.spotlightPlayerId = null;
+    // Keep buzzOpenAt from finishHighlight so phones that already have it arm together.
+    if (this.buzzOpenAt == null) this.buzzOpenAt = now;
     this.endsAt = null;
     this.alarmKind = null;
   }
@@ -428,6 +435,7 @@ export class TriviaController {
 
   buzz(playerId: string, now = Date.now()): { ok: true; alarmAt: number } | { ok: false } {
     if (this.phase !== "buzzOpen") return { ok: false };
+    if (this.buzzOpenAt != null && now < this.buzzOpenAt) return { ok: false };
     if (this.lockedOutIds.includes(playerId)) return { ok: false };
     const jamUntil = this.buzzJamUntil[playerId] ?? 0;
     if (jamUntil > now) return { ok: false };
@@ -449,6 +457,7 @@ export class TriviaController {
       this.correctChoiceIndex = shuffled.correctIndex;
     }
     this.buzzedPlayerId = playerId;
+    this.buzzOpenAt = null;
     this.phase = "answering";
     this.endsAt = Date.now() + TRIVIA_ANSWER_MS;
     this.alarmKind = "answerTimeout";
@@ -541,10 +550,12 @@ export class TriviaController {
         return;
       }
 
-      // reopen buzz
+      // reopen buzz — short sync grace so all phones arm together
+      const reopenNow = Date.now();
       this.clueStage = null;
       this.phase = "buzzOpen";
       this.buzzedPlayerId = null;
+      this.buzzOpenAt = reopenNow + TRIVIA_BUZZ_SYNC_MS;
       this.shuffledChoices = null;
       this.correctChoiceIndex = null;
       this.selectedChoiceIndex = null;
@@ -564,6 +575,7 @@ export class TriviaController {
 
   private enterReveal(playerId: string): void {
     this.phase = "reveal";
+    this.buzzOpenAt = null;
     this.lastOutcomePlayerId = playerId;
     this.lastOutcomePlayerName = this.seats.get(playerId)?.name ?? null;
     this.challengeOpen = this.chaosMode === "mayhem";
@@ -963,6 +975,7 @@ export class TriviaController {
           : null,
       buzzedPlayerId: this.buzzedPlayerId,
       buzzLockSeq: this.buzzLockSeq,
+      buzzOpenAt: this.buzzOpenAt,
       lockedOutIds: [...this.lockedOutIds],
       players: [...this.seats.values()].map((s) => ({
         id: s.id,
@@ -1044,6 +1057,7 @@ export class TriviaController {
       selectedChoiceIndex: this.selectedChoiceIndex,
       buzzedPlayerId: this.buzzedPlayerId,
       buzzLockSeq: this.buzzLockSeq,
+      buzzOpenAt: this.buzzOpenAt,
       lockedOutIds: this.lockedOutIds,
       endsAt: this.endsAt,
       dailyWager: this.dailyWager,
@@ -1101,6 +1115,7 @@ export class TriviaController {
     this.selectedChoiceIndex = data.selectedChoiceIndex ?? null;
     this.buzzedPlayerId = data.buzzedPlayerId ?? null;
     this.buzzLockSeq = data.buzzLockSeq ?? 0;
+    this.buzzOpenAt = data.buzzOpenAt ?? null;
     this.lockedOutIds = data.lockedOutIds ?? [];
     this.endsAt = data.endsAt ?? null;
     this.dailyWager = data.dailyWager ?? null;

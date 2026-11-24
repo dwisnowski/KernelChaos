@@ -32,6 +32,7 @@ export function TriviaRoom() {
   const navName = (location.state as { name?: string } | null)?.name;
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const joined = useRef(false);
   const lastBuzzSeq = useRef(0);
   const lastChaosWin = useRef(0);
@@ -45,6 +46,11 @@ export function TriviaRoom() {
     code: roomCode || null,
     onError: setError,
   });
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!room.connected || joined.current) return;
@@ -177,8 +183,19 @@ export function TriviaRoom() {
     state.players.find((p) => p.id === state.buzzedPlayerId)?.name ?? "Someone";
   const lockedOut = Boolean(me && state.lockedOutIds.includes(me.id));
   const jamUntil = me ? state.buzzJamUntil[me.id] ?? 0 : 0;
-  const jammed = jamUntil > Date.now();
-  const blindfold = Boolean(state.blindfoldUntil && state.blindfoldUntil > Date.now());
+  const jammed = jamUntil > now;
+  const buzzArmed =
+    !lockedOut &&
+    !jammed &&
+    (state.buzzOpenAt == null
+      ? state.phase === "buzzOpen"
+      : now >= state.buzzOpenAt);
+  const showBuzzer =
+    (state.phase === "clue" &&
+      state.clueStage === "reveal" &&
+      !state.activeClue?.isDailyDouble) ||
+    state.phase === "buzzOpen";
+  const blindfold = Boolean(state.blindfoldUntil && state.blindfoldUntil > now);
 
   return (
     <Layout title="KernelChaos · Trivia">
@@ -313,15 +330,24 @@ export function TriviaRoom() {
                 <div className="trivia-clue-stage">
                   <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
                   <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
+                  {showBuzzer ? (
+                    <TriviaBuzzer
+                      disabled={!buzzArmed}
+                      onBuzz={() => {
+                        unlockAudio();
+                        room.buzz();
+                      }}
+                    />
+                  ) : null}
                 </div>
               </TriviaClueReveal>
             ) : (
               <div className="trivia-clue-stage">
                 <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
                 <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
-                {state.phase === "buzzOpen" ? (
+                {showBuzzer ? (
                   <TriviaBuzzer
-                    disabled={lockedOut || jammed}
+                    disabled={!buzzArmed}
                     onBuzz={() => {
                       unlockAudio();
                       room.buzz();
