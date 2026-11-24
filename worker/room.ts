@@ -149,12 +149,10 @@ import {
   DEFAULT_WHEEL_ROUNDS,
   WHEEL_BETWEEN_MS,
   WHEEL_CHAOS_TAX,
+  WHEEL_GUESS_MS,
   WHEEL_JACKPOT_TICK,
-  WHEEL_MIRROR_DEFAULT,
   WHEEL_MYSTERY_UNIT,
   WHEEL_PAY_EACH,
-  WHEEL_SPEED_CASH,
-  WHEEL_SPEED_MS,
   WHEEL_STEAL,
   isConsonant,
   isVowel,
@@ -480,8 +478,7 @@ export class GameRoom extends DurableObject<Env> {
   private wheelLastSolverName: string | null = null;
   private wheelWinners: string[] = [];
   private wheelJackpot = 0;
-  private wheelLastCashValue: number | null = null;
-  private wheelSpeedEndsAt: number | null = null;
+  private wheelGuessEndsAt: number | null = null;
   private wheelVowelFree = false;
   private wheelLastOutcome: WheelLastOutcome = null;
   private wheelLastOutcomePlayerName: string | null = null;
@@ -582,7 +579,8 @@ export class GameRoom extends DurableObject<Env> {
       wheelLastSolverName?: string | null;
       wheelWinners?: string[];
       wheelJackpot?: number;
-      wheelLastCashValue?: number | null;
+      wheelGuessEndsAt?: number | null;
+      /** @deprecated persisted as wheelGuessEndsAt */
       wheelSpeedEndsAt?: number | null;
       wheelVowelFree?: boolean;
       wheelLastOutcome?: WheelLastOutcome;
@@ -718,10 +716,12 @@ export class GameRoom extends DurableObject<Env> {
       this.wheelLastSolverName = stored.wheelLastSolverName ?? null;
       this.wheelWinners = Array.isArray(stored.wheelWinners) ? stored.wheelWinners : [];
       this.wheelJackpot = typeof stored.wheelJackpot === "number" ? stored.wheelJackpot : 0;
-      this.wheelLastCashValue =
-        typeof stored.wheelLastCashValue === "number" ? stored.wheelLastCashValue : null;
-      this.wheelSpeedEndsAt =
-        typeof stored.wheelSpeedEndsAt === "number" ? stored.wheelSpeedEndsAt : null;
+      this.wheelGuessEndsAt =
+        typeof stored.wheelGuessEndsAt === "number"
+          ? stored.wheelGuessEndsAt
+          : typeof stored.wheelSpeedEndsAt === "number"
+            ? stored.wheelSpeedEndsAt
+            : null;
       this.wheelVowelFree = Boolean(stored.wheelVowelFree);
       this.wheelLastOutcome = stored.wheelLastOutcome ?? null;
       this.wheelLastOutcomePlayerName = stored.wheelLastOutcomePlayerName ?? null;
@@ -845,8 +845,7 @@ export class GameRoom extends DurableObject<Env> {
       wheelLastSolverName: this.wheelLastSolverName,
       wheelWinners: this.wheelWinners,
       wheelJackpot: this.wheelJackpot,
-      wheelLastCashValue: this.wheelLastCashValue,
-      wheelSpeedEndsAt: this.wheelSpeedEndsAt,
+      wheelGuessEndsAt: this.wheelGuessEndsAt,
       wheelVowelFree: this.wheelVowelFree,
       wheelLastOutcome: this.wheelLastOutcome,
       wheelLastOutcomePlayerName: this.wheelLastOutcomePlayerName,
@@ -942,10 +941,12 @@ export class GameRoom extends DurableObject<Env> {
     if (
       this.phase === "playing" &&
       this.gameType === "wheel" &&
-      this.wheelTurnPhase === "consonant" &&
-      this.wheelSpeedEndsAt != null
+      (this.wheelTurnPhase === "consonant" ||
+        this.wheelTurnPhase === "vowel" ||
+        this.wheelTurnPhase === "solve") &&
+      this.wheelGuessEndsAt != null
     ) {
-      candidates.push(this.wheelSpeedEndsAt);
+      candidates.push(this.wheelGuessEndsAt);
     }
     if (this.phase === "rolling" && this.rollEndsAt != null) {
       candidates.push(this.rollEndsAt);
@@ -1069,8 +1070,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelLastSolverName = null;
     this.wheelWinners = [];
     this.wheelJackpot = 0;
-    this.wheelLastCashValue = null;
-    this.wheelSpeedEndsAt = null;
+    this.wheelGuessEndsAt = null;
     this.wheelVowelFree = false;
     this.wheelLastOutcome = null;
     this.wheelLastOutcomePlayerName = null;
@@ -1505,15 +1505,17 @@ export class GameRoom extends DurableObject<Env> {
     if (
       this.phase === "playing" &&
       this.gameType === "wheel" &&
-      this.wheelTurnPhase === "consonant" &&
-      this.wheelSpeedEndsAt != null
+      (this.wheelTurnPhase === "consonant" ||
+        this.wheelTurnPhase === "vowel" ||
+        this.wheelTurnPhase === "solve") &&
+      this.wheelGuessEndsAt != null
     ) {
-      if (this.wheelSpeedEndsAt > now) {
-        await this.ctx.storage.setAlarm(this.wheelSpeedEndsAt);
+      if (this.wheelGuessEndsAt > now) {
+        await this.ctx.storage.setAlarm(this.wheelGuessEndsAt);
         return;
       }
-      this.wheelSpeedEndsAt = null;
-      this.wheelLastOutcome = "speedTimeout";
+      this.wheelGuessEndsAt = null;
+      this.wheelLastOutcome = "guessTimeout";
       const player = this.wheelCurrentPlayerId
         ? this.players.get(this.wheelCurrentPlayerId)
         : undefined;
@@ -3813,7 +3815,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelPendingCash = null;
     this.wheelLastSolverId = null;
     this.wheelLastSolverName = null;
-    this.wheelSpeedEndsAt = null;
+    this.wheelGuessEndsAt = null;
     this.wheelVowelFree = false;
     this.wheelLastOutcome = null;
     this.wheelLastOutcomePlayerName = null;
@@ -3842,7 +3844,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelTurnPhase = "spin";
     this.wheelPendingCash = null;
     this.wheelLastSpin = null;
-    this.wheelSpeedEndsAt = null;
+    this.wheelGuessEndsAt = null;
     this.wheelVowelFree = false;
   }
 
@@ -3851,11 +3853,15 @@ export class GameRoom extends DurableObject<Env> {
       player.wheelFreeSpins -= 1;
       this.wheelTurnPhase = "spin";
       this.wheelPendingCash = null;
-      this.wheelSpeedEndsAt = null;
+      this.wheelGuessEndsAt = null;
       this.wheelVowelFree = false;
       return;
     }
     this.advanceWheelSeat();
+  }
+
+  private armWheelGuessTimer(): void {
+    this.wheelGuessEndsAt = Date.now() + WHEEL_GUESS_MS;
   }
 
   /** Returns true when insurance absorbed the bankrupt (bank unchanged). */
@@ -3919,14 +3925,25 @@ export class GameRoom extends DurableObject<Env> {
   private goAction(): void {
     this.wheelTurnPhase = "action";
     this.wheelPendingCash = null;
-    this.wheelSpeedEndsAt = null;
+    this.wheelGuessEndsAt = null;
   }
 
-  private goConsonant(cash: number, speed = false): void {
+  private goConsonant(cash: number): void {
     this.wheelPendingCash = cash;
-    this.wheelLastCashValue = cash > 0 ? cash : this.wheelLastCashValue;
     this.wheelTurnPhase = "consonant";
-    this.wheelSpeedEndsAt = speed ? Date.now() + WHEEL_SPEED_MS : null;
+    this.armWheelGuessTimer();
+  }
+
+  private goVowel(free: boolean): void {
+    this.wheelVowelFree = free;
+    this.wheelTurnPhase = "vowel";
+    this.wheelPendingCash = null;
+    this.armWheelGuessTimer();
+  }
+
+  private goSolve(): void {
+    this.wheelTurnPhase = "solve";
+    this.armWheelGuessTimer();
   }
 
   private async handleWheelSpin(playerId: string | undefined): Promise<void> {
@@ -3937,7 +3954,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelLastSpin = lastSpin;
     this.wheelTurnPhase = "spinning";
     this.wheelPendingCash = null;
-    this.wheelSpeedEndsAt = null;
+    this.wheelGuessEndsAt = null;
     await this.ctx.storage.setAlarm(lastSpin.endsAt);
     await this.persist();
     this.broadcastState();
@@ -3961,7 +3978,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelLastOutcome = wedge.kind;
     this.wheelLastOutcomePlayerName = player?.name ?? null;
     this.wheelVowelFree = false;
-    this.wheelSpeedEndsAt = null;
+    this.wheelGuessEndsAt = null;
 
     switch (wedge.kind) {
       case "bankrupt": {
@@ -3969,10 +3986,6 @@ export class GameRoom extends DurableObject<Env> {
           this.wheelLastOutcome = "insurance";
         }
         this.advanceWheelSeat();
-        break;
-      }
-      case "loseTurn": {
-        this.consumeFreeSpinOrAdvance(player);
         break;
       }
       case "freeSpin": {
@@ -4055,9 +4068,7 @@ export class GameRoom extends DurableObject<Env> {
         break;
       }
       case "wildVowel": {
-        this.wheelVowelFree = true;
-        this.wheelTurnPhase = "vowel";
-        this.wheelPendingCash = null;
+        this.goVowel(true);
         break;
       }
       case "mystery": {
@@ -4097,14 +4108,6 @@ export class GameRoom extends DurableObject<Env> {
         this.consumeFreeSpinOrAdvance(player);
         break;
       }
-      case "mirror": {
-        this.goConsonant(this.wheelLastCashValue ?? WHEEL_MIRROR_DEFAULT);
-        break;
-      }
-      case "speed": {
-        this.goConsonant(WHEEL_SPEED_CASH, true);
-        break;
-      }
       case "insurance": {
         if (player) player.wheelInsurance = true;
         this.goAction();
@@ -4118,8 +4121,8 @@ export class GameRoom extends DurableObject<Env> {
       }
     }
 
-    if (this.wheelSpeedEndsAt != null) {
-      await this.ctx.storage.setAlarm(this.wheelSpeedEndsAt);
+    if (this.wheelGuessEndsAt != null) {
+      await this.ctx.storage.setAlarm(this.wheelGuessEndsAt);
     }
     await this.persist();
     this.broadcastState();
@@ -4140,7 +4143,7 @@ export class GameRoom extends DurableObject<Env> {
 
     if (this.wheelTurnPhase === "consonant") {
       if (!isConsonant(letter)) return;
-      this.wheelSpeedEndsAt = null;
+      this.wheelGuessEndsAt = null;
       this.wheelUsedLetters = [...this.wheelUsedLetters, letter];
       const count = countLetterInAnswer(this.wheelPuzzle.answer, letter);
       if (count > 0) {
@@ -4168,12 +4171,12 @@ export class GameRoom extends DurableObject<Env> {
       if (!isVowel(letter)) return;
       const free = this.wheelVowelFree;
       if (!free && !canBuyVowel(player.wheelRoundBank)) {
-        this.wheelTurnPhase = "action";
-        this.wheelVowelFree = false;
+        this.goAction();
         await this.persist();
         this.broadcastState();
         return;
       }
+      this.wheelGuessEndsAt = null;
       this.wheelUsedLetters = [...this.wheelUsedLetters, letter];
       if (!free) player.wheelRoundBank = applyVowelPurchase(player.wheelRoundBank);
       this.wheelVowelFree = false;
@@ -4185,7 +4188,7 @@ export class GameRoom extends DurableObject<Env> {
           return;
         }
       }
-      this.wheelTurnPhase = "action";
+      this.goAction();
       await this.persist();
       this.broadcastState();
     }
@@ -4196,8 +4199,10 @@ export class GameRoom extends DurableObject<Env> {
     if (this.phase !== "playing" || this.wheelTurnPhase !== "action") return;
     const player = this.players.get(playerId);
     if (!player || !canBuyVowel(player.wheelRoundBank)) return;
-    this.wheelVowelFree = false;
-    this.wheelTurnPhase = "vowel";
+    this.goVowel(false);
+    if (this.wheelGuessEndsAt != null) {
+      await this.ctx.storage.setAlarm(this.wheelGuessEndsAt);
+    }
     await this.persist();
     this.broadcastState();
   }
@@ -4205,7 +4210,10 @@ export class GameRoom extends DurableObject<Env> {
   private async handleWheelChooseSolve(playerId: string | undefined): Promise<void> {
     if (!playerId || playerId !== this.wheelCurrentPlayerId) return;
     if (this.phase !== "playing" || this.wheelTurnPhase !== "action") return;
-    this.wheelTurnPhase = "solve";
+    this.goSolve();
+    if (this.wheelGuessEndsAt != null) {
+      await this.ctx.storage.setAlarm(this.wheelGuessEndsAt);
+    }
     await this.persist();
     this.broadcastState();
   }
@@ -4218,6 +4226,7 @@ export class GameRoom extends DurableObject<Env> {
     if (!player) return;
     const guess = normalizeGuess(guessRaw);
     if (!guess) return;
+    this.wheelGuessEndsAt = null;
     if (guess === this.wheelPuzzle.answer) {
       await this.completeWheelSolve(player);
       return;
@@ -4239,7 +4248,7 @@ export class GameRoom extends DurableObject<Env> {
     this.wheelLastSolverName = player.name;
     this.wheelTurnPhase = null;
     this.wheelPendingCash = null;
-    this.wheelSpeedEndsAt = null;
+    this.wheelGuessEndsAt = null;
     this.wheelVowelFree = false;
     this.phase = "between";
     this.countdownEndsAt = Date.now() + WHEEL_BETWEEN_MS;
@@ -4325,7 +4334,7 @@ export class GameRoom extends DurableObject<Env> {
       lastSpin: this.wheelLastSpin,
       pendingCash: this.wheelPendingCash,
       betweenEndsAt: this.phase === "between" ? this.countdownEndsAt : null,
-      speedEndsAt: this.phase === "playing" ? this.wheelSpeedEndsAt : null,
+      guessEndsAt: this.phase === "playing" ? this.wheelGuessEndsAt : null,
       jackpot: this.wheelJackpot,
       lastOutcome: this.wheelLastOutcome,
       lastOutcomePlayerName: this.wheelLastOutcomePlayerName,

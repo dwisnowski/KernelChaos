@@ -13,7 +13,6 @@ export type WheelRoundCount = 3 | 5 | 7;
 export type WheelWedgeKind =
   | "cash"
   | "bankrupt"
-  | "loseTurn"
   | "freeSpin"
   | "payEach"
   | "double"
@@ -28,14 +27,12 @@ export type WheelWedgeKind =
   | "passWheel"
   | "chaosTax"
   | "bankruptLite"
-  | "mirror"
-  | "speed"
   | "insurance";
 
 export type WheelLastOutcome =
   | WheelWedgeKind
   | "payEachFail"
-  | "speedTimeout"
+  | "guessTimeout"
   | null;
 
 export interface WheelWedge {
@@ -92,7 +89,8 @@ export interface WheelRoomState {
   /** Cash value from the landed wedge; set during consonant phase. */
   pendingCash: number | null;
   betweenEndsAt: number | null;
-  speedEndsAt: number | null;
+  /** Deadline for the current letter/solve guess (consonant, vowel, solve). */
+  guessEndsAt: number | null;
   jackpot: number;
   lastOutcome: WheelLastOutcome;
   lastOutcomePlayerName: string | null;
@@ -111,17 +109,15 @@ export const WHEEL_PAY_EACH = 50;
 export const WHEEL_STEAL = 250;
 export const WHEEL_CHAOS_TAX = 100;
 export const WHEEL_JACKPOT_TICK = 50;
-export const WHEEL_SPEED_MS = 8000;
+/** Per-guess timer for consonant / vowel / solve calls. */
+export const WHEEL_GUESS_MS = 10_000;
 export const WHEEL_MYSTERY_UNIT = 100;
-export const WHEEL_SPEED_CASH = 500;
-export const WHEEL_MIRROR_DEFAULT = 500;
 
 export const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
 export const WHEEL_OUTCOME_LABELS: Record<Exclude<WheelLastOutcome, null>, string> = {
   cash: "Cash!",
   bankrupt: "Went bankrupt!",
-  loseTurn: "Lost a turn!",
   freeSpin: "Earned a Free Spin!",
   payEach: "Paid each rival $50",
   payEachFail: "Couldn't pay — lost the turn!",
@@ -137,10 +133,8 @@ export const WHEEL_OUTCOME_LABELS: Record<Exclude<WheelLastOutcome, null>, strin
   passWheel: "Passed the wheel!",
   chaosTax: "Triggered chaos tax!",
   bankruptLite: "Half bankrupt!",
-  mirror: "Mirrored the last cash!",
-  speed: "Hit speed call!",
   insurance: "Got insurance!",
-  speedTimeout: "Ran out of time!",
+  guessTimeout: "Ran out of time!",
 };
 
 export function isWheelRoundCount(n: unknown): n is WheelRoundCount {

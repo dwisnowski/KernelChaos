@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (implemented: full special-wedge set on the Chaos Wheel, jackpot / speed / insurance state, client banners + SFX).
+Accepted (superseded in part by [ADR 0047](./0047-chaos-wheel-guess-timer.md): Mirror / Lose Turn / Speed removed; guess timer is universal).
 
 ## Context
 
@@ -10,7 +10,7 @@ ADR 0039 shipped Chaos Wheel with cash, Bankrupt, Lose a Turn, and Free Spin. Fa
 
 ## Decision
 
-Rebuild the wheel to ~30 mixed cash slices plus one of each special (two Free Spins; only one Lose a Turn). Specials:
+Rebuild the wheel to ~30 mixed cash slices plus specials (two Free Spins). Specials:
 
 | Kind | On land (summary) |
 | --- | --- |
@@ -21,14 +21,13 @@ Rebuild the wheel to ~30 mixed cash slices plus one of each special (two Free Sp
 | `freeLetter` / `mystery` / `wildVowel` | Reveal or free vowel path |
 | `passWheel` | Advance seat; Free Spin does not cancel |
 | `chaosTax` | Each pays min(100, bank) into jackpot → spinner `action` |
-| `mirror` | Pending cash = last cash value (or 500) → consonant |
-| `speed` | Consonant at 500 with 8s alarm → lose turn on timeout |
 | `insurance` | Next full Bankrupt does not change your round bank (token consumed; turn still advances). Banner uses `insurance` outcome. |
 
-Public state exposes `jackpot`, `speedEndsAt`, `lastOutcome`; players show `insurance`. Client colors, outcome banners, and `playWheelSpecial` map settle cues; TV mirrors jackpot + banners and shows `WHEEL_OUTCOME_BLURBS` under the outcome title so the audience knows what the landed tile does.
+Public state exposes `jackpot`, `guessEndsAt` (see ADR 0047), `lastOutcome`; players show `insurance`. Client colors, outcome banners, and `playWheelSpecial` map settle cues; TV mirrors jackpot + banners and shows `WHEEL_OUTCOME_BLURBS` under the outcome title so the audience knows what the landed tile does.
 
 ## Consequences
 
 - Cross-links [ADR 0039](./0039-chaos-wheel.md); wedge table lives in `worker/wheel/wheel.ts`.
 - More room fields and alarm paths on `GameRoom`; keep Free Spin / insurance edge cases covered in resolve helpers.
 - Labels stay short for Canvas; human copy is `WHEEL_OUTCOME_LABELS` on phone + TV.
+- Guess timing and removal of Mirror / Lose Turn / Speed are in [ADR 0047](./0047-chaos-wheel-guess-timer.md).

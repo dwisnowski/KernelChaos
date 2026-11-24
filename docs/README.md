@@ -51,10 +51,11 @@ Architecture decisions and project notes for KernelChaos.
 - [0037 – Spot It kana Learning mode](adr/0037-spot-it-kana-learning.md) — `learning` + `quiz`; Restaurant Kana pack; Unicode glyphs (not Magnific)
 - [0038 – Spot It Shopping Kana pack](adr/0038-spot-it-kana-shopping-pack.md) — lobby pack `kana-shopping`; tourist retail vocab
 - [0039 – Chaos Wheel](adr/0039-chaos-wheel.md) — `wheel` rooms; puzzle show; Canvas 2D + anime.js spin; host rounds 3/5/7; original family pack
-- [0040 – Chaos Wheel special wedges](adr/0040-chaos-wheel-special-wedges.md) — full special set (jackpot, steal, speed, insurance, …); `lastOutcome` banners + SFX
+- [0040 – Chaos Wheel special wedges](adr/0040-chaos-wheel-special-wedges.md) — special set (jackpot, steal, insurance, …); `lastOutcome` banners + SFX
 - [0041 – Hunt scene prompt pipeline](adr/0041-hunt-scene-prompt-pipeline.md) — Magnific prompt library; image-only scenes; no answer keys; peer In/Out scoring
 - [0042 – Hunt themed packs](adr/0042-hunt-themed-packs.md) — lobby picks pack; random scene per round from pack; 50 scenes partitioned into 6 themes
 - [0043 – Trivia](adr/0043-trivia.md) — `trivia` rooms; Single/Double/Final; buzzers + A–H; Daily Double show beat; family pack
 - [0044 – Trivia Chaos](adr/0044-trivia-chaos.md) — Chaos Dash earn loop; Light/Mayhem powers; lobby `off|light|mayhem`
 - [0045 – Colors header popover](adr/0045-colors-header-popover.md) — Layout Colors opens device-local popover; `/settings` stays full page + Admin
 - [0046 – Trivia audience packs](adr/0046-trivia-audience-packs.md) — Kids/Family/Adult/Spicy collections; 10 themed packs each; Bluey fan trivia; legacy `family` → `family-classics`
+- [0047 – Chaos Wheel guess timer](adr/0047-chaos-wheel-guess-timer.md) — drop Mirror / Lose Turn / Speed; 10s per consonant/vowel/solve

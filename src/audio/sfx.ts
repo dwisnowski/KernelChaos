@@ -425,6 +425,15 @@ export function playWheelLoseTurn(): void {
   tone(247, t + 0.24, 0.2, "triangle", 0.06);
 }
 
+/** Chaos Wheel: guess timer expired (beep beep). */
+export function playWheelGuessTimeout(): void {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  tone(880, t, 0.11, "square", 0.09);
+  tone(880, t + 0.2, 0.11, "square", 0.09);
+}
+
 /** Chaos Wheel: puzzle solved. */
 export function playWheelSolve(): void {
   const c = getCtx();
@@ -512,11 +521,12 @@ export function playWheelSpecial(kind: string | null | undefined): void {
     case "bankruptLite":
       playWheelBankrupt();
       return;
-    case "loseTurn":
     case "payEachFail":
-    case "speedTimeout":
     case "passWheel":
       playWheelLoseTurn();
+      return;
+    case "guessTimeout":
+      playWheelGuessTimeout();
       return;
     case "jackpot":
     case "double":
@@ -543,8 +553,6 @@ export function playWheelSpecial(kind: string | null | undefined): void {
       return;
     case "half":
     case "swapBanks":
-    case "mirror":
-    case "speed":
       tone(494, t, 0.09, "sine", 0.07);
       tone(370, t + 0.1, 0.12, "triangle", 0.06);
       return;

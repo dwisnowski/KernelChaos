@@ -8,7 +8,6 @@ const TAU = Math.PI * 2;
 const CASH_COLORS = ["#1a6bff", "#ff3d8b", "#0e9f6e", "#7c3aed", "#0891b2", "#ea580c"];
 const SPECIAL: Record<string, string> = {
   bankrupt: "#1a1a1a",
-  loseTurn: "#4b5563",
   freeSpin: "#e6a100",
   payEach: "#0d9488",
   double: "#db2777",
@@ -23,8 +22,6 @@ const SPECIAL: Record<string, string> = {
   passWheel: "#57534e",
   chaosTax: "#b45309",
   bankruptLite: "#334155",
-  mirror: "#0891b2",
-  speed: "#ea580c",
   insurance: "#059669",
 };
 

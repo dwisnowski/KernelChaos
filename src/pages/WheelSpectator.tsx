@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useParams } from "react-router-dom";
 import {
@@ -25,6 +25,7 @@ export function WheelSpectator() {
   const turnRef = useRef<string | null>(null);
   const outcomeRef = useRef<string | null>(null);
   const tickTimer = useRef<number | null>(null);
+  const [guessLeft, setGuessLeft] = useState<number | null>(null);
 
   const { state, spectate, connected } = useWheelRoom({
     code: roomCode,
@@ -56,7 +57,7 @@ export function WheelSpectator() {
       if (state.lastOutcome) playWheelSpecial(state.lastOutcome);
       outcomeRef.current = state.lastOutcome;
     } else if (state.lastOutcome && state.lastOutcome !== outcomeRef.current) {
-      if (state.lastOutcome === "speedTimeout" || state.lastOutcome === "payEachFail") {
+      if (state.lastOutcome === "guessTimeout" || state.lastOutcome === "payEachFail") {
         playWheelSpecial(state.lastOutcome);
       }
       outcomeRef.current = state.lastOutcome;
@@ -74,6 +75,24 @@ export function WheelSpectator() {
       if (tickTimer.current) window.clearInterval(tickTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    const guessing =
+      state?.turnPhase === "consonant" ||
+      state?.turnPhase === "vowel" ||
+      state?.turnPhase === "solve";
+    if (!state?.guessEndsAt || !guessing) {
+      setGuessLeft(null);
+      return;
+    }
+    function tick() {
+      const left = Math.max(0, (state!.guessEndsAt ?? 0) - Date.now());
+      setGuessLeft(left);
+    }
+    tick();
+    const id = window.setInterval(tick, 100);
+    return () => window.clearInterval(id);
+  }, [state?.guessEndsAt, state?.turnPhase]);
 
   const joinUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -196,6 +215,7 @@ export function WheelSpectator() {
                           : state.turnPhase === "solve"
                             ? " solving…"
                             : " at the wheel"}
+                    {guessLeft != null ? ` · ${(guessLeft / 1000).toFixed(1)}s` : ""}
                   </p>
                 ) : null}
                 {state.phase === "between" ? (

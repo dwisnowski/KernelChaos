@@ -27,7 +27,7 @@ export function WheelRoom() {
   const navName = (location.state as { name?: string } | null)?.name;
   const [error, setError] = useState<string | null>(null);
   const [solveText, setSolveText] = useState("");
-  const [speedLeft, setSpeedLeft] = useState<number | null>(null);
+  const [guessLeft, setGuessLeft] = useState<number | null>(null);
   const phaseRef = useRef<string | null>(null);
   const turnRef = useRef<string | null>(null);
   const outcomeRef = useRef<string | null>(null);
@@ -78,7 +78,7 @@ export function WheelRoom() {
       if (state.lastOutcome) playWheelSpecial(state.lastOutcome);
       outcomeRef.current = state.lastOutcome;
     } else if (state.lastOutcome && state.lastOutcome !== outcomeRef.current) {
-      if (state.lastOutcome === "speedTimeout" || state.lastOutcome === "payEachFail") {
+      if (state.lastOutcome === "guessTimeout" || state.lastOutcome === "payEachFail") {
         playWheelSpecial(state.lastOutcome);
       }
       outcomeRef.current = state.lastOutcome;
@@ -102,18 +102,22 @@ export function WheelRoom() {
   }, []);
 
   useEffect(() => {
-    if (!state?.speedEndsAt || state.turnPhase !== "consonant") {
-      setSpeedLeft(null);
+    const guessing =
+      state?.turnPhase === "consonant" ||
+      state?.turnPhase === "vowel" ||
+      state?.turnPhase === "solve";
+    if (!state?.guessEndsAt || !guessing) {
+      setGuessLeft(null);
       return;
     }
     function tick() {
-      const left = Math.max(0, (state!.speedEndsAt ?? 0) - Date.now());
-      setSpeedLeft(left);
+      const left = Math.max(0, (state!.guessEndsAt ?? 0) - Date.now());
+      setGuessLeft(left);
     }
     tick();
     const id = window.setInterval(tick, 100);
     return () => window.clearInterval(id);
-  }, [state?.speedEndsAt, state?.turnPhase]);
+  }, [state?.guessEndsAt, state?.turnPhase]);
 
   const joinUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -249,9 +253,7 @@ export function WheelRoom() {
                   <p className="wheel-banner">
                     Call a consonant
                     {state.pendingCash != null ? ` · ${state.pendingCash} each` : ""}
-                    {speedLeft != null
-                      ? ` · ${(speedLeft / 1000).toFixed(1)}s`
-                      : ""}
+                    {guessLeft != null ? ` · ${(guessLeft / 1000).toFixed(1)}s` : ""}
                   </p>
                   <LetterPad
                     mode="consonant"
@@ -263,7 +265,10 @@ export function WheelRoom() {
 
               {state.turnPhase === "vowel" ? (
                 <>
-                  <p className="wheel-banner">Pick a vowel</p>
+                  <p className="wheel-banner">
+                    Pick a vowel
+                    {guessLeft != null ? ` · ${(guessLeft / 1000).toFixed(1)}s` : ""}
+                  </p>
                   <LetterPad mode="vowel" usedLetters={state.usedLetters} onPick={onGuess} />
                 </>
               ) : null}
@@ -271,7 +276,10 @@ export function WheelRoom() {
               {state.turnPhase === "solve" ? (
                 <form className="wheel-solve-form" onSubmit={onSolveSubmit}>
                   <label className="field">
-                    <span>Solve the puzzle</span>
+                    <span>
+                      Solve the puzzle
+                      {guessLeft != null ? ` · ${(guessLeft / 1000).toFixed(1)}s` : ""}
+                    </span>
                     <input
                       value={solveText}
                       onChange={(e) => setSolveText(e.target.value)}

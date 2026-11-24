@@ -13,7 +13,6 @@ export type WheelRoundCount = 3 | 5 | 7;
 export type WheelWedgeKind =
   | "cash"
   | "bankrupt"
-  | "loseTurn"
   | "freeSpin"
   | "payEach"
   | "double"
@@ -28,14 +27,12 @@ export type WheelWedgeKind =
   | "passWheel"
   | "chaosTax"
   | "bankruptLite"
-  | "mirror"
-  | "speed"
   | "insurance";
 
 export type WheelLastOutcome =
   | WheelWedgeKind
   | "payEachFail"
-  | "speedTimeout"
+  | "guessTimeout"
   | null;
 
 export interface WheelWedge {
@@ -88,7 +85,7 @@ export interface WheelRoomState {
   lastSpin: WheelLastSpin | null;
   pendingCash: number | null;
   betweenEndsAt: number | null;
-  speedEndsAt: number | null;
+  guessEndsAt: number | null;
   jackpot: number;
   lastOutcome: WheelLastOutcome;
   /** Name of the player who just landed the outcome (may differ from current seat). */
@@ -107,7 +104,6 @@ export const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 export const WHEEL_OUTCOME_LABELS: Record<Exclude<WheelLastOutcome, null>, string> = {
   cash: "Cash!",
   bankrupt: "Went bankrupt!",
-  loseTurn: "Lost a turn!",
   freeSpin: "Earned a Free Spin!",
   payEach: "Paid each rival $50",
   payEachFail: "Couldn't pay — lost the turn!",
@@ -123,17 +119,14 @@ export const WHEEL_OUTCOME_LABELS: Record<Exclude<WheelLastOutcome, null>, strin
   passWheel: "Passed the wheel!",
   chaosTax: "Triggered chaos tax!",
   bankruptLite: "Half bankrupt!",
-  mirror: "Mirrored the last cash!",
-  speed: "Hit speed call!",
   insurance: "Got insurance!",
-  speedTimeout: "Ran out of time!",
+  guessTimeout: "Ran out of time!",
 };
 
 /** Short TV blurbs: what the landed tile did for the spinner (past tense). */
 export const WHEEL_OUTCOME_BLURBS: Record<Exclude<WheelLastOutcome, null>, string> = {
   cash: "Called a consonant — each match paid that cash into the round bank.",
   bankrupt: "Round bank dropped to zero and the turn ended.",
-  loseTurn: "Turn ended. A Free Spin token could cancel this.",
   freeSpin: "Banked a Free Spin token to survive a future lost turn.",
   payEach: "Paid $50 to each rival from the round bank, then called a letter at $0.",
   payEachFail: "Not enough in the round bank to pay rivals — turn ended.",
@@ -149,10 +142,8 @@ export const WHEEL_OUTCOME_BLURBS: Record<Exclude<WheelLastOutcome, null>, strin
   passWheel: "Wheel passed to the next player. Free Spin could not stop this.",
   chaosTax: "Everyone paid up to $100 into the jackpot. Spinner kept the turn.",
   bankruptLite: "Round bank was cut in half and the turn ended.",
-  mirror: "Called a consonant at the last cash value spun (or $500).",
-  speed: "Had to call a consonant fast at $500 — missing the timer loses the turn.",
   insurance: "Next Bankrupt won’t wipe the round bank (turn still ends).",
-  speedTimeout: "Speed timer ran out — turn ended.",
+  guessTimeout: "10-second guess timer ran out — turn ended.",
 };
 
 export function isVowel(letter: string): boolean {
