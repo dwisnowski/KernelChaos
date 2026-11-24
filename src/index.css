@@ -691,6 +691,32 @@ input {
   cursor: default;
 }
 
+.pack-select {
+  position: relative;
+}
+
+.size-pill.is-explicit {
+  gap: 0.35rem;
+}
+
+.pack-warning-icon {
+  flex-shrink: 0;
+  color: #e8a54b;
+}
+
+.size-pill.is-active .pack-warning-icon {
+  color: #062218;
+}
+
+.pack-confirm-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  right: auto;
+  z-index: 40;
+  width: min(22rem, calc(100vw - 2rem));
+}
+
 .round-time {
   padding: 1rem;
   border-radius: var(--radius);

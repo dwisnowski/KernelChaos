@@ -59,7 +59,8 @@ export type TriviaPackId =
   | "spicy-reality"
   | "spicy-dirty-mind"
   | "spicy-scandal"
-  | "spicy-late-night";
+  | "spicy-late-night"
+  | "spicy-urban-dictionary";
 
 export type TriviaChaosMode = "off" | "light" | "mayhem";
 
@@ -131,6 +132,7 @@ export const TRIVIA_PACK_IDS: TriviaPackId[] = [
   "spicy-dirty-mind",
   "spicy-scandal",
   "spicy-late-night",
+  "spicy-urban-dictionary",
 ];
 
 export const DEFAULT_TRIVIA_PACK: TriviaPackId = "family-classics";
@@ -176,7 +178,11 @@ export const TRIVIA_PACK_LABELS: Record<TriviaPackId, string> = {
   "spicy-dirty-mind": "Dirty Mind",
   "spicy-scandal": "Scandal Timeline",
   "spicy-late-night": "Late Night Bits",
+  "spicy-urban-dictionary": "Urban Dictionary",
 };
+
+/** Packs that need a host warning + confirm before lobby selection (NSFW). */
+export const TRIVIA_EXPLICIT_PACK_IDS: readonly TriviaPackId[] = ["spicy-urban-dictionary"];
 
 export const TRIVIA_PACK_AUDIENCE: Record<TriviaPackId, TriviaAudience> = {
   "kids-thanksgiving": "kids",
@@ -219,8 +225,8 @@ export const TRIVIA_PACK_AUDIENCE: Record<TriviaPackId, TriviaAudience> = {
   "spicy-dirty-mind": "spicy",
   "spicy-scandal": "spicy",
   "spicy-late-night": "spicy",
+  "spicy-urban-dictionary": "spicy",
 };
-
 export const DEFAULT_TRIVIA_CHAOS_MODE: TriviaChaosMode = "light";
 
 export const TRIVIA_SINGLE_VALUES = [200, 400, 600, 800, 1000] as const;

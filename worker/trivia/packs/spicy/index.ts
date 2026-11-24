@@ -8,3 +8,4 @@ export { SPICY_REALITY_PACK } from "./reality.ts";
 export { SPICY_DIRTY_MIND_PACK } from "./dirty-mind.ts";
 export { SPICY_SCANDAL_PACK } from "./scandal.ts";
 export { SPICY_LATE_NIGHT_PACK } from "./late-night.ts";
+export { SPICY_URBAN_DICTIONARY_PACK } from "./urban-dictionary.ts";

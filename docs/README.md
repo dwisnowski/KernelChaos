@@ -57,6 +57,7 @@ Architecture decisions and project notes for KernelChaos.
 - [0043 – Trivia](adr/0043-trivia.md) — `trivia` rooms; Single/Double/Final; buzzers + A–H; Daily Double show beat; family pack
 - [0044 – Trivia Chaos](adr/0044-trivia-chaos.md) — Chaos Dash earn loop; Light/Mayhem powers; lobby `off|light|mayhem`
 - [0045 – Colors header popover](adr/0045-colors-header-popover.md) — Layout Colors opens device-local popover; `/settings` stays full page + Admin
-- [0046 – Trivia audience packs](adr/0046-trivia-audience-packs.md) — Kids/Family/Adult/Spicy collections; 10 themed packs each; Bluey fan trivia; legacy `family` → `family-classics`
+- [0046 – Trivia audience packs](adr/0046-trivia-audience-packs.md) — Kids/Family/Adult/Spicy collections; themed packs; Bluey fan trivia; legacy `family` → `family-classics`; anything-goes via [0049](adr/0049-trivia-urban-dictionary-pack.md)
 - [0047 – Chaos Wheel guess timer](adr/0047-chaos-wheel-guess-timer.md) — drop Mirror / Lose Turn / Speed; 10s per consonant/vowel/solve
 - [0048 – Trivia buzz sync](adr/0048-trivia-buzz-sync.md) — `buzzOpenAt` wall-clock arm; equal opportunity buzz across phones
+- [0049 – Trivia Urban Dictionary pack](adr/0049-trivia-urban-dictionary-pack.md) — `spicy-urban-dictionary` anything-goes NSFW slang board; host warning + confirm; amends 0046

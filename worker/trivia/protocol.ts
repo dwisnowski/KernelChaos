@@ -58,7 +58,8 @@ export type TriviaPackId =
   | "spicy-reality"
   | "spicy-dirty-mind"
   | "spicy-scandal"
-  | "spicy-late-night";
+  | "spicy-late-night"
+  | "spicy-urban-dictionary";
 
 export type TriviaChaosMode = "off" | "light" | "mayhem";
 
@@ -130,6 +131,7 @@ export const TRIVIA_PACK_IDS: TriviaPackId[] = [
   "spicy-dirty-mind",
   "spicy-scandal",
   "spicy-late-night",
+  "spicy-urban-dictionary",
 ];
 
 export const DEFAULT_TRIVIA_PACK: TriviaPackId = "family-classics";
@@ -176,6 +178,7 @@ export const TRIVIA_PACK_AUDIENCE: Record<TriviaPackId, TriviaAudience> = {
   "spicy-dirty-mind": "spicy",
   "spicy-scandal": "spicy",
   "spicy-late-night": "spicy",
+  "spicy-urban-dictionary": "spicy",
 };
 
 export const TRIVIA_SINGLE_VALUES = [200, 400, 600, 800, 1000] as const;

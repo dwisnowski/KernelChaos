@@ -47,6 +47,7 @@ import {
   SPICY_REALITY_PACK,
   SPICY_SCANDAL_PACK,
   SPICY_TABLOID_PACK,
+  SPICY_URBAN_DICTIONARY_PACK,
 } from "./spicy/index.ts";
 
 const PACKS: Record<TriviaPackId, TriviaPack> = {
@@ -90,6 +91,7 @@ const PACKS: Record<TriviaPackId, TriviaPack> = {
   "spicy-dirty-mind": SPICY_DIRTY_MIND_PACK,
   "spicy-scandal": SPICY_SCANDAL_PACK,
   "spicy-late-night": SPICY_LATE_NIGHT_PACK,
+  "spicy-urban-dictionary": SPICY_URBAN_DICTIONARY_PACK,
 };
 
 export function getTriviaPack(id: TriviaPackId): TriviaPack {

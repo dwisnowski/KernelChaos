@@ -120,7 +120,7 @@ Mode: `spotItMode: "shared" | "tower" | "learning"` (lobby pills). Learning uses
 
 `TriviaPhase` in `src/triviaTypes.ts`: `lobby` → `board` → `clue` → (`dailyWager` |) `buzzOpen` → `answering` → `reveal` → … → `between` → Double board … → `finalCategory` → `finalWager` → `finalAnswer` → `results`.
 
-Lobby: Audience (`kids` | `family` | `adult` | `spicy`) then themed pack pills (default `family-classics`) + Chaos `off | light | mayhem` (default light). Start needs ≥2 players. Phones: board pick / large buzzer / A–H / wagers / Chaos Dash. TV: board + clue stage + score-rail glow on buzz lock + Daily Double reveal.
+Lobby: Audience (`kids` | `family` | `adult` | `spicy`) then themed pack pills (default `family-classics`) + Chaos `off | light | mayhem` (default light). Explicit packs (`spicy-urban-dictionary`) show a warning icon and require host confirm before selection. Start needs ≥2 players. Phones: board pick / large buzzer / A–H / wagers / Chaos Dash. TV: board + clue stage + score-rail glow on buzz lock + Daily Double reveal.
 
 ### Chaos Wheel
 
