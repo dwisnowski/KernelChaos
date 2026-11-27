@@ -5211,7 +5211,7 @@ input {
   animation: trivia-glow 1.2s ease-out;
 }
 
-.trivia-score-seat.is-fake-buzz {
+.trivia-score-seat.is-spotlight {
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--muted) 50%, transparent);
 }
 
@@ -5500,10 +5500,6 @@ input {
 
 .trivia-clue-tv .trivia-clue-prompt {
   font-size: clamp(2rem, 4.5vw, 3.4rem);
-}
-
-.trivia-clue-tv.is-zapped {
-  filter: invert(1) hue-rotate(90deg);
 }
 
 .trivia-buzz-pulse {

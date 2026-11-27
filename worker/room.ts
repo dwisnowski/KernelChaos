@@ -1390,18 +1390,6 @@ export class GameRoom extends DurableObject<Env> {
         if (this.gameType !== "trivia") break;
         await this.handleTriviaUseChaos(attachment?.playerId, msg.power, msg.targetPlayerId);
         break;
-      case "cheer":
-        if (this.gameType !== "trivia") break;
-        await this.handleTriviaCheer(attachment?.playerId, msg.delta);
-        break;
-      case "phoneFriendVote":
-        if (this.gameType !== "trivia") break;
-        await this.handleTriviaPhoneFriendVote(attachment?.playerId, msg.choiceIndex);
-        break;
-      case "challengeVote":
-        if (this.gameType !== "trivia") break;
-        await this.handleTriviaChallengeVote(attachment?.playerId, msg.tooEasy);
-        break;
       default:
         this.send(ws, { type: "error", message: "Unknown message" });
     }
@@ -3761,33 +3749,6 @@ export class GameRoom extends DurableObject<Env> {
     this.trivia.syncSeatsFrom(this.players.values());
     const result = this.trivia.useChaos(playerId, power, targetPlayerId);
     if (!result.ok) return;
-    await this.persist();
-    this.broadcastState();
-  }
-
-  private async handleTriviaCheer(playerId: string | undefined, delta: 1 | -1): Promise<void> {
-    if (!playerId) return;
-    this.trivia.cheer(playerId, delta);
-    await this.persist();
-    this.broadcastState();
-  }
-
-  private async handleTriviaPhoneFriendVote(
-    playerId: string | undefined,
-    choiceIndex: number,
-  ): Promise<void> {
-    if (!playerId) return;
-    this.trivia.phoneFriendVote(playerId, choiceIndex);
-    await this.persist();
-    this.broadcastState();
-  }
-
-  private async handleTriviaChallengeVote(
-    playerId: string | undefined,
-    tooEasy: boolean,
-  ): Promise<void> {
-    if (!playerId) return;
-    this.trivia.challengeVote(playerId, tooEasy);
     await this.persist();
     this.broadcastState();
   }

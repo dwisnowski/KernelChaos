@@ -154,15 +154,6 @@ export function useTriviaRoom({ code, role = "player", onError }: Options) {
       send({ type: "useChaos", power, targetPlayerId }),
     [send],
   );
-  const cheer = useCallback((delta: 1 | -1) => send({ type: "cheer", delta }), [send]);
-  const phoneFriendVote = useCallback(
-    (choiceIndex: number) => send({ type: "phoneFriendVote", choiceIndex }),
-    [send],
-  );
-  const challengeVote = useCallback(
-    (tooEasy: boolean) => send({ type: "challengeVote", tooEasy }),
-    [send],
-  );
   const playAgain = useCallback(() => send({ type: "playAgain" }), [send]);
 
   const me: TriviaPlayerPublic | null = useMemo(() => {
@@ -188,9 +179,6 @@ export function useTriviaRoom({ code, role = "player", onError }: Options) {
     finalAnswer,
     solveChaos,
     useChaos,
-    cheer,
-    phoneFriendVote,
-    challengeVote,
     playAgain,
   };
 }

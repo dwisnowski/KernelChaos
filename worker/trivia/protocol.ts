@@ -64,22 +64,16 @@ export type TriviaPackId =
 export type TriviaChaosMode = "off" | "light" | "mayhem";
 
 export type TriviaChaosPower =
-  | "fakeBuzz"
   | "buzzJam"
   | "blindfold"
-  | "cheerBoo"
   | "partyTax"
-  | "screenZap"
   | "trapAnswer"
   | "stealBuzz"
   | "potSiphon"
   | "swapStakes"
-  | "challenge"
-  | "hotSeat"
   | "alliance"
   | "spotlightSteal"
-  | "hintTax"
-  | "phoneFriend";
+  | "hintTax";
 
 export const TRIVIA_AUDIENCES: TriviaAudience[] = ["kids", "family", "adult", "spicy"];
 
@@ -200,33 +194,26 @@ export const TRIVIA_BUZZ_JAM_MS = 1000;
 /** Grace after wrong-answer reopen so all phones arm on the same wall clock. */
 export const TRIVIA_BUZZ_SYNC_MS = 500;
 export const TRIVIA_BLINDFOLD_MS = 3000;
-export const TRIVIA_SCREEN_ZAP_MS = 1000;
 export const TRIVIA_CHAOS_DASH_LOCK_MS = 500;
-export const TRIVIA_PARTY_TAX = 50;
+/** Fraction of a correct clue's payout diverted to the pot when party tax is active. */
+export const TRIVIA_PARTY_TAX_RATE = 0.3;
 export const TRIVIA_HINT_TAX = 50;
-export const TRIVIA_CHEER_BONUS = 25;
 
 export const LIGHT_CHAOS_POWERS: TriviaChaosPower[] = [
-  "fakeBuzz",
   "buzzJam",
   "blindfold",
-  "cheerBoo",
   "partyTax",
 ];
 
 export const MAYHEM_CHAOS_POWERS: TriviaChaosPower[] = [
   ...LIGHT_CHAOS_POWERS,
-  "screenZap",
   "trapAnswer",
   "stealBuzz",
   "potSiphon",
   "swapStakes",
-  "challenge",
-  "hotSeat",
   "alliance",
   "spotlightSteal",
   "hintTax",
-  "phoneFriend",
 ];
 
 export function chaosChargeCap(mode: TriviaChaosMode): number {
@@ -402,18 +389,11 @@ export interface TriviaRoomState {
   lastOutcomePlayerName: string | null;
   /** Transient FX flags for clients. */
   blindfoldUntil: number | null;
-  screenZapUntil: number | null;
-  fakeBuzzPlayerId: string | null;
   spotlightPlayerId: string | null;
   buzzJamUntil: Record<string, number>;
-  cheerScore: number;
   hintExcluded: number[];
-  phoneFriendVotes: Record<string, number>;
   trapChoiceIndex: number | null;
   allianceIds: string[] | null;
-  hotSeatPlayerId: string | null;
-  challengeOpen: boolean;
-  challengeVotes: Record<string, boolean>;
   lastScoreDelta: number | null;
   results: TriviaPlayerResult[];
   winners: string[];
@@ -433,9 +413,6 @@ export type TriviaClientMessage =
   | { type: "finalAnswer"; choiceIndex: number }
   | { type: "solveChaos"; choiceIndex: number }
   | { type: "useChaos"; power: TriviaChaosPower; targetPlayerId?: string }
-  | { type: "cheer"; delta: 1 | -1 }
-  | { type: "phoneFriendVote"; choiceIndex: number }
-  | { type: "challengeVote"; tooEasy: boolean }
   | { type: "playAgain" };
 
 export type TriviaServerMessage =

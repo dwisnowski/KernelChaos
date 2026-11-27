@@ -1,15 +1,14 @@
-import { TRIVIA_CHEER_BONUS, TRIVIA_PARTY_TAX } from "./protocol.ts";
+import { TRIVIA_PARTY_TAX_RATE } from "./protocol.ts";
 
 export function applyCorrect(
   score: number,
   value: number,
-  opts?: { trapDoubleWrong?: boolean; cheerBonus?: number; partyTax?: boolean },
+  opts?: { partyTax?: boolean },
 ): { score: number; delta: number; tax: number } {
   let delta = value;
-  if (opts?.cheerBonus) delta += opts.cheerBonus;
   let tax = 0;
   if (opts?.partyTax) {
-    tax = Math.min(TRIVIA_PARTY_TAX, Math.max(0, score + delta));
+    tax = Math.floor(value * TRIVIA_PARTY_TAX_RATE);
     delta -= tax;
   }
   return { score: score + delta, delta, tax };
@@ -32,12 +31,6 @@ export function applyFinal(
 ): { score: number; delta: number } {
   const delta = correct ? wager : -wager;
   return { score: score + delta, delta };
-}
-
-export function cheerBonusFromMeter(cheerScore: number): number {
-  if (cheerScore >= 3) return TRIVIA_CHEER_BONUS;
-  if (cheerScore <= -3) return -TRIVIA_CHEER_BONUS;
-  return 0;
 }
 
 export function pickWinners(

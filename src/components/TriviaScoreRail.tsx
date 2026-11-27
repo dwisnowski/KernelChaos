@@ -28,13 +28,13 @@ function TriviaScoreSeat({
 }) {
   const isController = state.controllerId === player.id && state.phase === "board";
   const isBuzzed = state.buzzedPlayerId === player.id && state.phase === "answering";
-  const isFake = state.fakeBuzzPlayerId === player.id || state.spotlightPlayerId === player.id;
+  const isSpotlight = state.spotlightPlayerId === player.id;
   const classes = [
     "trivia-score-seat",
     isMe ? "is-me" : "",
     isController ? "is-controller" : "",
     isBuzzed ? "is-buzzed" : "",
-    isFake ? "is-fake-buzz" : "",
+    isSpotlight ? "is-spotlight" : "",
   ]
     .filter(Boolean)
     .join(" ");

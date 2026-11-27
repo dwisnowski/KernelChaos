@@ -286,13 +286,7 @@ export function TriviaSpectator() {
                     </div>
                   </TriviaClueReveal>
                 ) : (
-                  <div
-                    className={`trivia-clue-stage trivia-clue-tv${
-                      state.screenZapUntil && state.screenZapUntil > now
-                        ? " is-zapped"
-                        : ""
-                    }`}
-                  >
+                  <div className="trivia-clue-stage trivia-clue-tv">
                     <p className="trivia-clue-cat">{state.activeClue.categoryTitle}</p>
                     <p className="trivia-clue-prompt">{state.activeClue.prompt}</p>
                     {state.phase === "buzzOpen" &&

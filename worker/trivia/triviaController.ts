@@ -27,7 +27,6 @@ import {
   TRIVIA_FINAL_WAGER_MS,
   TRIVIA_HINT_TAX,
   TRIVIA_REVEAL_MS,
-  TRIVIA_SCREEN_ZAP_MS,
   chaosChargeCap,
   isTriviaChaosMode,
   isTriviaChaosPower,
@@ -46,7 +45,6 @@ import {
   applyCorrect,
   applyFinal,
   applyWrong,
-  cheerBonusFromMeter,
   pickWinners,
 } from "./scoring.ts";
 
@@ -96,18 +94,11 @@ export interface TriviaPersisted {
   lastOutcomePlayerId: string | null;
   lastOutcomePlayerName: string | null;
   blindfoldUntil: number | null;
-  screenZapUntil: number | null;
-  fakeBuzzPlayerId: string | null;
   spotlightPlayerId: string | null;
   buzzJamUntil: Record<string, number>;
-  cheerScore: number;
   hintExcluded: number[];
-  phoneFriendVotes: Record<string, number>;
   trapChoiceIndex: number | null;
   allianceIds: string[] | null;
-  hotSeatPlayerId: string | null;
-  challengeOpen: boolean;
-  challengeVotes: Record<string, boolean>;
   lastScoreDelta: number | null;
   pendingPartyTax: boolean;
   swapStakesActive: boolean;
@@ -174,18 +165,11 @@ export class TriviaController {
   lastOutcomePlayerId: string | null = null;
   lastOutcomePlayerName: string | null = null;
   blindfoldUntil: number | null = null;
-  screenZapUntil: number | null = null;
-  fakeBuzzPlayerId: string | null = null;
   spotlightPlayerId: string | null = null;
   buzzJamUntil: Record<string, number> = {};
-  cheerScore = 0;
   hintExcluded: number[] = [];
-  phoneFriendVotes: Record<string, number> = {};
   trapChoiceIndex: number | null = null;
   allianceIds: string[] | null = null;
-  hotSeatPlayerId: string | null = null;
-  challengeOpen = false;
-  challengeVotes: Record<string, boolean> = {};
   lastScoreDelta: number | null = null;
   pendingPartyTax = false;
   swapStakesActive = false;
@@ -240,12 +224,8 @@ export class TriviaController {
     this.dailyWagerMaxVal = null;
     this.chaosDash = null;
     this.chaosDashWinnerId = null;
-    this.cheerScore = 0;
     this.hintExcluded = [];
-    this.phoneFriendVotes = {};
     this.trapChoiceIndex = null;
-    this.challengeOpen = false;
-    this.challengeVotes = {};
     this.lastScoreDelta = null;
     this.pendingPartyTax = false;
     this.swapStakesActive = false;
@@ -254,8 +234,6 @@ export class TriviaController {
 
   private clearFx(): void {
     this.blindfoldUntil = null;
-    this.screenZapUntil = null;
-    this.fakeBuzzPlayerId = null;
     this.spotlightPlayerId = null;
     this.buzzJamUntil = {};
   }
@@ -316,9 +294,6 @@ export class TriviaController {
   ): { ok: true; alarmAt: number } | { ok: false; error?: string } {
     if (this.phase !== "board" || !this.liveBoard || this.round == null) return { ok: false };
     if (playerId !== this.controllerId) return { ok: false, error: "Not your pick" };
-    if (this.hotSeatPlayerId && playerId === this.hotSeatPlayerId && tier > 0) {
-      // Hot seat: must pick lowest remaining tier in some category — soft: prefer tier 0
-    }
     const idx = cellIndex(categoryIndex, tier);
     if (idx < 0 || idx >= this.liveBoard.cleared.length) return { ok: false };
     if (this.liveBoard.cleared[idx]) return { ok: false, error: "Already cleared" };
@@ -338,9 +313,7 @@ export class TriviaController {
     this.shuffledChoices = null;
     this.correctChoiceIndex = null;
     this.clearFx();
-    this.cheerScore = 0;
     this.hintExcluded = [];
-    this.phoneFriendVotes = {};
     this.trapChoiceIndex = null;
     this.pendingPartyTax = false;
     this.chaosDash = null;
@@ -415,7 +388,6 @@ export class TriviaController {
     this.armBuzzJams(now);
     this.clueStage = null;
     this.phase = "buzzOpen";
-    this.fakeBuzzPlayerId = null;
     this.spotlightPlayerId = null;
     // Keep buzzOpenAt from finishHighlight so phones that already have it arm together.
     if (this.buzzOpenAt == null) this.buzzOpenAt = now;
@@ -461,7 +433,6 @@ export class TriviaController {
     this.phase = "answering";
     this.endsAt = Date.now() + TRIVIA_ANSWER_MS;
     this.alarmKind = "answerTimeout";
-    this.fakeBuzzPlayerId = null;
     this.spotlightPlayerId = null;
 
     if (!daily && this.chaosMode !== "off") {
@@ -504,9 +475,7 @@ export class TriviaController {
     }
 
     if (correct) {
-      const cheer = cheerBonusFromMeter(this.cheerScore);
       const result = applyCorrect(seat?.score ?? 0, value, {
-        cheerBonus: cheer,
         partyTax: this.pendingPartyTax,
       });
       if (seat) seat.score = result.score;
@@ -578,40 +547,12 @@ export class TriviaController {
     this.buzzOpenAt = null;
     this.lastOutcomePlayerId = playerId;
     this.lastOutcomePlayerName = this.seats.get(playerId)?.name ?? null;
-    this.challengeOpen = this.chaosMode === "mayhem";
-    this.challengeVotes = {};
     this.endsAt = Date.now() + TRIVIA_REVEAL_MS;
     this.alarmKind = "revealDone";
     this.chaosDash = null;
   }
 
   private afterReveal(_now: number): void {
-    if (this.challengeOpen && this.lastScoreDelta && this.lastScoreDelta > 0) {
-      const votes = Object.values(this.challengeVotes);
-      if (votes.length >= Math.ceil(this.seats.size / 2)) {
-        const tooEasy = votes.filter(Boolean).length > votes.length / 2;
-        if (tooEasy && this.lastOutcomePlayerId) {
-          const seat = this.seats.get(this.lastOutcomePlayerId);
-          if (seat) {
-            const half = Math.floor(this.lastScoreDelta / 2);
-            seat.score -= half;
-            this.lastScoreDelta -= half;
-          }
-        }
-      }
-    }
-    this.challengeOpen = false;
-
-    if (this.lastOutcome === "wrong" || this.lastOutcome === "timeout") {
-      if (this.hotSeatPending) {
-        this.controllerId = this.lastOutcomePlayerId;
-        this.hotSeatPlayerId = this.lastOutcomePlayerId;
-      }
-    } else {
-      this.hotSeatPlayerId = null;
-    }
-    this.hotSeatPending = false;
-
     this.clearClue();
     this.clearFx();
 
@@ -631,8 +572,6 @@ export class TriviaController {
     this.endsAt = null;
     this.alarmKind = null;
   }
-
-  private hotSeatPending = false;
 
   private beginDouble(): void {
     const pack = getTriviaPack(this.packId);
@@ -775,18 +714,6 @@ export class TriviaController {
     };
 
     switch (power) {
-      case "fakeBuzz": {
-        if (this.phase !== "buzzOpen") return { ok: false, error: "Not during buzz" };
-        const target =
-          targetPlayerId && this.seats.has(targetPlayerId)
-            ? targetPlayerId
-            : [...this.seats.keys()].filter((id) => id !== playerId)[
-                Math.floor(Math.random() * Math.max(1, this.seats.size - 1))
-              ];
-        this.fakeBuzzPlayerId = target ?? null;
-        spend();
-        return { ok: true };
-      }
       case "spotlightSteal": {
         if (this.phase !== "buzzOpen") return { ok: false };
         const target =
@@ -803,7 +730,6 @@ export class TriviaController {
         }
         const target = targetPlayerId && this.seats.has(targetPlayerId) ? targetPlayerId : null;
         if (!target || target === playerId) return { ok: false, error: "Pick a rival" };
-        this.buzzJamUntil[target] = (this.phase === "buzzOpen" ? now : now) + TRIVIA_BUZZ_JAM_MS;
         if (this.phase === "buzzOpen") {
           this.buzzJamUntil[target] = now + TRIVIA_BUZZ_JAM_MS;
         } else {
@@ -816,19 +742,6 @@ export class TriviaController {
       case "blindfold": {
         if (this.phase !== "answering") return { ok: false };
         this.blindfoldUntil = now + TRIVIA_BLINDFOLD_MS;
-        spend();
-        return { ok: true };
-      }
-      case "screenZap": {
-        if (this.phase !== "answering") return { ok: false };
-        this.screenZapUntil = now + TRIVIA_SCREEN_ZAP_MS;
-        spend();
-        return { ok: true };
-      }
-      case "cheerBoo": {
-        if (this.phase !== "answering") return { ok: false };
-        // enables cheer; spending activates boosted meter start
-        this.cheerScore += 0;
         spend();
         return { ok: true };
       }
@@ -868,19 +781,6 @@ export class TriviaController {
         spend();
         return { ok: true };
       }
-      case "challenge": {
-        if (this.phase !== "reveal") return { ok: false };
-        this.challengeOpen = true;
-        spend();
-        return { ok: true };
-      }
-      case "hotSeat": {
-        if (this.phase !== "reveal") return { ok: false };
-        if (this.lastOutcome !== "wrong" && this.lastOutcome !== "timeout") return { ok: false };
-        this.hotSeatPending = true;
-        spend();
-        return { ok: true };
-      }
       case "alliance": {
         const target = targetPlayerId && this.seats.has(targetPlayerId) ? targetPlayerId : null;
         if (!target || target === playerId) return { ok: false };
@@ -901,32 +801,9 @@ export class TriviaController {
         spend();
         return { ok: true };
       }
-      case "phoneFriend": {
-        if (this.phase !== "answering" || playerId !== this.buzzedPlayerId) return { ok: false };
-        this.phoneFriendVotes = {};
-        spend();
-        return { ok: true };
-      }
       default:
         return { ok: false };
     }
-  }
-
-  cheer(playerId: string, delta: 1 | -1): void {
-    if (this.phase !== "answering") return;
-    if (playerId === this.buzzedPlayerId) return;
-    this.cheerScore += delta;
-  }
-
-  phoneFriendVote(playerId: string, choiceIndex: number): void {
-    if (this.phase !== "answering") return;
-    if (playerId === this.buzzedPlayerId) return;
-    this.phoneFriendVotes[playerId] = choiceIndex;
-  }
-
-  challengeVote(playerId: string, tooEasy: boolean): void {
-    if (!this.challengeOpen) return;
-    this.challengeVotes[playerId] = tooEasy;
   }
 
   /** Apply armed buzz jams when buzz opens. */
@@ -940,8 +817,7 @@ export class TriviaController {
 
   snapshot(code: string): TriviaRoomState {
     const now = Date.now();
-    // clear expired fake glow
-    if (this.fakeBuzzPlayerId && this.phase !== "buzzOpen") this.fakeBuzzPlayerId = null;
+    if (this.spotlightPlayerId && this.phase !== "buzzOpen") this.spotlightPlayerId = null;
 
     return {
       game: "trivia",
@@ -1012,18 +888,11 @@ export class TriviaController {
       lastOutcomePlayerId: this.lastOutcomePlayerId,
       lastOutcomePlayerName: this.lastOutcomePlayerName,
       blindfoldUntil: this.blindfoldUntil && this.blindfoldUntil > now ? this.blindfoldUntil : null,
-      screenZapUntil: this.screenZapUntil && this.screenZapUntil > now ? this.screenZapUntil : null,
-      fakeBuzzPlayerId: this.fakeBuzzPlayerId,
       spotlightPlayerId: this.spotlightPlayerId,
       buzzJamUntil: { ...this.buzzJamUntil },
-      cheerScore: this.cheerScore,
       hintExcluded: [...this.hintExcluded],
-      phoneFriendVotes: { ...this.phoneFriendVotes },
       trapChoiceIndex: this.trapChoiceIndex,
       allianceIds: this.allianceIds ? [...this.allianceIds] : null,
-      hotSeatPlayerId: this.hotSeatPlayerId,
-      challengeOpen: this.challengeOpen,
-      challengeVotes: { ...this.challengeVotes },
       lastScoreDelta: this.lastScoreDelta,
       results:
         this.phase === "results"
@@ -1074,18 +943,11 @@ export class TriviaController {
       lastOutcomePlayerId: this.lastOutcomePlayerId,
       lastOutcomePlayerName: this.lastOutcomePlayerName,
       blindfoldUntil: this.blindfoldUntil,
-      screenZapUntil: this.screenZapUntil,
-      fakeBuzzPlayerId: this.fakeBuzzPlayerId,
       spotlightPlayerId: this.spotlightPlayerId,
       buzzJamUntil: this.buzzJamUntil,
-      cheerScore: this.cheerScore,
       hintExcluded: this.hintExcluded,
-      phoneFriendVotes: this.phoneFriendVotes,
       trapChoiceIndex: this.trapChoiceIndex,
       allianceIds: this.allianceIds,
-      hotSeatPlayerId: this.hotSeatPlayerId,
-      challengeOpen: this.challengeOpen,
-      challengeVotes: this.challengeVotes,
       lastScoreDelta: this.lastScoreDelta,
       pendingPartyTax: this.pendingPartyTax,
       swapStakesActive: this.swapStakesActive,
@@ -1132,18 +994,11 @@ export class TriviaController {
     this.lastOutcomePlayerId = data.lastOutcomePlayerId ?? null;
     this.lastOutcomePlayerName = data.lastOutcomePlayerName ?? null;
     this.blindfoldUntil = data.blindfoldUntil ?? null;
-    this.screenZapUntil = data.screenZapUntil ?? null;
-    this.fakeBuzzPlayerId = data.fakeBuzzPlayerId ?? null;
     this.spotlightPlayerId = data.spotlightPlayerId ?? null;
     this.buzzJamUntil = data.buzzJamUntil ?? {};
-    this.cheerScore = data.cheerScore ?? 0;
     this.hintExcluded = data.hintExcluded ?? [];
-    this.phoneFriendVotes = data.phoneFriendVotes ?? {};
     this.trapChoiceIndex = data.trapChoiceIndex ?? null;
     this.allianceIds = data.allianceIds ?? null;
-    this.hotSeatPlayerId = data.hotSeatPlayerId ?? null;
-    this.challengeOpen = Boolean(data.challengeOpen);
-    this.challengeVotes = data.challengeVotes ?? {};
     this.lastScoreDelta = data.lastScoreDelta ?? null;
     this.pendingPartyTax = Boolean(data.pendingPartyTax);
     this.swapStakesActive = Boolean(data.swapStakesActive);

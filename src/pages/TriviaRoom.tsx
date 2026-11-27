@@ -441,20 +441,7 @@ export function TriviaRoom() {
               me={me}
               players={state.players}
               onUse={room.useChaos}
-              onCheer={room.cheer}
             />
-          ) : null}
-
-          {state.phase === "reveal" && state.challengeOpen ? (
-            <div className="trivia-challenge">
-              <p>Too easy?</p>
-              <button type="button" className="btn" onClick={() => room.challengeVote(true)}>
-                Yes
-              </button>
-              <button type="button" className="btn" onClick={() => room.challengeVote(false)}>
-                No
-              </button>
-            </div>
           ) : null}
         </section>
       )}
